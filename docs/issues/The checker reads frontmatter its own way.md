@@ -98,6 +98,25 @@ answers were computed by hand — including three that must AGREE, which is the 
 catches a comparator reporting everything as a finding. That run is what corrected the three
 expectations above.
 
+### A correction from CI, and it is the instrument again
+
+The first push of this change **failed `npm run check`**, and the pull request body said it
+passed. `fallow` refused the new `frontmatter()` at **CRAP 42** — cyclomatic 6 in a script
+no test covers, which is above its threshold and was the honest answer: one function was
+doing the parse, the normalization and both accessors. Split into `parseBlock` (3) and
+`frontmatter` (4), same code, under the threshold.
+
+The claim was wrong because the way it was read was wrong: the run had been piped,
+`npm run check 2>&1 | tail -40`, and a pipeline exits with the status of `tail`. So `npm`
+exiting 1 was read as 0. Recorded here as well as in
+[[A gate that did not run looks like one that passed]], whose subject this turns out to be —
+that note is about a gate that never started, and this is one that ran, said no, and had its
+answer discarded on the way to being read. Both look like silence.
+
+The connection to this note's own subject is not decorative: **a second reader of a result
+is exactly what this change deleted, and I introduced one in the verification while deleting
+one from the gate.** `tail` was reading the gate's output where the exit code was the answer.
+
 ### What is still not reached, and it is the same remainder as before
 
 **This is agreement with `yaml`, not with Obsidian.** A conforming parser is a proxy for

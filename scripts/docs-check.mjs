@@ -324,29 +324,41 @@ function between(text, start, end) {
  * this one, over every file rather than at each reader — a category invariant belongs on
  * the forbidden thing.
  */
+/**
+ * The parse, and its refusal, as one small function.
+ *
+ * Split from `frontmatter` below rather than inlined, and the reason is a gate rather than
+ * taste: written as one function this was cyclomatic 6 in a script no test covers, which is
+ * CRAP 42 and above fallow's threshold — the first thing this change did to `npm run check`
+ * was fail it. Two functions of 3 and 4 are the same code and under it.
+ *
+ * `?? {}` is the whole normalization. A block that parses to a list, to a bare scalar or to
+ * nothing has no keys, and `Object.hasOwn` already answers `false` for every one of those —
+ * only `null` and `undefined` would throw, which is what this replaces.
+ */
+function parseBlock(raw) {
+	try {
+		return { map: YAML.parse(raw) ?? {}, error: null };
+	} catch (problem) {
+		return { map: {}, error: String(problem.message).split("\n")[0] };
+	}
+}
+
 function frontmatter(text) {
 	const match = /^---\n([\s\S]*?)\n---/.exec(text);
 	if (!match) return null;
-	let parsed = null;
-	let error = null;
-	try {
-		parsed = YAML.parse(match[1]);
-	} catch (problem) {
-		error = String(problem.message).split("\n")[0];
-	}
-	// A block that is a list, a bare scalar or unparseable has no keys to answer for. An
-	// EMPTY map is the same shape and a legitimate one (`---\n\n---`), so the two are not
-	// distinguished here — `error` is what separates them.
-	const map = parsed !== null && typeof parsed === "object" && !Array.isArray(parsed) ? parsed : {};
-	const field = (name) => {
-		// `Object.hasOwn` rather than a truth test, so that `field` and `has` cannot
-		// disagree about a key inherited from `Object.prototype` — `constructor:` is a
-		// legal frontmatter key and YAML gives it as an own property.
-		if (!Object.hasOwn(map, name)) return null;
-		const value = map[name];
-		return value === null || typeof value === "object" ? null : String(value);
-	};
+	const { map, error } = parseBlock(match[1]);
+	// `Object.hasOwn` rather than a truth test, so that `field` and `has` cannot disagree
+	// about a key inherited from `Object.prototype` — `constructor:` is a legal frontmatter
+	// key and YAML gives it as an own property.
 	const has = (name) => Object.hasOwn(map, name);
+	const field = (name) => {
+		// An absent key and a bare `parent:` are the same `null` here, and `typeof null` is
+		// `"object"` — so one test covers both of those AND a list or a map, which is right
+		// because `field` is the SCALAR reader. `has` is what a rule about `files:` asks.
+		const value = has(name) ? map[name] : null;
+		return typeof value === "object" ? null : String(value);
+	};
 	// `raw` is deliberately not returned. It was, and the two rules that read it — the
 	// parent wikilink and the ADR date — are the two that had drifted from what YAML says.
 	// Handing the block's TEXT back beside a parse of it is how a second reader starts.
