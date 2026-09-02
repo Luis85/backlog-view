@@ -38,7 +38,16 @@ roadmap does with it afterwards — is unanswered here by construction.
 **Preconditions** — as [[Release view registration and options]], plus a second vault, or a
 second base, whose backlog home folder is **not** `docs`. For the date steps: the start and
 target properties bound on the backlog view, the roadmap on its dated axis, and a release
-carrying a target date.
+carrying a target date of **today or later**.
+
+That last clause is load-bearing rather than tidiness. A release whose date has passed is a
+legitimate vault and a case this feature handles on purpose — [[Joining a release dates the
+work]] 4b suppresses the start, because today would fall after the due — so the next two
+steps would see ONE key and an endpoint where they say two keys and a bar, and a walker
+following them literally would record a failure against an implementation doing exactly what
+it should. The past-release case is checked twice already: by the third date step below, and
+by `test/storage/releaseWrite.test.ts`. Added 2026-09-02 after review found the setup could
+fail correct code (Codex, PR #242).
 
 ## How to check
 
