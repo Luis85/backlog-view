@@ -279,15 +279,20 @@ export function compareText(a: string, b: string): number {
  * classifies all of them and the suite holds the split.
  *
  * Lowercasing alone is not a case-INSENSITIVE form, which is the second half of this and
- * the one review caught (Codex, PR #251). Lowercasing keeps a soft-dotted `i`/`j`'s dot
+ * the one review caught (Codex, PR #251). Lowercasing keeps a soft-dotted letter's dot
  * above when an accent follows it — always in Lithuanian (`Ì` → `i̇̀`, while `ì` stays
  * `ì`), and in every locale but Turkish for `İ` (→ `i̇`, which `i` then misses). Both are
  * correct CASING and wrong for matching, so the dot is dropped after the fold and the
  * result recomposed: `Ì` and `ì` meet at `ì` again, while Turkish keeps the distinction
  * that made this locale-aware at all (`I` → `ı`, `i` → `i`). Unicode says the same thing
  * by having case FOLDING carry no Lithuanian tailoring.
+ *
+ * **`\p{Soft_Dotted}` rather than `[ij]`**, which is the same review's next round: the
+ * class is the one Unicode's own `More_Above` context names, so `Į́` and `ị̈` are covered
+ * by the property rather than by whoever remembers to add a letter. An ASCII pair reads as
+ * the whole set only because the two worked examples are spelled with it.
  */
-const SOFT_DOTTED_DOT = /([ij])\u0307/gu;
+const SOFT_DOTTED_DOT = /(\p{Soft_Dotted})\u0307/gu;
 
 export function foldForMatch(value: string): string {
 	return value.toLocaleLowerCase(active.requested).replace(SOFT_DOTTED_DOT, '$1').normalize('NFC');

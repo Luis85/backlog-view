@@ -309,10 +309,15 @@ describe('collation, folding and numbers follow the requested locale', () => {
 		// always in Lithuanian, and in every locale but Turkish for `İ`. Correct casing,
 		// wrong for matching: the query no longer meets the title it was typed from.
 		// Found by review (Codex, PR #251).
+		// `Į́` is why the class is `\p{Soft_Dotted}` and not `[ij]` — Unicode's own
+		// `More_Above` context names the property, and an ASCII pair covers neither
+		// Lithuanian's own `į` nor `ị`.
 		for (const locale of ['lt', 'en', 'tr']) {
 			setLocale(locale);
 			expect(foldForMatch('Ì')).toBe(foldForMatch('ì'));
 			expect(foldForMatch('İ')).toBe(foldForMatch('i'));
+			expect(foldForMatch('Į́')).toBe(foldForMatch('į́'));
+			expect(foldForMatch('J̈')).toBe(foldForMatch('j̈'));
 		}
 		// And the distinction that made the fold locale-aware still holds.
 		setLocale('tr');
