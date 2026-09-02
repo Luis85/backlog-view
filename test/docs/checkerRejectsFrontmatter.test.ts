@@ -120,5 +120,37 @@ describe('frontmatter no YAML parser accepts', () => {
 			},
 			'Feature with no parent',
 		],
+		[
+			// Found by review (Codex, PR #257) on the change that introduced it, and it is
+			// the one place parsing was WEAKER than the line patterns: `order: ""` parses to
+			// the empty string, and `Number("")` is 0 — finite, so a note with an explicitly
+			// blank rank was accepted at rank 0 wherever no sibling held it. The regex reader
+			// answered `'""'`, which `Number` refuses. `field` now reduces a blank scalar to
+			// absent, so this is the "no `order`" message rather than a rank.
+			'an explicitly blank order, which coerces to a legal rank',
+			(files) => {
+				files['docs/requirements/A slice.md'] = files['docs/requirements/A slice.md'].replace(
+					/^order: \d+$/m,
+					'order: ""',
+				);
+			},
+			'backlog note has no `order`',
+		],
+		[
+			// The same defect at a second call site, which is why the fix is in `field` and
+			// not beside `Number()`. A Superseded ADR must NAME its successor, and a blank
+			// `superseded-by:` names nobody — it read as a stated value under both readers.
+			'a Superseded ADR whose successor is blank',
+			(files) => {
+				files['docs/adrs/0001-the-first-decision.md'] = files['docs/adrs/0001-the-first-decision.md']
+					.replace(/^status: .+$/m, 'status: Superseded')
+					.concat('');
+				files['docs/adrs/0001-the-first-decision.md'] = files['docs/adrs/0001-the-first-decision.md'].replace(
+					'status: Superseded\n',
+					'status: Superseded\nsuperseded-by: ""\n',
+				);
+			},
+			'Superseded without naming superseded-by',
+		],
 	]);
 });

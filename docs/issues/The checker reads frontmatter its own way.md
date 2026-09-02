@@ -117,6 +117,30 @@ The connection to this note's own subject is not decorative: **a second reader o
 is exactly what this change deleted, and I introduced one in the verification while deleting
 one from the gate.** `tail` was reading the gate's output where the exit code was the answer.
 
+### A second correction from review, and this one is the direction that matters
+
+Review (Codex, PR #257) found **the one place parsing is WEAKER than the line patterns it
+replaced.** A quoted `order: ""` parses to the empty string; `String("")` is `""`; and
+`Number("")` is **0** — finite, so a note with an explicitly blank rank was accepted at rank
+0 wherever no sibling had claimed it. The regex reader answered `'""'`, which `Number`
+refuses. So the change introduced a false green the old reader did not have, in the same
+edit whose whole argument was that the old reader was less exact.
+
+The differential above could not see it, and saying why is the useful part: it compares the
+two readers' **answers to the same key**, and both answers were "a value" — `'""'` and `""`.
+The disagreement is downstream, in what `Number()` does with each. **A differential over
+readers cannot see a divergence that only exists after a caller interprets what it read**,
+and that is a real limit of the instrument rather than a slip in running it.
+
+Fixed in `field` — a blank scalar reduces to absent — rather than beside `Number()`, because
+`order` is not the only site: `superseded-by`, `supersedes`, `title`, `area`, `adr` and
+`date` all test `field(…)` against `null` and would each have read a blank as a stated
+value. Two of them are now planted cases (a blank `order`, a Superseded ADR with a blank
+`superseded-by`), each watched failing against the one clause with everything else in place.
+
+`has` is deliberately unchanged: `parent: ""` still DECLARES the key, which is what the ADR
+prohibition asks. Stated a value / declared a key stays exact.
+
 ### What is still not reached, and it is the same remainder as before
 
 **This is agreement with `yaml`, not with Obsidian.** A conforming parser is a proxy for

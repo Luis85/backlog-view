@@ -344,6 +344,33 @@ function parseBlock(raw) {
 	}
 }
 
+/**
+ * One key's value, as a **non-empty scalar** or `null`.
+ *
+ * `typeof null === "object"` does the work in the middle: an absent key and a bare
+ * `parent:` are the same `null` here, and so is a list or a map — right, because this is
+ * the SCALAR reader and `has` is what a rule about `files:` asks.
+ *
+ * **`|| null` is the last clause and it is a bug fix, not tidiness** (Codex, PR #257). A
+ * quoted `order: ""` parses to the empty string, `String("")` is `""`, and `Number("")` is
+ * **0** — finite, so the checker accepted a note with an explicitly blank rank as rank 0
+ * whenever no sibling had claimed it. The regex reader answered `'""'` and `Number` refused
+ * that, so parsing without this clause was a false green the old reader did not have.
+ *
+ * Fixed here rather than at the `order` call site because that site is not the only one:
+ * `superseded-by`, `supersedes`, `title`, `area`, `adr` and `date` all test `field(…)`
+ * against `null` and would each have read a blank as a stated value. A category invariant
+ * goes on the forbidden thing.
+ *
+ * `has` is deliberately NOT changed: `parent: ""` still DECLARES a parent key, which is
+ * what the ADR prohibition asks about. Stated a value / declared a key stays the exact
+ * distinction it became when this file started parsing.
+ */
+function scalar(map, name) {
+	const value = Object.hasOwn(map, name) ? map[name] : null;
+	return (typeof value === "object" ? "" : String(value)).trim() || null;
+}
+
 function frontmatter(text) {
 	const match = /^---\n([\s\S]*?)\n---/.exec(text);
 	if (!match) return null;
@@ -352,13 +379,7 @@ function frontmatter(text) {
 	// about a key inherited from `Object.prototype` — `constructor:` is a legal frontmatter
 	// key and YAML gives it as an own property.
 	const has = (name) => Object.hasOwn(map, name);
-	const field = (name) => {
-		// An absent key and a bare `parent:` are the same `null` here, and `typeof null` is
-		// `"object"` — so one test covers both of those AND a list or a map, which is right
-		// because `field` is the SCALAR reader. `has` is what a rule about `files:` asks.
-		const value = has(name) ? map[name] : null;
-		return typeof value === "object" ? null : String(value);
-	};
+	const field = (name) => scalar(map, name);
 	// `raw` is deliberately not returned. It was, and the two rules that read it — the
 	// parent wikilink and the ADR date — are the two that had drifted from what YAML says.
 	// Handing the block's TEXT back beside a parse of it is how a second reader starts.
