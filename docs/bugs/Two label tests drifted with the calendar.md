@@ -56,22 +56,31 @@ date that reads as inside the window today and stops being so once the clock lea
 
 ## The fix
 
-Both tests PIN THE CLOCK — `vi.setSystemTime(new Date('2026-08-05T12:00:00Z'))`, and
-`setSystemTime` alone so only `Date` is mocked and the view's own timers still run — which
-puts today back beside the fixed dates the fixtures already name.
+Both fixtures derive their dates from the clock, through `nearTermSpan(lead, length)` in
+`test/helpers/roadmap.ts` — the construction `timelineFurniture.test.ts` already used,
+extracted as a function so a fourth copy cannot type a date instead. Near-term is a
+POSITION RELATIVE TO TODAY, and only a value derived from today can state it.
 
-**Fixed twice, independently, and the merge is why this paragraph reads as it does.** The
-my-work branch found it first and planted the dates as offsets from `TODAY` instead;
-`main` reached it separately (`39b1035`) and pinned the clock. Both close the defect and
-the two collided on merge. `main`'s won, on the ground that it is merged and shipped, that
-a test whose subject is a WIDTH is better off deterministic than merely relative, and that
-one idiom for one problem is worth more than whichever idiom is marginally better — a
-suite carrying both would leave the next reader guessing which is the rule here. The
-offsets are gone; only this record of them remains.
+**Fixed three times, and the third time was recovering the second.** The my-work branch
+found it and planted offsets from `TODAY`. `main` reached it separately (`39b1035`) and
+pinned the clock with `setSystemTime` instead. Those two collided on merge and `main`'s
+won, on the ground that it was merged and that one idiom beats two. Then `afeb0cf` — also
+on `main`, and later — replaced the pin with `nearTermSpan`, which is the better answer
+for the reason this note already gives: the premise is "near-term", so the fixture should
+say near-term rather than name a day that happens to be near a pinned clock.
 
-`absenceVault()` (`test/helpers/resources.ts`) keeps its fixed dates under either fix:
-other tests assert those exact days, and only these two have the window's own width as
-their subject.
+**And `main` then lost it.** `60e1590`, a merge inside the branch that became PR #241,
+took `main`'s side wholesale for these two files and reverted `afeb0cf` — `nearTermSpan`
+existed in no file on `main` afterwards, the typed dates were back, and the pin with them.
+Nothing failed, because a pinned clock is also drift-proof; the loss was silent and would
+have stayed silent until somebody wrote a fourth copy of the construction and typed a
+date, which is precisely what the helper exists to prevent. Restored here by re-applying
+`afeb0cf`'s own diff rather than re-inventing it, with the redundant pin removed.
+
+**A resolved conflict is a place a fix can be dropped, and no test guards that.** Both
+losses here — nearly mine, then `main`'s real one — came from taking one side of a
+file wholesale rather than asking what each side had changed and why. The check that
+exists is the calendar itself, and it only speaks months later.
 
 ## What it says about the suite
 
