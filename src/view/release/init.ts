@@ -72,6 +72,19 @@ import type { ReleaseView } from './releaseView';
  * `domain/optionalProperties.ts`, the BACKLOG view's own suggestion for the same concept
  * (its `releaseProperty` option), so a vault that presses ✨ in both views lands on one
  * property rather than two.
+ *
+ * The three readiness keys joined on 2026-09-01, for `stateProperty`'s own reason read once
+ * more: without them every criterion on the scope screen reads as unconfigured and the whole
+ * readiness half of this view is missing after a ✨ that said it had bound everything.
+ * `effort` is `estimationOptions.ts`'s own suggestion for the same concept and `dependsOn`
+ * and `risk` are `PROPERTY_TABLE`'s, so a vault pressing ✨ in two views lands on one
+ * property rather than two.
+ *
+ * `criticalRiskValues` and `addressedRiskValues` are NOT candidates and could not be, for
+ * `releaseStatusValues`' own reason: they are text options holding a vocabulary rather than
+ * properties, and there is no key to hand out. A press therefore leaves the risk criterion
+ * unconfigured, which the chip says in words rather than passing silently — the honest
+ * outcome, and the one the collapse rule in `renderReadiness.ts` is shaped around.
  */
 export const RELEASE_SUGGESTED_KEYS: AdoptionCandidate[] = [
 	{ option: 'membershipProperty', suggested: 'release' },
@@ -81,6 +94,9 @@ export const RELEASE_SUGGESTED_KEYS: AdoptionCandidate[] = [
 	{ option: 'stateProperty', suggested: 'status' },
 	{ option: 'releasedDateProperty', suggested: 'released' },
 	{ option: 'descriptionProperty', suggested: 'description' },
+	{ option: 'estimateProperty', suggested: 'effort' },
+	{ option: 'dependsOnProperty', suggested: 'dependsOn' },
+	{ option: 'riskProperty', suggested: 'risk' },
 ];
 
 /** An option ✨ binds that names no property, and how to decide its value at bind time. */

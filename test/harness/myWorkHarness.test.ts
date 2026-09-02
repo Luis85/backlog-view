@@ -32,19 +32,30 @@ describe('the my-work harness mounts', () => {
 		expect(containerEl.querySelector('.pbl-mw-tree')).toBeNull();
 	});
 
-	it('draws Ada’s tree with one finished row, one open row and the Next marker on the open one', () => {
+	/**
+	 * The marker moved DEEPER on purpose (review, PR #239). The row that runs out of a
+	 * narrow pane first is the deepest one CARRYING the marker — ~36px that never shrinks —
+	 * not the deepest one, so a fixture with the marker on a shallow row draws clean at
+	 * every width and says nothing about the case that clips. `Send the magic link` is
+	 * finished here so `nextAssigned` walks past it to the Task below it.
+	 */
+	it('draws Ada’s tree with finished rows, and the Next marker on the deepest open one', () => {
 		const { view, containerEl } = mount();
 		view.pick('People/Ada.md');
 
 		const rows = Array.from(containerEl.querySelectorAll<HTMLElement>('.pbl-row'));
 		const byTitle = (title: string) => rows.find((r) => r.querySelector('.pbl-title')?.textContent === title);
 
-		const open = byTitle('Send the magic link');
-		const done = byTitle('Expire the link after first use');
+		const open = byTitle('Rotate the token signing key on a schedule');
+		const done = byTitle('Send the magic link');
 		expect(open?.querySelector('.pbl-state-chip.pbl-state-done')).toBeNull();
 		expect(done?.querySelector('.pbl-state-chip.pbl-state-done')).not.toBeNull();
 		expect(open?.querySelector('.pbl-mw-next')).not.toBeNull();
 		expect(done?.querySelector('.pbl-mw-next')).toBeNull();
+		// The whole point of moving it: the marked row is deeper than the rows above it.
+		expect(Number(open?.style.getPropertyValue('--pbl-depth'))).toBeGreaterThan(
+			Number(done?.style.getPropertyValue('--pbl-depth')),
+		);
 	});
 
 	it('walks THROUGH the outsideFilter ancestor — no row for it, its member re-rooted above it', () => {

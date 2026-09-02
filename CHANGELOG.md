@@ -26,6 +26,8 @@ See [RELEASING.md](RELEASING.md) for how this file is kept in step with a releas
 
 ### Added
 
+- The toolbar's **Expand all** and **Collapse all** now fold and open the resource bands on
+  the roadmap's resources axis, so a long roster is one press rather than one chevron each.
 - Putting an item in a release now dates it: the release's own target date becomes the
   item's due and today becomes its start, so the work draws on the roadmap's dated axis.
   Neither is written over a date the item already holds, and neither lands where it would
@@ -46,6 +48,9 @@ See [RELEASING.md](RELEASING.md) for how this file is kept in step with a releas
   and bracketed, so a layout can be looked at in something that is not English. It ships in
   no release; set `localStorage['product-backlog-locale']` and reload to see it.
 - CI runs the whole test suite a second time in a non-English locale.
+- Release readiness on a release's own screen: three criteria — everything estimated,
+  dependencies resolved, critical risks addressed — beside the effort totals, the estimate
+  progress and how much of the scope carries no estimate at all.
 
 ### Changed
 
@@ -56,6 +61,12 @@ See [RELEASING.md](RELEASING.md) for how this file is kept in step with a releas
 
 - Two timeline tests measured against the calendar rather than a fixed day, so they began
   failing a fortnight after they were written.
+- My work: the Next marker stays inside the pane at every width, the state chip shows its
+  value in full where there is room and its icon where there is not, a title can be
+  selected and copied, and a narrow pane keeps the state instead of dropping it.
+- A release's scope: a member's state chip shows its value in full rather than truncating
+  it at a fixed column width, and carries the value as a tooltip where the row is too
+  narrow to show it.
 
 ## [0.10.0] - 2026-08-30
 

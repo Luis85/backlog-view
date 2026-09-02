@@ -398,3 +398,36 @@ describe('switching people starts at the top', () => {
 		expect(containerEl.querySelector<HTMLElement>('.pbl-mw-tree')!.scrollTop).toBe(200);
 	});
 });
+
+/**
+ * The row's own order, and the one thing a pane too narrow for everything may take from
+ * it — the polish pass of 2026-09-01, over what Task 10 measured and reported rather than
+ * fixed: above the 260px cutoff the reserved state column pushed the Next marker out of
+ * the pane entirely, because the marker was the row's LAST child and nothing else in the
+ * row would give way. A marker drawn before the column cannot be the element that leaves.
+ */
+describe('what is next is drawn ahead of what a narrow pane may drop', () => {
+	it('draws the Next marker before the state column, never after it', () => {
+		const { view } = makeMyWorkView(myWorkVault());
+		view.pick('People/Ada.md');
+
+		const kids = [...mwRow(view, 'PBI Ada.md').children];
+		const next = kids.findIndex((el) => el.classList.contains('pbl-mw-next'));
+		const col = kids.findIndex((el) => el.classList.contains('pbl-mw-statecol'));
+		expect(next).toBeGreaterThan(-1);
+		expect(col).toBeGreaterThan(next);
+	});
+
+	it('tooltips the state chip with its own value, which a chip clipped to its icon cannot show', () => {
+		const vault = new FakeVault();
+		vault.addFile('People/Ada.md', { frontmatter: { type: 'Resource' } });
+		vault.addFile('PBI.md', {
+			frontmatter: { type: 'PBI', order: 1, assignee: 'Ada', status: 'Waiting for review' },
+		});
+		const { view } = makeMyWorkView(vault, { stateProperty: 'note.status' });
+		view.pick('People/Ada.md');
+
+		const chip = mwRow(view, 'PBI.md').querySelector('.pbl-state-chip');
+		expect(chip?.getAttribute('data-tooltip')).toBe('Waiting for review');
+	});
+});

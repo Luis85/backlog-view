@@ -825,6 +825,13 @@ export const en = {
 	/** What a release is for, in the reader's own words, on the release note. */
 	'release.option.description': 'Release description property',
 	'release.option.releasedDate': 'Released date property',
+	'release.option.estimate': 'Estimate property',
+	'release.option.dependsOn': 'Prerequisites property',
+	'release.option.risk': 'Risk property',
+	'release.option.criticalRiskValues': 'Risk values that are critical',
+	'release.option.criticalRiskValuesHint': 'High, Critical',
+	'release.option.addressedRiskValues': 'Risk values that count as addressed',
+	'release.option.addressedRiskValuesHint': 'Mitigated, Accepted',
 	'release.option.folder': 'Release folder',
 	'mywork.option.group.model': 'Model',
 	'mywork.option.group.work': 'Work',
@@ -1982,6 +1989,80 @@ export const en = {
 		other: '{count} items',
 	},
 	/**
+	 * The three readiness criteria, named. Each is the criterion's own name, read into every
+	 * sentence below rather than spelled beside one — a chip that names itself and a tooltip
+	 * that names it differently are the same drift a second reader would be.
+	 */
+	'release.scope.readinessEstimated': 'Estimated',
+	'release.scope.readinessBlocked': 'Dependencies resolved',
+	'release.scope.readinessRisk': 'Critical risks addressed',
+	/**
+	 * A criterion not fully met: the number somebody actually acts on comes first, and the
+	 * criterion NAMES itself — two chips both reading "2 of 5 outstanding" are
+	 * indistinguishable, and the only identity would be a tooltip on a static, unfocusable
+	 * div, which reaches a pointer alone.
+	 */
+	'release.scope.readinessPartly': '{criterion}: {outstanding} of {count} outstanding',
+	/** The same, where some of those could not be read at all — extension 5a wants the
+	 *  unreadable ones stated rather than folded into the total. */
+	'release.scope.readinessPartlyUnreadable': '{criterion}: {outstanding} of {count} outstanding, {unreadable} unreadable',
+	'release.scope.readinessUnconfigured': '{criterion}: not configured',
+	/**
+	 * A satisfied chip's verdict, for the readers its border colour does not reach. The chip's
+	 * VISIBLE text stays the bare criterion name — the design the harness was looked at with,
+	 * and a count with nothing outstanding is noise beside a colour that already says so — so
+	 * this rides the same hidden span the provenance does. The acceptance criterion is that
+	 * each criterion STATES satisfied, which a colour alone does not do.
+	 */
+	'release.scope.readinessSatisfied': '{criterion}: satisfied, {cleared} of {count}.',
+	/** Every criterion unconfigured — one chip rather than three saying nothing. The chip's
+	 *  own hidden text names all three, so nothing is hidden by the collapse. */
+	'release.scope.readinessNoneConfigured': {
+		one: 'Readiness: {count} criterion not configured',
+		other: 'Readiness: {count} criteria not configured',
+	},
+	/** The estimate progress: ONE figure with its denominator inside it, never a sum and a
+	 *  second percentage competing with the items bar beside it. */
+	'release.scope.effort': '{done} of {total} pts ({pct}%)',
+	/** Estimated but not measurable: the estimate key is bound and no workflow can say what
+	 *  done means, so there is a total and no progress through it. */
+	'release.scope.effortEstimated': '{total} pts estimated',
+	'release.scope.effortUnconfigured': 'Effort is not configured',
+	/**
+	 * Extension 4a: the estimate key IS bound and no member answers it. Named rather than
+	 * absent, for the reason every unconfigured case here is named — a figure that is simply
+	 * missing reads as accidentally dropped, and this one has to be told apart from a real
+	 * total of zero, which `0 of 0 pts (0%)` is. Distinct from
+	 * `release.scope.effortUnconfigured`, which is the key itself being unbound.
+	 */
+	'release.scope.effortNothingToSum': 'No estimates to sum',
+	/**
+	 * The estimate key is bound, the members answered, and the SUM is not a number a screen
+	 * can show — estimates that are each finite adding past `Number.MAX_VALUE`. A third
+	 * sentence beside `effortUnconfigured` (nothing bound) and `effortNothingToSum` (nobody
+	 * answered), because the reader's next move differs in each: bind a property, write some
+	 * estimates, or go and fix the value that is absurd.
+	 */
+	'release.scope.effortUnreadable': 'Effort does not add up to a readable total',
+	'release.scope.unestimated': '{count} unestimated',
+	/**
+	 * Main flow step 5 of `docs/requirements/Summing up a release.md` — "every figure names
+	 * its property and vocabulary where there is one" — asked of the readiness figures, which
+	 * shipped without it. `{property}` is a frontmatter KEY and `{values}` a vault's own
+	 * vocabulary: both are DATA and reach the sentence as parameters, never as catalog text.
+	 *
+	 * Four sentences and not one, because the criteria do not read the same SHAPE of input:
+	 * the estimate is a property alone, the dependency is a property whose clearing comes
+	 * from the state workflow that already has its own provenance sentence, and the risk is a
+	 * property with two vocabularies judged against it. One parameterised sentence covering
+	 * all three would have to name an empty vocabulary for the first, which is the
+	 * "unconfigured reads as nothing" defect the whole increment is about.
+	 */
+	'release.scope.provenanceEstimate': 'Estimates read {property}.',
+	'release.scope.provenanceDependsOn': 'Prerequisites read {property}, each cleared by its own workflow. Configured: {workflows}.',
+	'release.scope.provenanceRisk': 'Risk reads {property}. Critical: {critical}. Addressed: {addressed}.',
+
+	/**
 	 * The summary strip's own label for the progress figure, read into
 	 * `release.figureUnconfigured` (no workflow to name — see
 	 * `release.scope.progressUnconfigured`'s own comment) or into that key itself when
@@ -2039,6 +2120,10 @@ export const en = {
 	 */
 	'release.scope.workflowRequirements': 'Work',
 	'release.scope.workflowDeliverables': 'Deliverables',
+	/** The third workflow kind, which the progress figure's own pair never needs — a catalog
+	 *  note cannot be a release MEMBER — but a member's PREREQUISITE can be one, so the
+	 *  dependency provenance can have to name it. */
+	'release.scope.workflowTests': 'Test catalog',
 	/** No membership property is bound, so no scope can be read at all — the header's facts
 	 *  still stand and the way back is still there, but there is no tree and no count. */
 	'release.scope.noMembership.title': 'No membership property is mapped',
