@@ -1,19 +1,17 @@
 import { setIcon, setTooltip } from 'obsidian';
 import type { MyWorkView } from './myWorkView';
 import { t } from '../../i18n/t';
-import { ownWorkflowReading, stateKeyFor } from '../../domain/board';
+import { stateKeyFor } from '../../domain/board';
 import { assignedRows, nextAssigned, pickedResource } from '../../domain/assignedWork';
 import { childRows, rowsAfterHideDone, ScopeRow, siblingPlaces, visibleRows } from '../../domain/scopeRows';
 import { MyWorkSettings } from '../../domain/myWorkOptions';
-import { displayType } from '../../domain/itemTypes';
-import { badgeStyleFor } from '../render/badges';
-import { drawIcon } from '../render/icons';
 import { guidanceShell } from '../render/emptyStates';
 import { foldedPaths, scopeFlag, toggleFold } from '../scopeFolds';
 import { TreeDraw, wireScopeKeys } from '../scopeKeys';
 import { resourceLabelsOf } from '../../domain/readItems';
 import { MYWORK_FOLD } from '../../storage/foldKeys';
 import { uniqueElementId } from '../selection';
+import { drawScopeBadge, drawScopeStateChip, wireRowOpen } from '../scopeRow';
 import { showMyWorkRowMenu, showMyWorkRowMenuAt } from './rowMenu';
 
 /**
@@ -217,26 +215,9 @@ function drawRow(view: MyWorkView, treeEl: HTMLElement, row: ScopeRow, place: Ro
 
 	drawDisclosure(view, rowEl, row, place);
 
-	// A row is a target again — it opens its note. Unconditional but for one thing, on a
-	// context row too: opening is not a write, and a context ancestor is a real note the
-	// reader may still want to read even though this screen offers no way to edit it.
-	//
-	// `window.getSelection()?.isCollapsed === false` is the drag-select guard
-	// `scopeTree.ts` records: an ORDINARY click collapses the selection on its own
-	// `mousedown`, so by the time `click` fires a non-collapsed selection can only mean
-	// this pointer-up just finished a drag-select rather than an activation.
-	rowEl.addEventListener('click', (evt) => {
-		if (window.getSelection()?.isCollapsed === false) return;
-		view.opener.open(view.openContext(), row.item, evt);
-	});
-	rowEl.addEventListener('auxclick', (evt) => {
-		// A middle click never fires `click` — the browser sends `auxclick` instead.
-		if (evt.button !== 1) return;
-		if (evt.target instanceof Element && evt.target.closest('.pbl-twisty') !== null) return;
-		view.opener.openIn(view.openContext(), row.item, 'tab');
-	});
+	wireRowOpen(view, rowEl, row);
 
-	drawBadge(rowEl, row);
+	drawScopeBadge(rowEl, row);
 
 	const titleEl = rowEl.createSpan({ cls: 'pbl-title', text: row.item.title });
 	// Set unconditionally, and nothing measures whether it was needed — `.pbl-row` carries
@@ -256,7 +237,7 @@ function drawRow(view: MyWorkView, treeEl: HTMLElement, row: ScopeRow, place: Ro
 
 	rowEl.createDiv({ cls: 'pbl-row-spacer' });
 
-	drawStateChip(rowEl, row);
+	drawScopeStateChip(rowEl, row, 'pbl-mw-statecol');
 	return rowEl;
 }
 
@@ -280,52 +261,6 @@ function drawDisclosure(view: MyWorkView, rowEl: HTMLElement, row: ScopeRow, pla
 		view.activeRowFile = row.item.file;
 		toggleFold(view, MYWORK_FOLD, view.pickedPerson!, row.item.file.path);
 	});
-}
-
-/**
- * No `!badgeText` guard, unlike `scopeTree.ts`'s own copy of this shape: every row this
- * module ever draws is a `ScopeRow` from `scopeRows.ts`'s walk, which only ever keeps a
- * real `BacklogItem` — never a marker (skipped outright) or a `Resource` (diverted before
- * it is ever an item) — and `displayType` answers a real name for every such item, typed
- * or not (an untyped one still gets the implied rung its position on the ladder gives
- * it). A guard for the empty string here would be unreachable code guarding against a
- * case this walk cannot produce.
- */
-function drawBadge(rowEl: HTMLElement, row: ScopeRow): void {
-	const badgeText = displayType(row.item);
-	const style = badgeStyleFor(badgeText);
-	const badgeEl = rowEl.createSpan({ cls: 'pbl-badge' });
-	if (style.icon) drawIcon(badgeEl.createSpan({ cls: 'pbl-badge-icon' }), style.icon);
-	badgeEl.addClass(style.badge);
-	badgeEl.createSpan({ cls: 'pbl-badge-text', text: badgeText });
-}
-
-/**
- * The chip gets a column of its own so a row with no state leaves a gap rather than
- * sliding its neighbours left. Static: nothing here writes, so a chip with a hover
- * affordance would make the screen look editable. A CONTEXT row carries no state — it
- * renders, it parents, and that is all.
- *
- * `ownWorkflowReading` already asks the EFFECTIVE key for this row's own item — the
- * requirements key for a plain item, the Deliverable key for a Deliverable, the test key
- * for a catalog member — so a row whose own workflow is unbound draws no chip at all
- * rather than a stale reading through the wrong property.
- */
-function drawStateChip(rowEl: HTMLElement, row: ScopeRow): void {
-	const stateEl = rowEl.createDiv({ cls: 'pbl-mw-statecol' });
-	const reading = ownWorkflowReading(row.item);
-	if (row.context || reading.value === null) return;
-	const chipEl = stateEl.createDiv({
-		cls: 'pbl-state-chip pbl-state-static' + (reading.done ? ' pbl-state-done' : ''),
-	});
-	drawIcon(chipEl.createSpan({ cls: 'pbl-state-icon' }), reading.done ? 'circle-check' : 'circle');
-	chipEl.createSpan({ cls: 'pbl-state-text', text: reading.value });
-	// The value in full, because the chip itself often cannot show it: `.pbl-state-chip`
-	// caps at 140px in every projection, and this view's own narrow rule clips the chip to
-	// its icon. Set unconditionally and measured by nothing — `.pbl-row` carries
-	// `content-visibility: auto`, and the title beside it is tooltipped on the same terms
-	// for the same reason (`src/view/CLAUDE.md`).
-	setTooltip(chipEl, reading.value);
 }
 
 /** What to do next — the first unfinished member in plan order (`nextAssigned`), marked

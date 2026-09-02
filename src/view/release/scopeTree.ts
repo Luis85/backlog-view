@@ -1,14 +1,12 @@
 import { setIcon, setTooltip } from 'obsidian';
 import type { ReleaseView } from './releaseView';
 import { t } from '../../i18n/t';
-import { ownWorkflowReading } from '../../domain/board';
 import { ReleaseRow } from '../../domain/releases';
 import { childRows, rowsAfterHideDone, ScopeRow, siblingPlaces, visibleRows } from '../../domain/scopeRows';
-import { displayType } from '../../domain/itemTypes';
-import { badgeStyleFor } from '../render/badges';
 import { drawIcon } from '../render/icons';
 import { foldedPaths, scopeFlag, setAllFolds, setScopeFlag, toggleFold } from '../scopeFolds';
 import { TreeDraw } from '../scopeKeys';
+import { drawScopeBadge, drawScopeStateChip, wireRowOpen } from '../scopeRow';
 import { RELEASE_FOLD } from '../viewState';
 import { uniqueElementId } from '../selection';
 
@@ -202,46 +200,9 @@ function drawRow(view: ReleaseView, release: ReleaseRow, treeEl: HTMLElement, ro
 
 	drawDisclosure(view, release, rowEl, row, place);
 
-	// A row is a target again — it opens its note. Unconditional but for one thing, on a
-	// context row too: opening is not a write, and a context ancestor is a real note the
-	// reader may still want to read even though this screen refuses every action that
-	// would edit it.
-	//
-	// **Carried finding 5.** `.pbl-rel-view .pbl-row` restores `user-select: auto`
-	// (`styles/releaseScope.css`) so a reader can copy a title on a read-only screen — and
-	// that is what makes a plain `click` wrong here: dragging across the title and
-	// releasing the pointer still dispatches `click` on the row, so without this guard the
-	// reader who wanted the text got navigated away instead. The backlog tree never needed
-	// one, because `.pbl-row` there is `user-select: none` and a drag selects nothing.
-	//
-	// `window.getSelection()?.isCollapsed === false` is the question to ask, and asking it
-	// HERE — in the click handler, not at `mousedown`/`mouseup` coordinates and not a drag
-	// flag set between them — is what makes it correct rather than merely plausible: an
-	// ORDINARY click collapses the selection on its own `mousedown` (the pointer lands and
-	// the caret moves there), so by the time `click` fires a non-collapsed selection can
-	// only mean this pointer-up just finished a drag-select. A coordinate or a flag would
-	// have to reconstruct that same fact by hand.
-	//
-	// The KEYBOARD path is untouched on purpose: Enter and Space open the active row through
-	// `scopeKeys.ts`, and a reader driving the tree from the keyboard may well have text
-	// selected somewhere else on the page — that selection says nothing about THIS
-	// activation, so only the pointer path asks the question.
-	rowEl.addEventListener('click', (evt) => {
-		if (window.getSelection()?.isCollapsed === false) return;
-		view.opener.open(view.openContext(), row.item, evt);
-	});
-	rowEl.addEventListener('auxclick', (evt) => {
-		// A middle click never fires `click` — the browser sends `auxclick` instead, so the
-		// listener above never sees it (`src/view/CLAUDE.md`'s own stated rule, and the pair
-		// every other row wires it as: `render/rows.ts`, `cardChildren.ts`, `board.ts`). The
-		// disclosure is excluded by hand rather than through `stopPropagation`, because
-		// unlike its `click` handler it wires no `auxclick` of its own to stop one at.
-		if (evt.button !== 1) return;
-		if (evt.target instanceof Element && evt.target.closest('.pbl-twisty') !== null) return;
-		view.opener.openIn(view.openContext(), row.item, 'tab');
-	});
+	wireRowOpen(view, rowEl, row);
 
-	drawBadge(rowEl, row);
+	drawScopeBadge(rowEl, row);
 
 	const titleEl = rowEl.createSpan({ cls: 'pbl-title', text: row.item.title });
 	// Set unconditionally, and NOTHING measures whether it was needed. `.pbl-row` carries
@@ -262,7 +223,7 @@ function drawRow(view: ReleaseView, release: ReleaseRow, treeEl: HTMLElement, ro
 	// trailing columns.
 	rowEl.createDiv({ cls: 'pbl-row-spacer' });
 
-	drawStateChip(rowEl, row);
+	drawScopeStateChip(rowEl, row, 'pbl-rel-statecol');
 	drawRollup(rowEl, row, release);
 	return rowEl;
 }
@@ -294,51 +255,6 @@ function drawDisclosure(view: ReleaseView, release: ReleaseRow, rowEl: HTMLEleme
 		view.activeRowFile = row.item.file;
 		toggleReleaseFold(view, release.path, row.item.file.path);
 	});
-}
-
-function drawBadge(rowEl: HTMLElement, row: ScopeRow): void {
-	const badgeText = displayType(row.item);
-	if (!badgeText) return;
-	const style = badgeStyleFor(badgeText);
-	const badgeEl = rowEl.createSpan({ cls: 'pbl-badge' });
-	if (style.icon) drawIcon(badgeEl.createSpan({ cls: 'pbl-badge-icon' }), style.icon);
-	badgeEl.addClass(style.badge);
-	badgeEl.createSpan({ cls: 'pbl-badge-text', text: badgeText });
-}
-
-/**
- * The chip gets a column of its own so a row with no state leaves a gap rather than sliding
- * its neighbours left. Static, like every chip in this view: nothing here writes, so a
- * chip with a hover affordance would make the screen look editable. A CONTEXT row carries
- * no state — it renders, it parents, and that is all.
- *
- * **A finished member's chip is green and carries the check**, `.pbl-state-done` and
- * `circle-check` — the identical pair `renderStateChip` draws in the tree
- * (`render/chips.ts`), read from the identical `ownWorkflowReading`, so one word means one
- * thing on both screens. It was the plain chip until 2026-08-29, which left this screen
- * saying `Done` in the same ink as `Doing` while the summary strip above counted the very
- * same member as finished.
- *
- * The ICON is drawn beside the colour rather than instead of it, and that is the
- * accessibility rule the tree's chip already keeps: colour alone is one channel, and this
- * chip is static — there is no hover, no menu and no accessible name of its own to carry
- * the fact a second way.
- */
-function drawStateChip(rowEl: HTMLElement, row: ScopeRow): void {
-	const stateEl = rowEl.createDiv({ cls: 'pbl-rel-statecol' });
-	const reading = ownWorkflowReading(row.item);
-	if (row.context || reading.value === null) return;
-	const chipEl = stateEl.createDiv({
-		cls: 'pbl-state-chip pbl-state-static' + (reading.done ? ' pbl-state-done' : ''),
-	});
-	drawIcon(chipEl.createSpan({ cls: 'pbl-state-icon' }), reading.done ? 'circle-check' : 'circle');
-	chipEl.createSpan({ cls: 'pbl-state-text', text: reading.value });
-	// The value in full, because the chip often cannot show it: `.pbl-state-chip` caps at
-	// 140px in every projection, and this cell ellipsises the chip once the row runs short
-	// of room (`styles/releaseScope.css`). Set unconditionally and measured by nothing —
-	// `.pbl-row` carries `content-visibility: auto`, the same reason the title beside it is
-	// tooltipped unconditionally above.
-	setTooltip(chipEl, reading.value);
 }
 
 /**

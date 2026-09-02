@@ -339,6 +339,18 @@ on every move — because a keyboard-fired `contextmenu` targets the TREE, never
 once focus is managed through `aria-activedescendant` rather than real DOM focus. The
 first calls `showMyWorkRowMenu`, the second `showMyWorkRowMenuAt`.
 
+`src/view/scopeRow.ts` — the parts a scope-tree row is drawn from, shared with
+`src/view/release/scopeTree.ts`, which is what this view's own rows were copied from. Three
+of them: `wireRowOpen` (the primary and middle click that open the row's note, over the
+`opener`/`openContext` pair both views carry, with the drag-select guard the release scope
+established), `drawScopeBadge` (the type badge) and `drawScopeStateChip` (the static state
+chip, taking the column class each tree owns — the whole of what varied between the two
+copies). Extracted for the reason `scopeFolds.ts` and `scopeKeys.ts` were, and measured the
+same way: `npm run analyze` reported four clone groups and 139 lines between the two tree
+modules, the widest pair in `src/`. The DISCLOSURE is deliberately not among them — its two
+copies differ in their labels and in what a toggle does, one folding per person and one per
+release, so sharing it would leave a function whose whole body is its arguments.
+
 `src/view/mywork/toolbar.ts`, `src/view/scopeFolds.ts` and `src/view/scopeKeys.ts` carry
 no change for this task beyond `scopeKeys.ts`'s own pre-existing `activeRowFile` write;
 they are named here because they are this view's other `view/mywork/` neighbours and
