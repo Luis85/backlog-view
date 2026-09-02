@@ -68,7 +68,11 @@ ITEM's own two date keys from a value read through it.
 **Extensions**
 
 - **2a — the pick does not change the link** (the item is already in that release). The plan
-  is **empty**, and no date is written. The dates ride the join and only the join, so a member
+  is **empty**, and no date is written. **Asked twice**: at plan time, so a re-pick costs
+  nothing and the menu's checkmark stays honest; and again inside the write, against the
+  membership the note actually holds, because another view can join the item to this same
+  release while the submenu sits open — the link write would then change nothing while the
+  dates still landed, which is exactly the top-up this extension forbids (Codex, PR #242). The dates ride the join and only the join, so a member
   that joined before this shipped has no top-up path and is filled by hand. Decided by the
   user on 2026-09-02 over a re-sync variant. The cost of the variant is what decided it:
   [[An iteration's timeframe schedules its items]] 3a had to narrow the register's checkmark
@@ -77,10 +81,11 @@ ITEM's own two date keys from a value read through it.
   would write nothing, asked of the entire plan.
 - **3a — the item already holds a due date.** It is **left alone**. Not overwritten, not
   compared, not deleted. **Asked of the note as the write lands**, not of the row that planned
-  it — see 6c, which is where that question is answered and why it cannot be answered here. A release states when the version ships, not when each item in it is
-  answerable; an item with a date somebody chose has a truer answer than the release's.
-  Decided by the user on 2026-09-02 against the sprint's overwrite rule, which is a time BOX
-  imposing its ends and is not what a deadline does.
+  it — see 6c, which is where that question is answered and why it cannot be answered here. A
+  release states when the version ships, not when each item in it is answerable; an item with
+  a date somebody chose has a truer answer than the release's. Decided by the user on
+  2026-09-02 against the sprint's overwrite rule, which is a time BOX imposing its ends and is
+  not what a deadline does.
 - **3b — the release states no date**, or its date property is unconfigured, or the value is
   unreadable. Nothing is written under the due key and nothing is deleted — the item keeps
   what it had. `undefined` leaves a key alone where `null` would delete it, and a release with
@@ -88,19 +93,29 @@ ITEM's own two date keys from a value read through it.
 - **4a — the item already holds a start.** It is **left alone**, for 3a's reason: an item
   already scheduled or already begun started when it started, not when it was filed into a
   version. Asked at the same place and the same moment 3a is.
-- **4b — today is later than the due the item will end up with.** The start is **not**
-  written; the due still is. This is the one comparison in the plan, and the date it is asked
-  against is the **resulting** one — the item's own where 3a kept it, otherwise the release's.
-  A release whose target date has passed gets its due copied and no start invented. The
-  comparison is made where 3a and 4a are made, against the live note, because a due read from a
-  stale row would decide it on a date that is no longer there. Decided by the user on
-  2026-09-02, and it is a deliberate departure from
-  [[An iteration's timeframe schedules its items]], whose own comment accepts a reversed span
-  and leaves the shelf to report it: there the two dates both come off one note and are
-  coherent by construction, here one comes off a clock, so a plan that ignored the order would
-  MANUFACTURE the reversed span rather than pass one through.
+- **4b — a candidate would reverse the span against the end that stands.** It is **not
+  written**, and the other end still is. One rule in both directions, asked of the live note:
+
+  - Today is later than the due that stands (the item's own where 3a kept it, otherwise the
+    release's) — **no start**. A release whose target date has passed gets its due copied and
+    no start invented.
+  - The release's date is earlier than a start that stands (4a kept it, and the item has no
+    due) — **no due**. The item keeps its own coherent plan and takes no deadline from this
+    release.
+
+  The second direction was missing until 2026-09-02 and manufactured the exact outcome this
+  extension exists to prevent: 3a wrote the earlier due, 4a kept the later start, and the
+  `AxisWrite` states no `ends`, so the writer's reversed-span guard did not run on it either
+  (Codex, PR #242). Decided by the user the same day, symmetric with the first direction
+  rather than as a second rule.
+
+  This is a deliberate departure from [[An iteration's timeframe schedules its items]], whose
+  own comment accepts a reversed span and leaves the shelf to report it: there both dates come
+  off one note and are coherent by construction, here one comes off a clock and one off
+  another note, so a write that ignored the order would MANUFACTURE the reversed span rather
+  than pass one through.
 - **4c — no due date stands at all** (the item had none and 3b applied). Today is written as
-  the start. There is nothing for it to be later than, and an item with a start and no due is
+  the start, whatever it is. There is nothing for it to be later than, and an item with a start and no due is
   a shape the roadmap already draws.
 - **4d — either date property is unconfigured.** Nothing is written under it, and the link
   still lands. Absence is a value, and an unconfigured key is never written. A vault with no
@@ -128,12 +143,22 @@ ITEM's own two date keys from a value read through it.
   [[Moving a card between slices]], both still design. They inherit this by calling the one
   host method, which is the register's own rule for a projection's moves rather than a second
   one here. Nothing is written for them now.
-- **6c — the item's dates change between the row being drawn and the pick being applied**, by
-  hand, by another view, or by an earlier write in this same batch. The rule still holds,
-  because emptiness and the ordering are decided **inside the write**, against the frontmatter
-  as it stands, and not from the captured row. A planner that decided them from the model would
-  silently replace a date somebody had just typed: `applyAxis` reads the live value only to
-  skip an equal civil date, and overwrites anything else.
+- **6c — the note changes between the row being drawn and the pick being applied**, by hand,
+  by another view, or by an earlier write in this same batch. Every rule above still holds,
+  because **the planner decides none of them**. On a join it carries both candidates
+  unconditionally — the release's own date, and today — and whether the link is changing; the
+  write then decides, against the frontmatter as it stands, which of the two land.
+
+  **The planner carrying a candidate is not the planner offering it.** An end the planner
+  filtered out is an end the writer cannot reinstate, and the live reading is exactly what may
+  have moved: a captured due in the past suppresses the start, and if that due is removed or
+  moved forward before the batch lands, a pre-filtered plan has no start left to write (Codex,
+  PR #242). So the plan carries every configured candidate and the write suppresses; the
+  reverse order cannot be made correct.
+
+  A planner that decided from the model would also silently replace a date somebody had just
+  typed: `applyAxis` reads the live value only to skip an equal civil date, and overwrites
+  anything else.
 
   This is the register's own rule — *write the guarantee to the check, never ahead of it* —
   and the codebase already keeps it one function over: the stub loop in `applyInto` asks
@@ -170,9 +195,17 @@ ITEM's own two date keys from a value read through it.
 - **No plan this module produces ever names a state key** — asserted of the planner, so it
   holds for entry points not yet written.
 - A context row is never a write target on any of these paths.
-- **A date written onto the note after the row was drawn survives the pick** — a storage-level
-  test that plans the batch against an item with both ends empty, writes a due onto the note,
-  then applies: the typed value stands and no start lands after it. This is the criterion the
+- **The plan carries both candidates on every join, unfiltered** — asserted of the planner
+  against an item whose captured dates would suppress each end in turn, so a planner that
+  filtered fails here rather than in a race.
+- **Three storage-level races, each plan-then-edit-then-apply.** A due typed onto the note
+  after the row was drawn stands, and no start lands after it. A captured past due that is
+  removed before the batch lands still gets today as a start — the end a pre-filtering planner
+  would have dropped. A membership joined by another view before the batch lands leaves the
+  dates unwritten, because the pick is no longer a join.
+- **Neither end is written where it would reverse the span against the end that stands** —
+  both directions, each with the other end empty: today after a due that stands, and the
+  release's date before a start that stands. This is the criterion the
   planner cannot carry, and it is checked at the writer for that reason.
 - **The horizon drag, the timeline resize and the iteration join still overwrite.** Asserted by
   driving each against a note that already holds the end being written, so a fill-only rule
@@ -207,13 +240,19 @@ states no `ends`, so the writer's reversed-span guard (`refusesAxis` in
 `src/storage/frontmatter.ts`) does not run on it — which is correct here because extension 4b
 makes the pair coherent rather than leaving the writer to refuse a legitimate join.
 
-**Extension 6c puts the emptiness and ordering questions in `applyAxis`**, in the same
+**Extension 6c puts emptiness, the ordering and the join test in `applyAxis`**, in the same
 `processFrontMatter` call that lands the write, beside the `sameCivil` skip it already makes
 there. It is reached by a flag the `AxisWrite` carries, so the horizon drag, the timeline
-resize and the iteration join keep overwriting; `src/storage/writeKeys.ts` carries that flag
-through `axisEntries`. The planner still decides WHICH ends this pick is offering and what
-value each would take — it is the release's own date and today, and neither is knowable at the
-writer — so what moves is the two questions and nothing else. Applying it is `src/storage/frontmatter.ts` through `axisEntries` in
+resize and the iteration join keep overwriting; the flag is not an `AxisField`, so
+`axisEntries` in `src/storage/writeKeys.ts` neither emits it as an entry nor lets it disturb
+`touchedKeys`.
+
+**What stays in the planner is the two VALUES and nothing else** — the release's own date and
+today, neither of which the writer can know. It carries both on every join, unfiltered. Which
+of them land is three live questions, all asked at the write: does the note still hold that
+end, does writing it reverse the span against the end that stands, and is this pick still a
+join. The last needs the membership read BEFORE `applyLinks` writes it, the way `leaving`
+already captures the state before it is replaced. Applying it is `src/storage/frontmatter.ts` through `axisEntries` in
 `src/storage/writeKeys.ts`, which carries the "unconfigured key dropped, `null` deletes" rule
 this note leans on and is already captured for undo; the membership key is already in
 `touchedKeys` beside it.
