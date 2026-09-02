@@ -50,6 +50,8 @@ See [RELEASING.md](RELEASING.md) for how this file is kept in step with a releas
 
 ### Fixed
 
+- The shelf's title search and the folder, tag and resource-name suggests now fold case in
+  your own language, so a Turkish reader typing `ışık` finds `Işık`.
 - Two timeline tests measured against the calendar rather than a fixed day, so they began
   failing a fortnight after they were written.
 

@@ -17,8 +17,10 @@ import { FOLD_SITES, FoldSite } from './foldSites';
  * `toLowerCase` and a `matching` entry `toLocaleLowerCase`, so a sweep that moves an
  * identity fold to the locale-aware form FAILS until the table is edited to say so — and
  * the table edit is then the reviewable act, in a diff that is exactly the set of sites
- * that changed category. Exactly one entry is `matching` — `foldForMatch` itself, the
- * helper the matching SITES have not moved to yet; see `foldSites.ts`'s own comment.
+ * that changed category. Exactly one entry is `matching` — `foldForMatch` itself — and it
+ * stays the only one, because a matching SITE calls that helper rather than spelling a
+ * fold of its own; see `foldSites.ts`'s own comment. So the flip of 2026-09-02 shows up
+ * here as eight rows REMOVED, which the stale-entry check below is what forces.
  *
  * That check reads the spelling ANYWHERE in an entry's text, not the outermost callee, so a
  * nested mixed fold (`foo(a.toLocaleLowerCase()).toLowerCase()`) would be judged by its
@@ -28,16 +30,17 @@ import { FOLD_SITES, FoldSite } from './foldSites';
  *
  * The instrument is the TypeScript compiler API rather than a grep, and the difference was
  * measured rather than assumed: on 2026-09-02, `grep -o 'toLowerCase('` over the same tree
- * returned 120 against this walk's 113, and every one of the seven extras was inside a
- * comment — three of them in this feature's own notes about the folds. A comment is not a
- * call. **Nothing asserts either figure**, and both drift: editing a comment that mentions
+ * returned 113 against this walk's 105 `toLowerCase` calls, and every one of the eight
+ * extras was inside a comment — four of them in this feature's own notes about the folds,
+ * including the one in `src/ui/prompts.ts`, a file that after the flip folds NOWHERE and
+ * which a grep still reports as folding once. A comment is not a call. **Nothing asserts either figure**, and both drift: editing a comment that mentions
  * a fold moves the grep number without moving anything real. It is dated for that reason,
  * and the walk's own count is what the suite holds.
  *
  * What the walk cannot see, stated rather than implied: a fold not spelled as a property
  * access — through a variable (`const fold = s.toLowerCase; fold()`) or through element
  * access (`s['toLowerCase']()`). Neither occurs in `src/` today, and the assertion that
- * this walk finds 114 calls in 27 files is what fails if the instrument ever stops seeing
+ * this walk finds 106 calls in 26 files is what fails if the instrument ever stops seeing
  * the tree at all.
  */
 
@@ -102,13 +105,13 @@ const inTable = tally(FOLD_SITES);
 
 describe('every case fold in src/ is classified', () => {
 	it('reads a tree that actually folds, so the walk is not silently looking at nothing', () => {
-		expect(calls.length).toBe(114);
-		expect(new Set(calls.map((call) => call.file)).size).toBe(27);
+		expect(calls.length).toBe(106);
+		expect(new Set(calls.map((call) => call.file)).size).toBe(26);
 	});
 
 	it('states the counts the table itself claims', () => {
-		expect(FOLD_SITES.length).toBe(114);
-		expect(FOLD_SITES.filter((site) => site.kind === 'identity').length).toBe(113);
+		expect(FOLD_SITES.length).toBe(106);
+		expect(FOLD_SITES.filter((site) => site.kind === 'identity').length).toBe(105);
 		expect(FOLD_SITES.filter((site) => site.kind === 'matching').length).toBe(1);
 	});
 

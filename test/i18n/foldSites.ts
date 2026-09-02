@@ -13,27 +13,32 @@
  * find a note that is plainly on screen. See
  * `docs/requirements/Locale-aware sorting and formatting.md`.
  *
- * **Every entry here is `identity` except one, and that is deliberate rather than a
- * finished classification.** Landing them all as identity first makes the later diff
- * exactly the set of sites that changed category — which is the reviewable act, and the
- * one place in this feature where a careless sweep is worse than no change at all. A
- * reviewer reading a `why` that plainly describes a needle and a haystack (the shelf's
- * title search, the folder and tag suggests) is reading a site that is expected to move,
- * not a misclassification that was missed.
+ * **Every entry here is `identity` except one, and that one is `foldForMatch` itself** —
+ * the helper in `src/i18n/t.ts` whose whole job is matching. That is the finished shape
+ * rather than a holding position: the matching SITES do not appear here at all, because
+ * they call `foldForMatch(x)` instead of spelling a fold of their own, so a matching fold
+ * has exactly one spelling in `src/` and this table's rule reads "everything else is
+ * identity".
  *
- * The exception is `foldForMatch` in `src/i18n/t.ts` — the helper those sites are expected
- * to move TO. It is `matching` from the day it was written, because matching is the whole
- * of what it does; nothing calls it yet.
+ * **The table was all-identity for one commit on purpose**, and that is what made the
+ * flip reviewable: the sites that changed category are exactly the rows this file LOST —
+ * the shelf's title search, the folder and tag suggests, and the prompt's duplicate
+ * warning — and the test below refuses a stale row, so the code edit and the table edit
+ * cannot be made separately.
  *
- * **A `why` beginning `UNCERTAIN — ` says the call was not decided.** Grep that spelling
- * for the list rather than trusting a count here: three earlier drafts of this paragraph
- * each carried a number that was wrong by the time it was read, and a number typed into a
- * comment is checked by nobody. Two shapes are in it — a label or a type name lowered for
- * the middle of a sentence, which is presentation rather than either half of this split
- * and would follow the CATALOG locale if it moved at all; and the prompt's duplicate
- * warning, which compares what the user typed against a list they can see, so it is
- * matching-SHAPED, but what it decides is whether a warning appears. Identity is where an
- * undecided fold sits — it is the safe answer, not the researched one.
+ * **No `why` begins `UNCERTAIN — ` any more, and that spelling is still how to find one.**
+ * Grep it rather than trusting a count here: three earlier drafts of this paragraph each
+ * carried a number that was wrong by the time it was read, and a number typed into a
+ * comment is checked by nobody. The five that carried it were decided on 2026-09-02 —
+ * three stayed (`defaultModel.ts`, `scoringModel.ts` and `view/childrenList.ts` all lower
+ * a label or a type name for the MIDDLE of a sentence, which is grammar and so follows the
+ * CATALOG locale, not the requested one `foldForMatch` takes, and no catalog-locale fold
+ * exists for them to move to) and two left (the prompt's duplicate warning, whose fold is
+ * never stored, keyed or compared to a persisted value — the note is created under the raw
+ * typed name whatever it decides, so the only thing two locales can disagree about is
+ * whether one advisory sentence appears). A `why` that still reads `DECIDED not matching`
+ * is a call somebody made; `UNCERTAIN` remains the honest answer for a call nobody has,
+ * and identity is where such a fold sits.
  *
  * One entry per CALL EXPRESSION, not per line and not per distinct spelling: a single line
  * can carry two folds, and a spelling like `typeName.toLowerCase()` occurs eight times in
@@ -75,7 +80,7 @@ export const FOLD_SITES: FoldSite[] = [
 	{ file: 'src/domain/board.ts', text: 'v.toLowerCase()', kind: 'identity', why: 'index key for the workflow done values, asked of each column' },
 	{ file: 'src/domain/board.ts', text: 'value.toLowerCase()', kind: 'identity', why: 'asks whether an observed state already has a column' },
 	{ file: 'src/domain/board.ts', text: 'value.toLowerCase()', kind: 'identity', why: 'index key for the column an observed state mints' },
-	{ file: 'src/domain/defaultModel.ts', text: 'd.label.toLowerCase()', kind: 'identity', why: 'UNCERTAIN — lower-cases a SHIPPED English dimension label for mid-sentence use; presentation rather than identity or matching, but the literal is fixed, so no locale can change it here' },
+	{ file: 'src/domain/defaultModel.ts', text: 'd.label.toLowerCase()', kind: 'identity', why: 'DECIDED not matching — lower-cases a label for the middle of a sentence, which is grammar and would follow the CATALOG locale, never the requested one foldForMatch takes; and these labels are shipped literals inside the model FINGERPRINT, so a fold that varied would stamp two models' },
 	{ file: 'src/domain/itemTypes.ts', text: 'ABSENCE_TYPE.toLowerCase()', kind: 'identity', why: 'matches a type name against the declared absence type name' },
 	{ file: 'src/domain/itemTypes.ts', text: 'DELIVERABLE_TYPE.toLowerCase()', kind: 'identity', why: 'matches a type name against the declared Deliverable type name' },
 	{ file: 'src/domain/itemTypes.ts', text: 'ITERATION_TYPE.toLowerCase()', kind: 'identity', why: 'matches a type name against the declared Iteration type name' },
@@ -118,7 +123,7 @@ export const FOLD_SITES: FoldSite[] = [
 	{ file: 'src/domain/roadmap.ts', text: 'reading.value.toLowerCase()', kind: 'identity', why: 'looks a card horizon up in the bucket map' },
 	{ file: 'src/domain/roadmap.ts', text: 'reading.value.toLowerCase()', kind: 'identity', why: 'index key for the bucket an undeclared horizon mints' },
 	{ file: 'src/domain/roadmap.ts', text: 'value.toLowerCase()', kind: 'identity', why: 'looks a context row horizon up in the bucket map' },
-	{ file: 'src/domain/scoringModel.ts', text: 'd.label.toLowerCase()', kind: 'identity', why: 'UNCERTAIN — lower-cases a dimension label for the middle of a problem sentence; presentation rather than identity or matching, and the label can come from the options panel, so this folds USER data for display' },
+	{ file: 'src/domain/scoringModel.ts', text: 'd.label.toLowerCase()', kind: 'identity', why: 'DECIDED not matching — same shape as defaultModel: a label lowered for the middle of a sentence is grammar, so it follows the CATALOG locale rather than the requested one, and no catalog-locale fold exists to move it to. That the label can be USER data makes it a candidate for such a fold one day, never for this one' },
 	{ file: 'src/domain/settings.ts', text: 'name.toLowerCase()', kind: 'identity', why: 'nameTable — the index key every per-state table is read back by' },
 	{ file: 'src/domain/settings.ts', text: 'state.toLowerCase()', kind: 'identity', why: 'PERSISTED option key wipLimit.<state> in the .base file' },
 	{ file: 'src/domain/settings.ts', text: 'state.toLowerCase()', kind: 'identity', why: 'PERSISTED option key columnPolicy.<state> in the .base file' },
@@ -137,9 +142,7 @@ export const FOLD_SITES: FoldSite[] = [
 	{ file: 'src/domain/settingsResolve.ts', text: 's.toLowerCase()', kind: 'identity', why: 'asks whether a state is done, so it may carry no WIP limit' },
 	{ file: 'src/domain/settingsResolve.ts', text: 'v.toLowerCase()', kind: 'identity', why: 'dedupe key for a configured vocabulary list' },
 	{ file: 'src/domain/settingsResolve.ts', text: 'v.toLowerCase()', kind: 'identity', why: 'index key for the effective done values' },
-	{ file: 'src/domain/shelf.ts', text: 'card.item.title.toLowerCase()', kind: 'identity', why: 'the haystack of the shelf own title search — a needle-and-haystack site, identity only for this round' },
 	{ file: 'src/domain/shelf.ts', text: 'displayType(card.item).toLowerCase()', kind: 'identity', why: 'canonicalizes the badge type name before matching ALL_TYPES' },
-	{ file: 'src/domain/shelf.ts', text: 'search.trim().toLowerCase()', kind: 'identity', why: 'the needle of the shelf own title search — a needle-and-haystack site, identity only for this round' },
 	{ file: 'src/domain/shelf.ts', text: 't.toLowerCase()', kind: 'identity', why: 'matches the badge type against ALL_TYPES to pick the group' },
 	{ file: 'src/domain/stateColors.ts', text: 'raw.trim().toLowerCase()', kind: 'identity', why: 'canonicalizes a stored colour to the one #rrggbb or named form the picker emits' },
 	{ file: 'src/domain/stateColors.ts', text: 'state.toLowerCase()', kind: 'identity', why: 'PERSISTED option key stateColor.<state> in the .base file' },
@@ -157,13 +160,7 @@ export const FOLD_SITES: FoldSite[] = [
 	{ file: 'src/i18n/t.ts', text: "value.toLocaleLowerCase(active.requested)", kind: 'matching', why: 'foldForMatch — the one fold in src/ whose job is matching, and the helper every matching site is meant to call' },
 	{ file: 'src/storage/frontmatter.ts', text: 'leaving.toLowerCase()', kind: 'identity', why: 'the state being left, in the match that decides whether a write moves anything' },
 	{ file: 'src/storage/frontmatter.ts', text: 'state.toLowerCase()', kind: 'identity', why: 'the state being written, in that same match' },
-	{ file: 'src/ui/prompts.ts', text: 'file.path.toLowerCase()', kind: 'identity', why: 'the haystack of the folder suggest filter — a needle-and-haystack site, identity only for this round' },
-	{ file: 'src/ui/prompts.ts', text: 'k.toLowerCase()', kind: 'identity', why: 'UNCERTAIN — a known value, matched against the typed one; user text against a visible list, so matching-shaped, but what it decides is whether a warning appears' },
-	{ file: 'src/ui/prompts.ts', text: 'needle.toLowerCase()', kind: 'identity', why: 'the needle of the tag suggest filter — a needle-and-haystack site, identity only for this round' },
-	{ file: 'src/ui/prompts.ts', text: 'query.toLowerCase()', kind: 'identity', why: 'the needle of the folder suggest filter — a needle-and-haystack site, identity only for this round' },
-	{ file: 'src/ui/prompts.ts', text: 'value.toLowerCase()', kind: 'identity', why: 'the haystack of the tag suggest filter — a needle-and-haystack site, identity only for this round' },
-	{ file: 'src/ui/prompts.ts', text: 'value.trim().toLowerCase()', kind: 'identity', why: 'UNCERTAIN — the typed value, matched against the known list; the other side of that same warning, and the PBI note lists neither' },
-	{ file: 'src/view/childrenList.ts', text: 'type.toLowerCase()', kind: 'identity', why: 'UNCERTAIN — lower-cases a user type name for the middle of a t() sentence; grammar, so it would follow the CATALOG locale rather than the requested one if it moved at all' },
+	{ file: 'src/view/childrenList.ts', text: 'type.toLowerCase()', kind: 'identity', why: 'DECIDED not matching — a type name lowered for the middle of a t() sentence is grammar, so it follows the CATALOG locale; foldForMatch takes the REQUESTED one and is the wrong tool. Nothing compares this to anything' },
 	{ file: 'src/view/interactions/keyboard.ts', text: 'evt.key.toLowerCase()', kind: 'identity', why: 'KeyboardEvent.key is a protocol value, matched against z for undo in the tree' },
 	{ file: 'src/view/interactions/keyboard.ts', text: 'evt.key.toLowerCase()', kind: 'identity', why: 'KeyboardEvent.key is a protocol value, matched against z for undo on the board' },
 	{ file: 'src/view/interactions/menu.ts', text: 'item.typeName.toLowerCase()', kind: 'identity', why: 'the type an item carries, in the comparison Set type checks by' },

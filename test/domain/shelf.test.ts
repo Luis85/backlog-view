@@ -103,7 +103,14 @@ describe('searching the shelf', () => {
 	}
 
 	it('keeps the cards whose title holds the needle, whatever its case', () => {
-		expect(titlesOf(searchShelf(shelfOf(), 'LOGIN'))).toEqual(['Login screen']);
+		// Neither needle holds an `I`, and that is deliberate rather than arbitrary: the
+		// search folds in the RUN's locale, so `LOGIN` against `Login screen` asserts
+		// ENGLISH case folding — under `PBL_TEST_LOCALE=tr-TR` those are two different
+		// letters and the miss is correct Turkish. The same trap `num()` names for a
+		// number, wearing a letter. Which locale folds what is
+		// `test/i18n/localeFolds.test.ts`'s subject; this assertion is only that case is
+		// ignored at all.
+		expect(titlesOf(searchShelf(shelfOf(), 'SCREEN'))).toEqual(['Login screen']);
 		expect(titlesOf(searchShelf(shelfOf(), 'export'))).toEqual(['Billing export']);
 	});
 
