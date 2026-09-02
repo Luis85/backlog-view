@@ -11,7 +11,7 @@ import { todayCivil } from '../../domain/noteFields';
 import { resolveSettings } from '../../domain/settingsResolve';
 import { membershipCollision, releaseNoteProblems } from '../../domain/settingsConsistency';
 import { reconfiguredKey, ReleaseWrite } from '../../domain/releaseWritePlan';
-import { loadViewState, saveViewState } from '../../storage/viewStateStore';
+import { loadViewState, updateViewPrefs } from '../../storage/viewStateStore';
 import { resolveViewIdentity } from '../../storage/viewIdentity';
 import { guidanceShell } from '../render/emptyStates';
 import { OpenContext, OpenController } from '../openTarget';
@@ -300,10 +300,7 @@ export class ReleaseView extends BasesView {
 		this.pickedPath = path;
 		this.activeRowFile = null;
 		const id = resolveViewIdentity(this.app, this.viewEl, this.config.name ?? '');
-		if (id) {
-			const state = loadViewState(this.app, id);
-			saveViewState(this.app, id, { ...state, prefs: { ...state.prefs, release: path ?? undefined } });
-		}
+		if (id) updateViewPrefs(this.app, id, { release: path ?? undefined });
 		this.render();
 	}
 
