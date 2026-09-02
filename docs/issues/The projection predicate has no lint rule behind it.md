@@ -184,6 +184,10 @@ mind reports clean about the one they did not. The probe file now carries five s
   `WRITE_BOUNDARY` has always carried, not a new one, and it is why `src/storage/` had to
   be added by hand: that directory carries no `WRITE_BOUNDARY` (it IS the write boundary),
   so the mechanical pass that followed the spread skipped it and the probe below caught it.
+  **Closed on 2026-09-02** by [[A ban spread by hand is a ban one block can drop]]: the
+  spread is checked per file now, by asking ESLint what it resolves, so a block that omits
+  one is red rather than silent. The narrowing above stands unchanged — that check sees
+  the ban is present, never what it matches.
 
 ### The evidence it is live
 

@@ -627,7 +627,12 @@ free of runtime code so imports stay cycle-free.
   "no bare `projection === 'tree'`", not "nothing compares to `'tree'`". It is also
   spread into each `no-restricted-syntax` block by hand, because two flat-config blocks
   matching one file override rather than merge — so a NEW block under `src/` that omits it
-  loses it, exactly as it would lose the write boundary. Not routing through the
+  loses it, exactly as it would lose the write boundary. That spread is checked rather
+  than remembered as of 2026-09-02: `test/verification/banRegions.test.ts` asks ESLint
+  what it would apply to each file in `src/` and fails on one carrying neither ban and no
+  exemption, so the omission is red instead of silent. The check is over the SPREAD, not
+  over the selector — a ban present everywhere and blind to a spelling is what
+  `host?.projection` was, and no test over the config can see that. Not routing through the
   module has a real cost, which is what makes it worth using rather than only naming: a
   projection added beside `'tree'` rather than as one, wherever a comparison bypasses the
   module, fails silently and differently — no column fitting, no refit on resize, the fit
