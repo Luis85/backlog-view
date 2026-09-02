@@ -8,6 +8,7 @@ import { daysBetween, formatCivil } from './timeline';
 import { BacklogSettings, isDoneValue, isStartedValue } from './settings';
 import { OptionalField } from './optionalProperties';
 import { edgeRank, ORDER_SPACING, rankBetween, RankResult } from './rankArithmetic';
+import { distinctlyRanked } from './rankOrder';
 
 /**
  * What a change to the tree *would* write, worked out without touching anything.
@@ -821,7 +822,7 @@ export function dropPlacement(dragged: BacklogItem | null, target: DropTarget, r
 	//
 	// Self-limiting: once every row around the drop holds a distinct rank there is no tie
 	// to switch on, and the refusal this used to swallow is reported instead.
-	if (!('refusal' in global) || global.refusal !== 'tied') return global;
+	if (!('refusal' in global) || global.refusal !== 'tied') return invisibleRank(global, dragged, target);
 	const peerScoped = orderForTarget(
 		target.peers.filter((item) => item !== dragged),
 		target,
@@ -842,8 +843,47 @@ export function dropPlacement(dragged: BacklogItem | null, target: DropTarget, r
 	// `tied` refusal names is Seed, which is precisely what a vault dense enough to
 	// collide here needs — the backfill only fills blanks, and respacing a range holding two
 	// equal numbers cannot separate them.
-	if ('refusal' in peerScoped || !rankTaken(ranked, dragged, peerScoped.order)) return peerScoped;
-	return global;
+	if ('refusal' in peerScoped || !rankTaken(ranked, dragged, peerScoped.order)) return invisibleRank(peerScoped, dragged, target);
+	return invisibleRank(global, dragged, target);
+}
+
+/**
+ * A focus rank that no eye could see, turned into a refusal that says so.
+ *
+ * `inRankOrder` draws a focused list in TREE order whenever its rows are not all
+ * distinctly ranked, so where that fallback will still hold AFTER the write, no number
+ * written here can move anything: the rank would be correct, saved, and invisible, and a
+ * gesture whose entire result is invisible reads as one that failed.
+ *
+ * **Asked of the PEERS, which is the list without the row being written, and that is the
+ * whole of the rule.** Asked of the list INCLUDING the dragged row it refuses the
+ * unmigrated vault the peer fallback exists to serve, and this was written that way
+ * first: two focus rows tied at 5000 are not distinctly ranked, so the wider test refuses
+ * — but writing one of them BREAKS the tie, the list becomes distinct, the fallback lifts
+ * and the move is visible. That is the fallback working, not a defect. What cannot be
+ * fixed by this write is a rank missing from some OTHER row, or a tie between two rows
+ * this gesture does not touch; both leave the fallback holding whatever number lands
+ * here. `test/view/focusedUnrankedContext.test.ts`'s three-input case is the fixture that
+ * caught the wider version.
+ *
+ * **Asked of the ANSWER, never ahead of the arithmetic**, and that ordering is the whole
+ * design. Every refusal the placement can already give — a spent gap, a tie, a neighbour
+ * with no rank — names ONE remedy and names it precisely; this one has to name both,
+ * because either fault produces the fallback. Asked first it would swallow those precise
+ * sentences and send half their readers to the wrong command. It fires only where the
+ * placement would otherwise SUCCEED, which is exactly the case nothing else catches.
+ *
+ * **`parentUnchanged` is what says this is a focus rank** — the flag exists for that
+ * distinction (`src/domain/CLAUDE.md`), so no model has to be threaded in — and
+ * `target.peers` plus the dragged row IS the list `inRankOrder` asks about, which is what
+ * makes the two questions one question. Scoped there and no wider: an ordinary sibling
+ * reorder is drawn by `compareSiblings`, which the fallback does not touch, so a tree
+ * drag beside an unranked sibling still moves its row and is not refused here.
+ */
+function invisibleRank(placed: RankResult, dragged: BacklogItem | null, target: DropTarget): RankResult {
+	if ('refusal' in placed) return placed;
+	if (target.parentUnchanged !== true || dragged === null) return placed;
+	return distinctlyRanked(target.peers) ? placed : { refusal: 'unseededList' };
 }
 
 /**

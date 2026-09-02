@@ -400,6 +400,36 @@ describe('a drop that cannot be ranked says why', () => {
 		]);
 	});
 
+	// **The case no other refusal reaches: the placement SUCCEEDS and nothing moves.**
+	// `PBI C` is unranked, so `inRankOrder` draws the focus list in tree order; `A1` and
+	// `B1` are both ranked and there is a ranked row between them in the population, so
+	// the arithmetic finds a perfectly good midpoint. Written, it would be correct and
+	// invisible — the screen is identical and the undo slot is gone.
+	//
+	// The fixture has to have BOTH: an unranked focus row to hold the fallback open, and
+	// two ranked neighbours with room between them so no earlier refusal fires first. Drop
+	// either half and this passes for the wrong reason — with the row ranked the fallback
+	// lifts and the drag legitimately moves something; with no room the `gapSpent` refusal
+	// answers instead and the new one is never asked.
+	it('refuses a rank that could not show, rather than writing one nobody can see', async () => {
+		const vault = new FakeVault();
+		vault.addFile('Epic A.md', { frontmatter: { type: 'Epic', order: 1000 } });
+		vault.addFile('PBI A1.md', { frontmatter: { type: 'PBI', order: 2000 }, parentLink: 'Epic A' });
+		vault.addFile('Epic B.md', { frontmatter: { type: 'Epic', order: 3000 } });
+		vault.addFile('PBI B1.md', { frontmatter: { type: 'PBI', order: 4000 }, parentLink: 'Epic B' });
+		// The row that holds the fallback open, and never moves in this test.
+		vault.addFile('PBI C.md', { frontmatter: { type: 'PBI' }, parentLink: 'Epic B' });
+		const { containerEl } = makeView(vault, {}, { focus: 'PBI' });
+
+		drag(rowByTitle(containerEl, 'PBI B1'), rowByTitle(containerEl, 'PBI A1'), 'before');
+		await flush();
+
+		expect(vault.writeLog).toEqual([]);
+		expect(Notice.messages).toEqual([
+			'This list is drawn in tree order, because some of its rows have no rank or share one — so ordering it by hand would not show. Use the toolbar’s set-up button to fill in missing ranks, or run "Seed ranks from the hierarchy" from the command palette.',
+		]);
+	});
+
 	it('names the set-up button when a neighbour has no rank at all', async () => {
 		const vault = squeezedFixture();
 		// A blank rank is a different fact from a full range, and it takes the other

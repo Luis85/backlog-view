@@ -36,7 +36,7 @@ export const ORDER_SPACING = 1000;
  * `RankResult` so that every caller keeps ONE shape to test and `refusalKey` stays the
  * single place a refusal becomes a sentence.
  */
-export type RankRefusal = 'gapSpent' | 'parentGone' | 'tied' | 'unranked';
+export type RankRefusal = 'gapSpent' | 'parentGone' | 'tied' | 'unranked' | 'unseededList';
 export type RankResult = { order: number } | { refusal: RankRefusal };
 
 /**
@@ -49,7 +49,9 @@ export type RankResult = { order: number } | { refusal: RankRefusal };
  * Keys and not sentences, which is also what keeps this out of `TEXT_TERNARY`'s way:
  * only `t()` reaches the catalog.
  */
-export function refusalKey(refusal: RankRefusal): 'rank.gapSpent' | 'rank.parentGone' | 'rank.tied' | 'rank.unranked' {
+export function refusalKey(
+	refusal: RankRefusal,
+): 'rank.gapSpent' | 'rank.parentGone' | 'rank.tied' | 'rank.unranked' | 'rank.unseededList' {
 	switch (refusal) {
 		case 'gapSpent':
 			return 'rank.gapSpent';
@@ -59,6 +61,8 @@ export function refusalKey(refusal: RankRefusal): 'rank.gapSpent' | 'rank.parent
 			return 'rank.tied';
 		case 'unranked':
 			return 'rank.unranked';
+		case 'unseededList':
+			return 'rank.unseededList';
 	}
 }
 

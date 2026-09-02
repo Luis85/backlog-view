@@ -1205,6 +1205,20 @@ export const en = {
 	'rank.unranked': 'That item has no rank yet. Use the toolbar’s set-up button to fill in the missing ones.',
 	'rank.tied':
 		'Two items there have the same rank, so nothing fits between them. Run "Seed ranks from the hierarchy" from the command palette to renumber the whole backlog.',
+	/**
+	 * The focused list is drawn in TREE order, so no rank written here could move
+	 * anything on screen — `inRankOrder` falls back whenever the focus rows are not all
+	 * distinctly ranked, and a hand-ranked order simply would not show. Refused rather
+	 * than written silently: the write would be correct and invisible, which reads as a
+	 * gesture that failed.
+	 *
+	 * Both remedies are named because either fault produces the fallback — a row with no
+	 * rank at all, which the set-up button fills, or two rows sharing one, which only a
+	 * whole-population rewrite separates. Naming just one would send half the readers to
+	 * a command that cannot help them.
+	 */
+	'rank.unseededList':
+		'This list is drawn in tree order, because some of its rows have no rank or share one — so ordering it by hand would not show. Use the toolbar’s set-up button to fill in missing ranks, or run "Seed ranks from the hierarchy" from the command palette.',
 	'rank.parentGone': 'That item’s parent no longer exists, so nothing was created.',
 	/**
 	 * The SUBJECT of a structural command left the base while the menu (or the row's

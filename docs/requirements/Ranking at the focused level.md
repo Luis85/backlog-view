@@ -99,6 +99,24 @@ from.
   seeded. Neither the switch nor the fallback says anything to the user:
   [[The unseeded fallback is silent]].
   **Checked by** `test/domain/modelRanking.test.ts` — "falls back to tree order when the focused rows' ranks are not globally distinct"
+  **Where that fallback would STILL hold after the write, the focus rank is refused**
+  (added 2026-09-02, from PR review): the number would be correct, saved and invisible,
+  and a gesture whose whole result is invisible reads as one that failed.
+  **Asked of the PEERS — the list without the row being written — and the distinction is
+  the rule, not a detail.** A tie between the dragged row and another is no reason to
+  refuse: writing one of them BREAKS the tie, the list becomes distinct, the fallback
+  lifts and the move shows. That is the fallback doing its job for an unmigrated vault.
+  What this write cannot fix is a rank missing from some other row, or a tie between two
+  rows the gesture does not touch — those hold the fallback open around whatever lands.
+  Asked of the whole list instead, it refuses exactly the unmigrated case the peer
+  fallback exists for, which is how it was written first and what the three-input test in
+  `test/view/focusedUnrankedContext.test.ts` caught.
+  It is asked of the ANSWER and never ahead of the arithmetic, so every refusal above
+  keeps its own precise remedy and this one fires only where the placement would
+  otherwise succeed; the sentence names both remedies, since either fault opens the
+  fallback. It does not touch an ordinary sibling reorder, which `compareSiblings` draws
+  and the fallback never reaches.
+  **Checked by** `test/view/focusRanking.test.ts` — "refuses a rank that could not show, rather than writing one nobody can see"
 - **2e — the vault's ranks were never spread for this.** Two palette commands rewrite
   them all: **Seed ranks from the hierarchy** (`seed-ranks`) numbers every note in the
   order the tree draws it, and **Respace ranks** (`respace-ranks`) keeps the rank order and
