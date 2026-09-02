@@ -58,7 +58,18 @@ export type ReleaseConfigVariant = 'full' | 'empty' | 'notype' | 'nomembership' 
  * nothing, so what the constant supplies is the state AFTER a press, which is what "binds
  * every key" has to mean on a page with no press in it.
  */
-const FULL = { ...RELEASE_CONFIG, releaseNotesFolder: 'Releases/Notes' };
+// The two risk VOCABULARIES are bound HERE and not in `RELEASE_CONFIG`, which holds them
+// out on purpose: ✨ binds no key for either, so a fixture that bound them would describe a
+// state no press can reach, and four init suites read that constant for exactly that
+// question. The harness is asking a different one — what the chip row LOOKS like — and the
+// risk criterion cannot draw a verdict at all until a vocabulary says which values are
+// critical. Without these two lines the page can only ever show "not configured".
+const FULL = {
+	...RELEASE_CONFIG,
+	releaseNotesFolder: 'Releases/Notes',
+	criticalRiskValues: 'High, Critical',
+	addressedRiskValues: 'Mitigated, Accepted',
+};
 
 function configValues(variant: ReleaseConfigVariant): Record<string, unknown> {
 	if (variant === 'notype') return { ...FULL, typeProperty: '' };
@@ -199,14 +210,49 @@ function releaseHarnessVault(variant: ReleaseConfigVariant): FakeVault {
 	}
 
 	vault.addFile('Sign-up flow.md', { frontmatter: { type: 'Epic', order: 1 } });
+	// 0.8's members carry the readiness properties, and they are picked so every criterion
+	// lands on `partly` rather than on a verdict with nothing to compare it against.
+	// `satisfied` and `not` are one uniform member away in either direction; the mixed state
+	// is the only one that draws a cleared count, an outstanding count and both colours at
+	// once — and it is the state the chip row was designed against.
 	vault.addFile('Passwordless sign-in.md', {
-		frontmatter: { type: 'Feature', parent: '[[Sign-up flow]]', order: 1, release: '[[0.8]]' },
+		frontmatter: {
+			type: 'Feature',
+			parent: '[[Sign-up flow]]',
+			order: 1,
+			release: '[[0.8]]',
+			// No `effort` at all: the unestimated figure needs something to count, and a
+			// member missing the key is what "unestimated" MEANS.
+			dependsOn: '[[Session handling]]',
+			risk: 'Critical',
+		},
 	});
 	vault.addFile('Send the magic link.md', {
-		frontmatter: { type: 'PBI', parent: '[[Passwordless sign-in]]', order: 1, release: '[[0.8]]', status: 'Done' },
+		frontmatter: {
+			type: 'PBI',
+			parent: '[[Passwordless sign-in]]',
+			order: 1,
+			release: '[[0.8]]',
+			status: 'Done',
+			effort: 5,
+			risk: 'Low',
+		},
 	});
 	vault.addFile('Expire the link.md', {
-		frontmatter: { type: 'PBI', parent: '[[Passwordless sign-in]]', order: 2, release: '[[0.8]]', status: 'Ready' },
+		frontmatter: {
+			type: 'PBI',
+			parent: '[[Passwordless sign-in]]',
+			order: 2,
+			release: '[[0.8]]',
+			status: 'Ready',
+			effort: 3,
+			// Cleared: its prerequisite is Done. Beside the unmet one above, the blocked
+			// chip draws a count on each side rather than a single-sided zero.
+			dependsOn: '[[Send the magic link]]',
+			// Critical AND addressed — the pair the risk criterion exists to tell apart from
+			// the bare `Critical` above.
+			risk: ['Critical', 'Mitigated'],
+		},
 	});
 	vault.addFile('Session handling.md', {
 		frontmatter: { type: 'Feature', parent: '[[Sign-up flow]]', order: 2, release: '[[0.9]]' },
