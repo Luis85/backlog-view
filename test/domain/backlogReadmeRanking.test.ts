@@ -44,6 +44,24 @@ describe('what the generated README says about ranking', () => {
 	});
 
 	/**
+	 * `inRankOrder` keeps a focused list in TREE order while any of its rows carries no
+	 * rank or two share one — so the paragraph above it, true of a sibling group, is false
+	 * of the one screen this backlog's owner ranks a single type on. This document is
+	 * written INTO the vault, which makes an unqualified sentence here the plugin teaching
+	 * its reader a rule the plugin then refuses.
+	 *
+	 * State rather than wording, like the rest of this file: the two halves have to BOTH be
+	 * present, and the focused half has to say tree order rather than merely mentioning a
+	 * focus level.
+	 */
+	it('qualifies the missing-order rule for a focused view', () => {
+		const content = readme();
+		expect(content).toContain('sorts after the ranked ones');
+		expect(content).toMatch(/focused on a single type/);
+		expect(content).toMatch(/keeps the order the tree draws/);
+	});
+
+	/**
 	 * The remedies a reader is sent to must be the palette's own names — a retyped one
 	 * sends them looking for a command that is not there. Read from the catalog for the
 	 * same reason the property names are read from the settings.

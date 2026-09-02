@@ -286,6 +286,12 @@ function rankingSection(settings: BacklogSettings): string[] {
 			'remedy. **Write distinct numbers across the whole backlog**, not merely among ' +
 			'siblings.',
 		'',
+		'Both of those describe one sibling group. A view focused on a single type answers all ' +
+			'or nothing instead: while any row on it carries no number, or two share one, the ' +
+			'whole list keeps the order the tree draws rather than sorting the odd row last. So a ' +
+			'rank set by hand there would not show, and the view refuses the move and says which ' +
+			'command fixes it. One blank is enough to hold a whole focused backlog in tree order.',
+		'',
 		`Two commands in the command palette rewrite every rank at once. **${t('command.seedRanks')}** ` +
 			'numbers the notes in the order the tree draws them, which is what a backlog whose ' +
 			`numbers only ever ranked siblings needs once. **${t('command.respaceRanks')}** keeps the ` +
