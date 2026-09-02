@@ -4,6 +4,7 @@ import { FakeVault } from '../helpers/vault';
 import { Menu, Modal } from '../helpers/obsidian-mock';
 import { flush, refresh, submitButton, useViewHarness } from '../helpers/view';
 import { barFor, laneCountOf, laneNames, laneRoadmap, lanesOf } from '../helpers/roadmap';
+import { beforeWindow, clampingSpan, fromToday, pastWindow } from '../helpers/window';
 import { ALICE_AWAY, absenceVault } from '../helpers/resources';
 import { cardDrag } from '../helpers/dnd';
 
@@ -202,13 +203,13 @@ describe('an absence on the resources axis', () => {
 		vault.addFile('Quinn.md', { frontmatter: { type: 'Resource' } });
 		vault.addFile('Early.md', { frontmatter: { type: 'Resource' } });
 		vault.addFile('Work.md', {
-			frontmatter: { type: 'Epic', order: 10, assignee: 'Alice', start: '2020-01-01', due: '2032-01-01' },
+			frontmatter: { type: 'Epic', order: 10, assignee: 'Alice', ...clampingSpan() },
 		});
 		vault.addFile('Quinn away.md', {
-			frontmatter: { type: 'Absence', assignee: 'Quinn', start: '2031-01-04', due: '2031-01-20' },
+			frontmatter: { type: 'Absence', assignee: 'Quinn', start: pastWindow(), due: pastWindow(76) },
 		});
 		vault.addFile('Early away.md', {
-			frontmatter: { type: 'Absence', assignee: 'Early', start: '2020-02-01', due: '2020-02-10' },
+			frontmatter: { type: 'Absence', assignee: 'Early', start: beforeWindow(), due: beforeWindow(51) },
 		});
 		const { containerEl } = laneRoadmap(vault);
 		const marks = Array.from(containerEl.querySelectorAll<HTMLElement>('.pbl-absence'));
@@ -233,13 +234,13 @@ describe('an absence on the resources axis', () => {
 		vault.addFile('Alice.md', { frontmatter: { type: 'Resource' } });
 		vault.addFile('Quinn.md', { frontmatter: { type: 'Resource' } });
 		vault.addFile('Work.md', {
-			frontmatter: { type: 'Epic', order: 10, assignee: 'Alice', start: '2020-01-01', due: '2032-01-01' },
+			frontmatter: { type: 'Epic', order: 10, assignee: 'Alice', ...clampingSpan() },
 		});
 		vault.addFile('First away.md', {
-			frontmatter: { type: 'Absence', assignee: 'Quinn', start: '2031-01-04', due: '2031-01-20' },
+			frontmatter: { type: 'Absence', assignee: 'Quinn', start: pastWindow(), due: pastWindow(76) },
 		});
 		vault.addFile('Second away.md', {
-			frontmatter: { type: 'Absence', assignee: 'Quinn', start: '2031-03-01', due: '2031-03-10' },
+			frontmatter: { type: 'Absence', assignee: 'Quinn', start: pastWindow(116), due: pastWindow(125) },
 		});
 		const { containerEl } = laneRoadmap(vault);
 		const head = lanesOf(containerEl)[laneNames(containerEl).indexOf('Quinn')];
@@ -297,15 +298,15 @@ describe('an absence on the resources axis', () => {
 		vault.addFile('Quinn.md', { frontmatter: { type: 'Resource' } });
 		vault.addFile('Early.md', { frontmatter: { type: 'Resource' } });
 		vault.addFile('Work.md', {
-			frontmatter: { type: 'Epic', order: 10, assignee: 'Alice', start: '2020-01-01', due: '2032-01-01' },
+			frontmatter: { type: 'Epic', order: 10, assignee: 'Alice', ...clampingSpan() },
 		});
 		// One straddling the clamped window's far end, one its near end — each has an end
 		// inside the grid and an end past it, in opposite directions.
 		vault.addFile('Quinn away.md', {
-			frontmatter: { type: 'Absence', assignee: 'Quinn', start: '2026-08-01', due: '2031-01-20' },
+			frontmatter: { type: 'Absence', assignee: 'Quinn', start: fromToday(-30), due: pastWindow(76) },
 		});
 		vault.addFile('Early away.md', {
-			frontmatter: { type: 'Absence', assignee: 'Early', start: '2020-02-01', due: '2026-08-20' },
+			frontmatter: { type: 'Absence', assignee: 'Early', start: beforeWindow(), due: fromToday(-10) },
 		});
 		const { containerEl } = laneRoadmap(vault);
 		const marks = Array.from(containerEl.querySelectorAll<HTMLElement>('.pbl-absence'));

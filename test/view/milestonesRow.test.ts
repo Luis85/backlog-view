@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { FakeVault } from '../helpers/vault';
 import { clickExpandAll, Harness, makeView, useViewHarness } from '../helpers/view';
 import { barFor, laneNames, lanesOf, markFor, rowFor } from '../helpers/roadmap';
+import { beyondPlan, clampingSpan } from '../helpers/window';
 import { gridDrag } from '../helpers/dnd';
 import { countingVault } from '../helpers/resources';
 import { Menu } from '../helpers/obsidian-mock';
@@ -132,9 +133,9 @@ describe('the milestones row', () => {
 		// than the plain accent. It is also what stretches the plan past
 		// `MAX_TIMELINE_DAYS`, the only thing that can still put a mark outside the window.
 		vault.addFile('Work.md', {
-			frontmatter: { type: 'Epic', order: 10, assignee: 'Alice', status: 'Active', start: '2020-01-01', due: '2032-01-01' },
+			frontmatter: { type: 'Epic', order: 10, assignee: 'Alice', status: 'Active', ...clampingSpan() },
 		});
-		vault.addFile('Far.md', { frontmatter: { type: 'Milestone', order: 20, due: '2033-01-04' } });
+		vault.addFile('Far.md', { frontmatter: { type: 'Milestone', order: 20, due: beyondPlan() } });
 		const harness = laneRoadmap(vault, { stateProperty: 'note.status', stateValues: 'New, Active' });
 		const mark = harness.containerEl.querySelector<HTMLElement>('.pbl-lane-markers .pbl-bar');
 
