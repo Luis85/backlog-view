@@ -1,5 +1,5 @@
 import { App, ButtonComponent, Modal, Setting, TFolder } from 'obsidian';
-import { t } from '../i18n/t';
+import { compareText, foldForMatch, t } from '../i18n/t';
 import { ValueSuggest } from './valueSuggest';
 
 /**
@@ -160,17 +160,25 @@ export interface NewItemPromptOptions extends Closable {
 	onSubmit: (result: NewItemPromptResult) => void;
 }
 
-/** Folder autocomplete for the folder field of the prompt. Exported for tests. */
+/**
+ * Folder autocomplete for the folder field of the prompt. Exported for tests.
+ *
+ * Both sides fold through `foldForMatch`, in the READER's locale rather than
+ * `toLowerCase`'s locale-independent one: a suggest compares what was typed against paths
+ * that are on screen, so a Turkish reader typing `ışık` must be offered `Işık`. A boolean
+ * `includes` and never an index back into the unfolded path — folding is not
+ * length-preserving. See `test/i18n/foldSites.ts` for the split.
+ */
 export class FolderSuggest extends ValueSuggest<TFolder> {
 	protected getSuggestions(query: string): TFolder[] {
-		const needle = query.toLowerCase();
+		const needle = foldForMatch(query);
 		const folders: TFolder[] = [];
 		for (const file of this.app.vault.getAllLoadedFiles()) {
-			if (file instanceof TFolder && file.path !== '/' && file.path.toLowerCase().includes(needle)) {
+			if (file instanceof TFolder && file.path !== '/' && foldForMatch(file.path).includes(needle)) {
 				folders.push(file);
 			}
 		}
-		folders.sort((a, b) => a.path.localeCompare(b.path));
+		folders.sort((a, b) => compareText(a.path, b.path));
 		return folders.slice(0, 50);
 	}
 
@@ -191,6 +199,9 @@ export class FolderSuggest extends ValueSuggest<TFolder> {
  * such vocabulary today, written without their `#` and read with it — so it is stripped
  * off the query before matching and put back only when a row is drawn. A suggest with
  * no sigil matches and renders the value as it is.
+ *
+ * `foldForMatch` on both sides, for `FolderSuggest`'s reason exactly: what was typed
+ * against what is on screen, in the reader's own locale.
  */
 export class KnownValueSuggest extends ValueSuggest<string> {
 	private readonly known: string[];
@@ -205,8 +216,8 @@ export class KnownValueSuggest extends ValueSuggest<string> {
 	protected getSuggestions(query: string): string[] {
 		let needle = query.trim();
 		while (this.sigil && needle.startsWith(this.sigil)) needle = needle.slice(this.sigil.length);
-		const lowered = needle.toLowerCase();
-		return this.known.filter((value) => value.toLowerCase().includes(lowered)).slice(0, 50);
+		const lowered = foldForMatch(needle);
+		return this.known.filter((value) => foldForMatch(value).includes(lowered)).slice(0, 50);
 	}
 
 	renderSuggestion(value: string, el: HTMLElement): void {
@@ -235,6 +246,15 @@ export interface ValuePromptOptions extends Closable {
 	 * exists. Undefined for the two callers this ships with (a tag, an assignee), where a
 	 * repeat is ordinary rather than worth a second look; the resource-name caller is what
 	 * wants it.
+	 *
+	 * **Case-insensitively in the READER's locale** (`foldForMatch`), which is a deliberate
+	 * call rather than the shape it shares with the identity folds. Nothing here is stored,
+	 * keyed or matched against a persisted value: the note is created under the raw typed
+	 * name whatever this decides, and the `known` list is note TITLES the reader can see in
+	 * the suggest above the field. So the whole divergence between two locales is whether
+	 * one advisory sentence appears — text, not data, by the root guide's own test — while
+	 * folding without a locale silently drops the case this PBI exists for, `IŞIL` against
+	 * `Işıl` on the roster.
 	 */
 	duplicateWarning?: string;
 	onSubmit: (value: string) => void;
@@ -269,7 +289,8 @@ export class ValuePromptModal extends PromptModal<ValuePromptOptions> {
 		let warningEl: HTMLElement | null = null;
 		const syncWarning = () => {
 			if (!warningEl) return;
-			const isKnown = this.options.known.some((k) => k.toLowerCase() === value.trim().toLowerCase());
+			const typed = foldForMatch(value.trim());
+			const isKnown = this.options.known.some((k) => foldForMatch(k) === typed);
 			warningEl.setText(isKnown ? (warningText ?? '') : '');
 		};
 

@@ -338,7 +338,7 @@ describe('the decomposition block', () => {
 		const summary = header.querySelector('.pbl-est-summary') as HTMLElement;
 		expect(summary.querySelector('.pbl-est-coverage')?.textContent).toBe('2/8');
 		const result = computeTotal(configured(), new Map([['strategic-alignment', 5], ['customer-value', 4]]))!;
-		expect(summary.querySelector('.pbl-est-total')?.textContent).toBe(String(result.total));
+		expect(summary.querySelector('.pbl-est-total')?.textContent).toBe(num(result.total));
 	});
 
 	it('lists the values the total was computed FROM — mirrored where the dimension counts down, clamped where the note is out of range', () => {

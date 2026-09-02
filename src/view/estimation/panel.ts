@@ -1,6 +1,6 @@
 import { setIcon } from 'obsidian';
 import type { EstimationView } from './estimationView';
-import { t } from '../../i18n/t';
+import { formatNumber, t } from '../../i18n/t';
 import { EstimationItem, EstimationModel } from '../../domain/estimationItems';
 import { ScaleName } from '../../domain/estimationSettings';
 import { Indicator, ScoringModel } from '../../domain/scoringModel';
@@ -179,10 +179,10 @@ function renderScoreRow(panelEl: HTMLElement, spec: RowSpec): void {
 		spec.held !== null && spec.held >= spec.min && spec.held <= spec.max && Number.isInteger(spec.held) ? spec.held : spec.min;
 	for (let value = spec.min; value <= spec.max; value++) {
 		const active = spec.held === value;
-		const sentence = `${value} — ${spec.rubric[value - spec.min]}`;
+		const sentence = `${formatNumber(value)} — ${spec.rubric[value - spec.min]}`;
 		points.createEl('button', {
 			cls: 'pbl-est-point' + (active ? ' is-active' : ''),
-			text: String(value),
+			text: formatNumber(value),
 			attr: {
 				type: 'button',
 				role: 'radio',
@@ -260,10 +260,10 @@ function renderSummary(header: HTMLElement, item: EstimationItem): void {
 	if (!item.result && item.currency === 'none') return;
 	const summary = header.createDiv({ cls: 'pbl-est-summary' });
 	if (item.result) {
-		summary.createDiv({ cls: 'pbl-est-total', text: String(item.result.total) });
+		summary.createDiv({ cls: 'pbl-est-total', text: formatNumber(item.result.total) });
 		summary.createDiv({
 			cls: 'pbl-est-coverage',
-			text: `${item.result.coverage.answered}/${item.result.coverage.enabled}`,
+			text: `${formatNumber(item.result.coverage.answered)}/${formatNumber(item.result.coverage.enabled)}`,
 		});
 	}
 	renderCurrencyChip(summary, item.currency);

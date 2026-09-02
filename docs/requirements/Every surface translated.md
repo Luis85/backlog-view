@@ -504,6 +504,16 @@ always were: a template whose first quasi is empty, and a sentence handed to a h
 positional argument — the second of which is what a validator RETURNING its refusal is, and
 what most of these seventeen were.
 
+**One instance of the first shape is on screen today, found on 2026-09-02 and left alone
+on purpose.** `syncBusyCount` (`src/view/render/toolbarBusy.ts`) sets the busy indicator's
+second span to `` ` of ${formatNumber(busy.total)}` `` — both numbers around it go through
+the shared formatter, and the word between them goes through nothing. First quasi
+lowercase, so `UI_TEXT_LITERAL` reads past it and a prose-shaped AST walk reads past it
+too. It surfaced while `Locale-aware sorting and formatting` was routing the counts, which
+is a different question from whose sentence it is: a count is data presentation and was
+that note's, a word is text and is this one's. Recorded rather than swept there, so the
+sweep that owns it is the one that does it.
+
 **The detail line's own acceptance criterion is paid.** `promptDetail` built
 `in folder "…"` and then sentence-cased it with `where[0].toUpperCase()` when there was no
 parent — wrong once the fragment comes from a catalog, since the capital belongs in the

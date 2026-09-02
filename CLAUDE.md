@@ -127,9 +127,8 @@ language is one file and one row. What must never enter the catalog is anything 
 writes, matches or persists — type names, state values, option keys, tags, file names. The
 test when it is not obvious: **ask what breaks if two people with different Obsidian
 languages open the same vault.** "One sees different words" is text; "one writes notes the
-other's view cannot read" is data. 816 keys are in it, counted two ways on the MERGED tree
-on 2026-09-02 and agreeing — `Object.keys` over the BUNDLED
-catalog, and a match-counting
+other's view cannot read" is data. 817 keys are in it, counted two ways on the MERGED tree
+on 2026-09-02 and agreeing — `Object.keys` over the catalog itself, and a match-counting
 `grep -Po` over the key lines. Two rather than the three the 2026-08-26 count used: the
 AST walk over the `as const` object's own properties was not re-run, and this sentence
 says two because two is what was done. `grep -c` would count LINES, which is one of
@@ -138,15 +137,20 @@ some of these keys carry their value on the FOLLOWING line, which is exactly wha
 instrument gets wrong. The two DISAGREEING would itself be a finding rather than a nuisance:
 a walk that reports its DISTINCT properties beside its total drops a duplicate key the text
 still shows, so the pair answers "how many" and "are any of them the same key twice" in one
-pass — 816 total and 816 distinct on 2026-09-02. **A count is dated the moment
-it is written, and this paragraph has now been a merge conflict five times in one day** —
-550, 542, 553, 577, 556, 588, 591, 559, 597, 630, 643, 655, 686, 761 and 763 were each true of
-the branch that wrote them and of nothing else, and 816 is what the merged tree measures rather
-than what any side's arithmetic predicted. Re-measure on the merged tree rather than picking a side.
+pass — 817 total and 817 distinct on 2026-09-02. **A count is dated the moment
+it is written, and this paragraph has now been a merge conflict seven times in one day** —
+550, 542, 553, 577, 556, 588, 591, 559, 597, 630, 643, 655, 686, 761, 763, 797 and 816 were each
+true of the branch that wrote them and of nothing else, and 817 is what the merged tree measures
+rather than what any side's arithmetic predicted. Re-measure on the merged tree rather than
+picking a side.
 **686 is the worked example of why**: it was measured on a merged tree too, and 0.10.0
 shipping the release view, the estimation view and the resource roster took it to 761 without
 anybody editing this sentence. A branch that adds one key and finds the number 75 out has not
 found a miscount — it has found that the number was never the branch's to keep current.
+**797 and 816 are the second worked example, and a sharper one**: they were the two sides of
+THIS merge, each measured correctly on its own tree, and neither is the answer — the merged
+tree holds 817, which is not 797, not 816, and not 797 plus this branch's own additions.
+Two correct counts do not merge into a third correct count.
 `ui/`, `commands/`, `view/interactions/`, `view/estimation/`, the whole of `view/render/`,
 `view/writeGate.ts`, `view/cardMoves.ts`, `main.ts`, `domain/viewOptions.ts`, the whole of
 `storage/` and — since 2026-08-22 — `domain/estimationOptions.ts`, `domain/board.ts`,
@@ -188,8 +192,9 @@ walk on 2026-08-29, which is how `scoringModel.ts` came off this list — and ev
 stays for a stated reason
 — the type names and shipped value lists are data, `defaultModel.ts`'s rubrics are in the
 model FINGERPRINT so two locales would stamp two models, `timeline.ts`'s month names are a
-formatting question that follows the USER's locale through `Intl` and belongs to
-[[Locale-aware sorting and formatting]], and `backlogReadme.ts`, `readmeStamps.ts` and
+formatting question that SHOULD follow the USER's locale through `Intl` and does not yet —
+`MONTH_LABELS` is still a hard-coded `['Jan', 'Feb', …]` and every reader sees English —
+which is the one criterion [[Locale-aware sorting and formatting]] is left `Active` for, and `backlogReadme.ts`, `readmeStamps.ts` and
 `readmePlanning.ts` write authored prose INTO the vault, which is `view/manual/`'s own open
 question wearing three more instances. `roadmap.ts`'s shelf label is NOT among them and this paragraph said it was
 until 2026-08-22: it was keyed on 2026-08-19 and three places went on claiming otherwise,

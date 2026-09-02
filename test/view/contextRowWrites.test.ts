@@ -11,21 +11,13 @@ import {
 	itemAt,
 	key,
 	makeView,
+	noTypeFolders,
 	rowByTitle,
 	rows,
 	treeOf,
 	useViewHarness,
 } from '../helpers/view';
 import { computeAssigneeWrites } from '../../src/domain/writePlan';
-
-/**
- * Clear every configured folder, so folder INFERENCE is what runs. Both layers have to
- * go: a type's own folder answers first, and the home folder answers next.
- */
-const NO_TYPE_FOLDERS: Record<string, string> = {
-	homeFolder: '',
-	...Object.fromEntries(['epic', 'feature', 'pbi', 'task', 'issue', 'bug'].map((t) => [`typeFolder.${t}`, ''])),
-};
 
 useViewHarness();
 
@@ -52,7 +44,7 @@ describe('moves in a group that holds an outside-filter row', () => {
 		// a test already holds, and that leaf is what the workspace has to call active.
 		const { view, containerEl } = makeView(
 			vault,
-			{ ...NO_TYPE_FOLDERS },
+			noTypeFolders(),
 			{ base: 'Backlog.base', only: ['Feature B.md', 'PBI.md'] },
 		);
 		vault.activeView = vault.leaves[vault.leaves.length - 1].view;

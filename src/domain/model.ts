@@ -22,6 +22,7 @@ import {
 import { BacklogSettings } from './settings';
 import { ALL_TYPES, LEVELS } from './typeVocabulary';
 import { assertResolvedSettings } from './settingsConsistency';
+import { compareText } from '../i18n/t';
 import { earliest, latest, reversedSpan } from './timeline';
 import {
 	collectObservedDeliverableStates,
@@ -287,15 +288,15 @@ export function buildModel(app: App, entries: BasesEntry[], settings: BacklogSet
 	// A focus naming an EXTRA type re-roots at that type by name: it has no rung to
 	// match, and "show me the bugs" is the same question as "show me the PBIs".
 	const focusExtra = focusIdx < 0 && focus ? focus.toLowerCase() : '';
-	// Sorted through `localeCompare`, which follows the USER's locale because a name is
+	// Sorted through `compareText`, which follows the USER's locale because a name is
 	// data. The path tie-break
-	// matters: `localeCompare` returns 0 for two resources sharing a basename, and
+	// matters: a collator returns 0 for two resources sharing a basename, and
 	// `Array.sort` is stable, so without it two such resources would come back in
 	// whatever order the Base's own query happened to return them — alphabetical order
 	// was chosen over Base order BECAUSE it stays put when a Base's sort changes, and an
 	// untied collision is the one case that promise did not hold.
 	const resources = [...store.resources].sort(
-		(a, b) => a.title.localeCompare(b.title) || a.file.path.localeCompare(b.file.path),
+		(a, b) => compareText(a.title, b.title) || compareText(a.file.path, b.file.path),
 	);
 	const ranked = rankedItems(items);
 	// One pass, here, rather than one `.some`/`.find` per row: see `BacklogModel.resourceLabels`.

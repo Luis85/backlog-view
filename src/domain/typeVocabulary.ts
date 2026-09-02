@@ -199,6 +199,23 @@ export function byName<T>(table: Record<string, T>, name: string | null): T | un
 export const FILED_TYPES = ALL_TYPES.filter((type) => type !== RELEASE_TYPE);
 
 /**
+ * Every name that gets a `typeFolder.*` box — `FILED_TYPES` plus the absence, which has a
+ * folder like any other note this plugin writes and is a type in no other sense.
+ *
+ * Named here because it was spelled inline at BOTH ends of the same contract: the schema
+ * that declares the boxes (`viewOptions.ts`) and the resolver that reads them back
+ * (`settingsResolve.ts`), whose own comment asserted *"It is the SAME list the options are
+ * declared from"* with nothing checking it — a comment stating a rule, which is the shape
+ * this repository keeps finding broken. The rule it states is real and worth keeping: a
+ * key resolved with no box to set it is how `typeFolder.release` came to print a folder in
+ * the generated README that no release is ever written to. One list is how it holds.
+ *
+ * Not a widening of `FILED_TYPES`: that list is the work-item vocabulary minus `Release`,
+ * and an absence is not a work item at all. This is the FOLDER question asked of both.
+ */
+export const FOLDER_OPTION_TYPES = [...FILED_TYPES, ABSENCE_TYPE];
+
+/**
  * The persisted option key for one type's folder. Shared by the schema that declares
  * these options and the resolver that reads them back, because a key spelled twice is
  * a key that can differ — and these are user data in the `.base` file.

@@ -1,5 +1,5 @@
 import { setTooltip } from 'obsidian';
-import { t } from '../../i18n/t';
+import { formatNumber, t } from '../../i18n/t';
 import { drawIcon } from './icons';
 import { createCard, renderCardBody, renderColumnFold, wireCardActivation } from './board';
 import { RowContext } from './columns';
@@ -416,7 +416,7 @@ function renderBucket(
 	const header = colEl.createDiv({ cls: 'pbl-bucket-header' });
 	renderColumnFold(ctx.host, header, 'horizons', bucket.value, { folded, label: bucket.value });
 	header.createSpan({ cls: 'pbl-bucket-name', text: bucket.value });
-	header.createSpan({ cls: 'pbl-bucket-count', text: String(bucket.count) });
+	header.createSpan({ cls: 'pbl-bucket-count', text: formatNumber(bucket.count) });
 	if (!bucket.declared) {
 		const mark = header.createSpan({ cls: 'pbl-bucket-stray' });
 		drawIcon(mark, 'circle-help');

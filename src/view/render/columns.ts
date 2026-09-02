@@ -1,5 +1,5 @@
 import { BasesPropertyId, NullValue, setTooltip, Value } from 'obsidian';
-import { t } from '../../i18n/t';
+import { formatNumber, t } from '../../i18n/t';
 import { drawIcon } from './icons';
 import { BacklogViewHost, Column, ColumnFit, ColumnKind } from '../host';
 import { columnWidth, columnWidthVar, renderColumnResize, widenSign } from '../interactions/columnResize';
@@ -796,12 +796,12 @@ export function rollupReport(host: BacklogViewHost, item: BacklogItem): RollupRe
 	// single child and could not pluralize because the label is a rendered string.
 	if (!settings.stateKey)
 		return {
-			label: String(item.descendantCount),
+			label: formatNumber(item.descendantCount),
 			tooltip: t('count.items', { count: item.descendantCount }),
 			ratio: null,
 		};
 	return {
-		label: `${item.doneDescendants}/${item.descendantCount}`,
+		label: `${formatNumber(item.doneDescendants)}/${formatNumber(item.descendantCount)}`,
 		tooltip: t('column.rollupTooltip', { done: item.doneDescendants, count: item.descendantCount }),
 		ratio: item.doneDescendants / item.descendantCount,
 	};
