@@ -313,8 +313,11 @@ there. What stays here binds while you are editing `src/`:
   passing an argument the function does not take, two fixtures behind the shape they claim,
   and eight `@ts-expect-error` directives suppressing nothing — see
   `docs/tasks/Typecheck the test suite.md`. A double that cannot satisfy a real type is
-  widened ONCE in the helper that makes it (`asApp`, the `declare`d `TFile` members), never
-  by an `any` or a suppression at the call site.
+  widened ONCE in the helper that makes it (`asApp`), never by an `any` or a suppression at
+  the call site. A member it does NOT implement is a getter that THROWS through
+  `unimplemented()` — never a `declare`, which emits nothing and answers `undefined` when
+  `src/` starts reading it. That bet was lost once (`groupedData`); it is checked at the
+  member now, in `test/helpers/doubles.test.ts`.
 - **An invariant asserted in a comment gets a test that fails without it, and the test is
   watched failing.** Revert the fix, run it, see red, restore. Six of ten review findings
   on one pull request were comments precisely stating the rule the code beside them
