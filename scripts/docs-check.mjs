@@ -1,6 +1,7 @@
 import { readdir, readFile, stat } from "node:fs/promises";
 import path from "node:path";
 import process from "node:process";
+import YAML from "yaml";
 import { collapsed, containerAt, headings, localLinks, markers, prose, proseWithSpans, sectionBody, tablesWith, wikilinks } from "./docs-markdown.mjs";
 
 /**
@@ -285,22 +286,71 @@ function between(text, start, end) {
 
 
 /**
+ * **The block, read by a YAML parser rather than by line patterns.**
+ *
+ * This was a regex reader until 2026-09-02, and the two notes it closes say why it stopped
+ * being one. [[The register gate cannot see unparseable frontmatter]] is the gate answering
+ * every question about a block Obsidian refuses outright — a note with no `type`, no
+ * `parent` and no `status` in the metadata cache, so on no projection, reported green.
+ * [[The checker reads frontmatter its own way]] is the same seam one step earlier: two
+ * readers over one block, with nothing comparing them. A differential over the register on
+ * 2026-09-02 — the regex reader against `yaml`, over 654 notes and 9,840 key questions —
+ * found **15 disagreeing shapes and one live casualty**: `Editing a release from its own
+ * screen.md` carried `priority` twice, which no YAML parser accepts, and had been invisible
+ * to Obsidian and green here since 2026-08-29.
+ *
+ * The register refused this dependency three times, and the refusal was priced wrong rather
+ * than argued wrong: ADR 0019 and ADR 0022 cost a parser as a new audit surface and a new
+ * Dependabot row. `yaml` is neither — `npm ls yaml` puts 2.9.0 flat in `node_modules`
+ * already, deduped between `vite` (under vitest) and `yaml-eslint-parser` (under
+ * `eslint-plugin-obsidianmd`). It is on both surfaces today. What the declaration buys is
+ * the right to import it, which fallow's dependency hygiene otherwise refuses.
+ *
  * `field` reads a **value**, `has` reads a **key**, and the difference is load-bearing: a
  * bare `parent:` with nothing after it is an absent field to `field` and an explicit root to
  * `resolveParent`. A rule about what a note must *contain* asks `field`; a rule about what
  * it must not *declare* asks `has`. Which one is not a style choice — it is whichever the
  * rule is actually about, and getting it backwards is how the prohibition below first
- * shipped broken.
+ * shipped broken. That distinction survived the parser and is now exact rather than
+ * approximate: `has` asks the parsed map for an own property, so it cannot be fooled by a
+ * key spelled inside a value.
+ *
+ * `field` is the **scalar** reader and answers `null` for a list or a map, because `files:`
+ * and `dependsOn:` are sequences and no rule here asks one for a value. `has` is what a
+ * rule about those keys asks. The regex reader answered a sequence with its FIRST ITEM,
+ * which is the shape that made this a differential rather than a tidy-up.
+ *
+ * `error` is the parser's own first line, or `null`. It is reported once, by the rule below
+ * this one, over every file rather than at each reader — a category invariant belongs on
+ * the forbidden thing.
  */
 function frontmatter(text) {
 	const match = /^---\n([\s\S]*?)\n---/.exec(text);
 	if (!match) return null;
+	let parsed = null;
+	let error = null;
+	try {
+		parsed = YAML.parse(match[1]);
+	} catch (problem) {
+		error = String(problem.message).split("\n")[0];
+	}
+	// A block that is a list, a bare scalar or unparseable has no keys to answer for. An
+	// EMPTY map is the same shape and a legitimate one (`---\n\n---`), so the two are not
+	// distinguished here — `error` is what separates them.
+	const map = parsed !== null && typeof parsed === "object" && !Array.isArray(parsed) ? parsed : {};
 	const field = (name) => {
-		const found = new RegExp(`^${name}:\\s*(.+)$`, "m").exec(match[1]);
-		return found ? found[1].trim() : null;
+		// `Object.hasOwn` rather than a truth test, so that `field` and `has` cannot
+		// disagree about a key inherited from `Object.prototype` — `constructor:` is a
+		// legal frontmatter key and YAML gives it as an own property.
+		if (!Object.hasOwn(map, name)) return null;
+		const value = map[name];
+		return value === null || typeof value === "object" ? null : String(value);
 	};
-	const has = (name) => new RegExp(`^${name}:`, "m").test(match[1]);
-	return { field, has, raw: match[1] };
+	const has = (name) => Object.hasOwn(map, name);
+	// `raw` is deliberately not returned. It was, and the two rules that read it — the
+	// parent wikilink and the ADR date — are the two that had drifted from what YAML says.
+	// Handing the block's TEXT back beside a parse of it is how a second reader starts.
+	return { field, has, error };
 }
 
 /**
@@ -406,8 +456,27 @@ const claimName = (file, name) => {
 	usedNames.set(name, file);
 	return true;
 };
+/**
+ * **Frontmatter Obsidian cannot read at all**, asked of every file that has any, before any
+ * rule reads a field.
+ *
+ * One loop over every `.md` in the tree rather than a guard in each of the three loops that
+ * read fields — a category invariant goes on the forbidden thing. It also reaches the files
+ * those loops skip: an ADR, a `superpowers/` plan and an index page all have frontmatter
+ * Obsidian parses, and none of them passes through the backlog-note loop below.
+ *
+ * The message is the parser's own first line, because a hand-written summary of a YAML
+ * error is a second reader of the same block, which is what this rule exists to stop.
+ */
+for (const file of files) {
+	const error = frontmatter(texts.get(file))?.error;
+	if (error) fail(file, `frontmatter is not valid YAML, so Obsidian reads none of it — ${error}`);
+}
+
 for (const file of files) {
 	const fm = frontmatter(texts.get(file));
+	// Already reported above, and every rule below would restate it as a missing field.
+	if (fm?.error) continue;
 	const type = fm?.field("type");
 	const name = path.basename(file, ".md");
 	// A spec, a plan or a PRD claims its name like any other note, but needs no backlog
@@ -456,7 +525,11 @@ for (const file of files) {
 	// as ordinary notes, so it joins them in `LEGAL_CHILDREN` and `ROOT_TYPES` below
 	// rather than being skipped. See `docs/issues/The gate was one marker behind.md`.
 	if (type === "Absence" || type === "Resource") continue;
-	const parent = /^parent:\s*"?\[\[([^\]]+)\]\]"?/m.exec(fm.raw)?.[1] ?? null;
+	// Asked of the parsed VALUE, so the quotes the register writes around every wikilink are
+	// the parser's business rather than a `"?` in this pattern. Anchored at both ends, which
+	// the raw-text version could not be: `parent: "[[A]] and [[B]]"` used to name `A`, and
+	// naming one of two parents is worse than reporting none.
+	const parent = /^\[\[([^\]]+)\]\]$/.exec(fm.field("parent") ?? "")?.[1] ?? null;
 	// `Number(field ?? 0)` manufactured a rank for a note that has none: a missing `order`
 	// became 0, which is a legal-looking value that no sibling had claimed, so the note
 	// passed the uniqueness check by being unranked. The register's conventions say every
@@ -949,6 +1022,8 @@ for (const file of adrFiles) {
 		fail(file, "ADR has no frontmatter");
 		continue;
 	}
+	// Reported once, above; every field rule below would restate it five times over.
+	if (fm.error) continue;
 	for (const field of ["adr", "title", "status", "date", "area"]) {
 		if (fm.field(field) === null) fail(file, `ADR has no ${field}`);
 	}
@@ -994,7 +1069,11 @@ for (const file of adrFiles) {
 	});
 	const area = fm.field("area");
 	if (area && !ADR_AREAS.has(area)) fail(file, `area "${area}" is not one of ${[...ADR_AREAS]}`);
-	if (!/^date:\s*\d{4}-\d{2}-\d{2}\s*$/m.test(fm.raw)) fail(file, "date is not YYYY-MM-DD");
+	// Asked of the value, not of the line: `date: "2026-08-24"` is the same date to YAML and
+	// to Obsidian, and the line pattern refused it — a restriction nothing here states. The
+	// value stays a STRING through the parser (YAML 1.2's core schema has no timestamp
+	// type), so this is still a question about the spelling the note carries.
+	if (!/^\d{4}-\d{2}-\d{2}$/.test(fm.field("date") ?? "")) fail(file, "date is not YYYY-MM-DD");
 	// `docs/adrs/README.md` says "four headings, in this order", and a record that answers
 	// Consequences before Decision is a different document.
 	checkSections(file, text, ADR_SECTIONS, "ADR");
