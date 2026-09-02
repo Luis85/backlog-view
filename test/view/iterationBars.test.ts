@@ -1,8 +1,7 @@
 // @vitest-environment jsdom
 import { describe, expect, it } from 'vitest';
-import { FakeVault } from '../helpers/vault';
-import { makeView, refresh, useViewHarness } from '../helpers/view';
-import { labelTexts, markFor } from '../helpers/roadmap';
+import { refresh, useViewHarness } from '../helpers/view';
+import { datedAxis, labelTexts, markerVault, markFor } from '../helpers/roadmap';
 
 useViewHarness();
 
@@ -13,39 +12,11 @@ useViewHarness();
  * a grip per configured end.
  *
  * Its own file rather than `roadmap.test.ts` or `markerLabels.test.ts`, both near the
- * per-file test line budget (`test/CLAUDE.md`). The fixtures below are Task 3's
- * `markerVault`/`datedAxis`, copied rather than imported — no `test/view/*.test.ts`
- * file imports another's fixtures, and `markerLabels.test.ts`'s own duplication of
- * `roadmap.test.ts`'s AXES/vault shape is the precedent this follows.
+ * per-file test line budget (`test/CLAUDE.md`). `markerVault` and `datedAxis` come from
+ * `test/helpers/roadmap.ts`: they were copied here and into `markerLabels.test.ts` on the
+ * rule that no `test/view/*.test.ts` file imports another's fixtures — which is the right
+ * rule, and a helper is how two suites share one without either reaching into the other.
  */
-const MARKER_OPTIONS = {
-	startProperty: 'note.start',
-	targetProperty: 'note.due',
-	iterationProperty: 'note.iteration',
-};
-
-function markerVault(kinds: ('milestone' | 'iteration')[]): FakeVault {
-	const vault = new FakeVault();
-	vault.addFile('An epic.md', { frontmatter: { type: 'Epic', order: 1, start: '2026-09-01', due: '2026-10-15' } });
-	if (kinds.includes('milestone')) {
-		vault.addFile('Ship 1.0.md', { frontmatter: { type: 'Milestone', order: 10, due: '2026-09-30' } });
-	}
-	if (kinds.includes('iteration')) {
-		vault.addFile('Sprint 12.md', {
-			frontmatter: { type: 'Iteration', order: 20, start: '2026-09-07', due: '2026-09-20' },
-		});
-	}
-	return vault;
-}
-
-function datedAxis(vault: FakeVault, extra: Record<string, unknown> = {}) {
-	const harness = makeView(vault, { ...MARKER_OPTIONS, ...extra }, { base: 'Plan.base' });
-	harness.view.setProjection('roadmap');
-	harness.view.setAxisPick('dates');
-	// `vault` rides along beside the harness's own fields — the fourth test below needs
-	// it for `writeLog`, which `Harness` itself does not carry.
-	return { ...harness, vault };
-}
 
 describe('an iteration draws as a bar while the option is on', () => {
 	it('draws a start→target bar in the marker row and no boundary line', () => {
