@@ -28,6 +28,10 @@ See [RELEASING.md](RELEASING.md) for how this file is kept in step with a releas
 
 - The toolbar's **Expand all** and **Collapse all** now fold and open the resource bands on
   the roadmap's resources axis, so a long roster is one press rather than one chevron each.
+- Putting an item in a release now dates it: the release's own target date becomes the
+  item's due and today becomes its start, so the work draws on the roadmap's dated axis.
+  Neither is written over a date the item already holds, and neither lands where it would
+  put the start after the due.
 - `npm run check` has a sixth step, `lint:md`, gating the Markdown in `docs/` and the
   root documents.
 - **My work**, a fourth Bases view (`product-my-work`): one person's work as a backlog tree,
