@@ -5,6 +5,7 @@ import { en } from '../../../src/i18n/en';
 import { makeReleaseView, mountFoldScope, refreshRelease, RELEASE_CONFIG, row, select } from '../../helpers/release';
 import { flush, submitPrompt, useViewHarness } from '../../helpers/view';
 import { FakeVault } from '../../helpers/vault';
+import { WriteLock } from '../../../src/view/writeLock';
 
 /**
  * The scope tree's row menu and the one note it creates (`src/view/release/scopeCreate.ts`).
@@ -432,6 +433,43 @@ describe('creating a child from a release scope row', () => {
 		// population (`Far`, 95000) — a real midpoint, nowhere near `Far`'s own edge
 		// (96000), which is what anchoring on the unranked `Ctx Feature` instead reads as.
 		expect(notes[0].fm.order).toBe(47550);
+	});
+
+	it('creates nothing while a batch holds the plugin-wide lock', async () => {
+		// This screen's creation was the last ranked creation path outside an exclusive
+		// section (ADR 0033 lists the paths that produce a rank). Both halves are inside it,
+		// not just the write: `dropPlacement` reads `view.model`, which the gate deliberately
+		// holds stale until the batch it is deferring ends, so a rank taken beside a running
+		// Seed or Respace is computed against numbers the rewrite has already replaced and
+		// the note lands between the wrong pair. What the assertion can SEE is the refusal —
+		// once the section is taken, the stale-rank state is unreachable from here.
+		const vault = new FakeVault();
+		vault.addFile('R.md', { frontmatter: { type: 'Release', version: '1.0.0', order: 10 } });
+		vault.addFile('Sign-in.md', { frontmatter: { type: 'Epic', order: 20, release: '[[R]]' } });
+		vault.addFile('Magic link.md', { frontmatter: { type: 'Task', order: 30, release: '[[R]]' }, parentLink: 'Sign-in' });
+		const lock = new WriteLock();
+		let release: () => void = () => {};
+		// Stall the OTHER view's batch, so the creation arrives while it is in flight.
+		vault.beforeWrite = (path) => (path === 'R.md' ? new Promise<void>((r) => (release = r)) : undefined);
+		const writer = makeReleaseView(vault, RELEASE_CONFIG, { lock });
+		writer.view.pick('R.md');
+		const { view } = makeReleaseView(vault, RELEASE_CONFIG, { lock });
+		view.pick('R.md');
+		const before = new Set(vault.files.keys());
+		const releaseFile = vault.app.vault.getFileByPath('R.md')!;
+
+		const batch = writer.view.gate.applySafely([{ file: releaseFile, sets: [{ key: 'status', value: 'Released' }] }]);
+		await flush();
+		const menu = openMenu(view, 'Sign-in.md');
+		menu.items.find((item) => item.titleText === 'New Feature')!.click();
+		Notice.messages.length = 0;
+		submitPrompt({ title: 'Passkeys' });
+		await flush();
+
+		expect(created(vault, before)).toEqual([]);
+		expect(Notice.messages).toEqual([en['gate.stillApplying']]);
+		release();
+		await batch;
 	});
 
 	it('unfolds the parent it created under, so the new child is not written out of sight', async () => {

@@ -92,14 +92,19 @@ const FOCUS_HANDLE_CLASSES = [
  *
  * **So there is a `WriteGate` here now, and it is the plugin's own one lock behind it.**
  * The gate's absence used to be the design — a create is not a batch, so there was nothing
- * to serialize and no inverse to take back. An edit is a batch: it captures an inverse
+ * to serialize and no inverse to take back. **The first half of that was wrong** and stood
+ * until 2026-09-02: a create takes just as long as a batch, and `scopeCreate.ts`'s own
+ * reads `model` for the rank the note is born with — the model the gate deliberately holds
+ * stale while a sibling batch runs. So the scope screen's creation takes the same exclusive
+ * section every batch takes (`runFileWrite`), the way `view/interactions/create.ts` does.
+ * The SECOND half still holds: it installs no inverse, so a created note is not undoable.
+ * An edit is a batch: it captures an inverse
  * (`applyPropertyWrites`, through `captureInverse`), so it belongs in the same undo slot
  * and the same serialization as every other view's write (ADR 0030). What follows is worth
  * knowing before reading the undo story as broken: this view draws no undo control of its
  * own, so a status set here is taken back from the BACKLOG view's undo button — which is
  * what "the undo slot is the vault's last batch, whichever view wrote it" means, rather
- * than a gap. The create path is unchanged and still installs nothing: a created note is
- * not undoable.
+ * than a gap.
  *
  * Its entry point is the INDEX, not one release: with nothing picked it lists every
  * release the results hold, and picking a row opens that release's screen. Which release

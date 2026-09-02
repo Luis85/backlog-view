@@ -257,30 +257,48 @@ async function createMember(view: ReleaseView, release: ReleaseRow, settings: Ba
 		new Notice(t(refusalKey('parentGone')));
 		return;
 	}
-	// `rankablePeers` (`domain/dropTargets.ts`, own comment): a trailing unranked context
-	// row among the parent's real children is not a peer to append past.
-	const peers = rankablePeers(parent.children);
-	const placed = dropPlacement(null, { parent, peers, insertIndex: peers.length }, model.ranked);
-	if ('refusal' in placed) {
-		new Notice(t(refusalKey(placed.refusal)));
-		return;
-	}
-	try {
-		const file = await createBacklogItem(view.app, settings, {
-			folder: spec.folder,
-			title: spec.title,
-			typeName: spec.typeName,
-			parent: row.item.file,
-			order: placed.order,
-			release: release.item.file,
-		});
-		new Notice(t('create.created', { name: file.basename }));
-	} catch (e) {
-		console.error('Product Backlog: failed to create item', e);
-		new Notice(t('create.failed'));
-		return;
-	}
-	const parentPath = row.item.file.path;
-	if (releaseFoldedPaths(view, release.path).has(parentPath)) toggleReleaseFold(view, release.path, parentPath);
+	// **The rank and the write are ONE exclusive section**, not two — `runFileWrite`'s own
+	// rule, which this screen's creation was outside of until 2026-09-02, the last ranked
+	// creation path that was. Locking the write alone leaves the half that actually
+	// misplaces the note: the rank below is read off `view.model`, which the gate holds
+	// stale for as long as the batch it is deferring runs, so a rank taken beside a running
+	// Seed or Respace is computed against numbers already replaced. The gate refuses
+	// (loudly) when a batch is in flight, so a refused creation still speaks.
+	await view.gate.runFileWrite(async () => {
+		// `rankablePeers` (`domain/dropTargets.ts`, own comment): a trailing unranked context
+		// row among the parent's real children is not a peer to append past.
+		const peers = rankablePeers(parent.children);
+		const placed = dropPlacement(null, { parent, peers, insertIndex: peers.length }, model.ranked);
+		if ('refusal' in placed) {
+			new Notice(t(refusalKey(placed.refusal)));
+			return;
+		}
+		// Caught INSIDE the section, like the release notes writer: `runExclusively` would
+		// otherwise report this as the generic apply failure and lose the creation's own
+		// sentence.
+		try {
+			const file = await createBacklogItem(view.app, settings, {
+				folder: spec.folder,
+				title: spec.title,
+				typeName: spec.typeName,
+				parent: row.item.file,
+				order: placed.order,
+				release: release.item.file,
+			});
+			new Notice(t('create.created', { name: file.basename }));
+		} catch (e) {
+			console.error('Product Backlog: failed to create item', e);
+			new Notice(t('create.failed'));
+			return;
+		}
+		// Inside the section too, and last: it must run only where the create SUCCEEDED,
+		// which is a fact the callback holds and `runFileWrite`'s `T | null` cannot carry
+		// out — a returned flag would be a second signal for what the early returns above
+		// already say. It writes nothing; it flips this screen's own fold state and redraws,
+		// and the redraw reads the lock for its disabled controls, which every gate
+		// re-publishes when the section ends.
+		const parentPath = row.item.file.path;
+		if (releaseFoldedPaths(view, release.path).has(parentPath)) toggleReleaseFold(view, release.path, parentPath);
+	});
 }
 
