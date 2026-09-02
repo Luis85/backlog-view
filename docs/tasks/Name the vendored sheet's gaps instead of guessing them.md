@@ -141,8 +141,13 @@ afterwards. The comment here now names its instrument and says the list is dated
 than maintained, which is the only version of this sentence that cannot go wrong again in
 the same way.
 
-(`test/verification/scriptBoundary.test.ts` made it five per-test timeouts on the same
-day — see [[The scripts boundary was already typed and nothing was checking it]].)
+(`test/verification/scriptBoundary.test.ts` added a **second** file-wide one on the same
+day — see [[The scripts boundary was already typed and nothing was checking it]]. It was
+briefly a fifth per-test timeout instead, and CI is what corrected that: its census case
+was left on the 5s default and went over on both legs, which is this file's own episode
+repeated by the person who had just written it up. The case was made ~6x cheaper first
+and only then given a budget, and the budget went file-wide because a timeout repeated
+per case is one a third case forgets.)
 
 ## What was refused
 

@@ -166,3 +166,26 @@ buys the same nothing `checkJs` would, at the same cost per function.
 The three ways past the check, above. None is reachable from `test/` today; the check
 names each in its own header so a future `import * as` is a known hole rather than a
 silent one.
+
+## And CI found the budget, the same way it did one file over (PR #256, round 2)
+
+The probe case was given 20s and the census case was left on vitest's 5s default. Green
+locally at ~0.8s, **red on both CI legs**: `Test timed out in 5000ms`, with 304 files
+sharing one runner and the whole run taking 285s there against 166s here.
+
+That is `test/harness/vendoredCoverage.test.ts`'s own episode, repeated in the branch that
+had just written it up — and the correction to its comment was on screen while this test
+was being written. Worth recording as evidence rather than as a fix: knowing a hazard by
+name did not stop it, because the budget was set on the case that LOOKED expensive (a
+`ts.Program`) rather than measured on both.
+
+**Made cheaper before it was raised.** The census parsed all 342 files under `test/`;
+the specifier it matches ends `scripts/<name>.mjs`, so a file whose text lacks that
+substring cannot hold one — a necessary condition, not a heuristic. Filtering on it parses
+17 files instead of 342: **~800ms → ~130ms**, read with `performance.now()` because the
+suite's `Date` freeze reports every phase as 0ms.
+
+The budget then went **file-wide**, one `vi.setConfig({ testTimeout: 20_000 })` in
+`test/helpers/register.ts`'s spelling and for its stated reason: it is a fact about what
+the file does, and a timeout repeated per case is one a third case forgets. So the
+per-test count in the repository stays at four and the file-wide count goes to two.

@@ -133,12 +133,13 @@ describe('the vendored app.css reaches what the harness draws', () => {
 		expect([drawn.has('.modal-title'), drawn.has('.mod-cta')]).toEqual([true, true]);
 		// **Not the only test in this suite carrying a timeout**, which is what this said
 		// until 2026-09-02 — on a `grep '}, [0-9]\{4,\});'` blind to the `_` separator
-		// that hid three of the four then present. Five as this is written
+		// that hid three of the four then present. Four as this is written
 		// (`test/view/renderCost.test.ts` and `test/view/contextRowWrites.test.ts` at 20s,
-		// `test/docs/markdown.test.ts` at 120s, `test/verification/scriptBoundary.test.ts`
-		// at 20s, this at 30s), plus `test/helpers/register.ts`'s file-wide
-		// `vi.setConfig({ testTimeout: 20_000 })` over the seven files importing it — and
-		// that list is dated, not maintained. The instrument, if it is asked again: a
+		// `test/docs/markdown.test.ts` at 120s, this at 30s), beside two FILE-WIDE
+		// `vi.setConfig({ testTimeout: 20_000 })` calls — `test/helpers/register.ts`'s, over
+		// the seven files importing it, and `test/verification/scriptBoundary.test.ts`'s
+		// own — and that list is dated, not maintained. The instrument, if it is asked
+		// again: a
 		// TypeScript AST walk for a numeric literal or a `{ timeout }` object argument to
 		// `it`/`test`/`describe`, which is blind in turn to a timeout passed as a named
 		// constant. What matters here is not the count but that a budget of one's own is

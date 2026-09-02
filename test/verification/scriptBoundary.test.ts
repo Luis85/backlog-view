@@ -2,7 +2,22 @@ import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, relative, resolve } from 'node:path';
 import ts from 'typescript';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
+
+/**
+ * A real budget for both cases here, because both drive a COMPILER: one parses the test
+ * tree, the other builds a `ts.Program`. Together they cost ~1.1s on this machine, read
+ * with `performance.now()` (the suite freezes `Date`, so the obvious clock reports 0ms) —
+ * and the census alone went over vitest's 5s default on BOTH CI legs while passing
+ * locally, because 304 files share a runner there. Set file-wide rather than per case,
+ * the way `test/helpers/register.ts` does and for the same reason: it is a fact about what
+ * this file DOES, and a timeout repeated per case is one a third case forgets.
+ *
+ * The budget is the second answer, not the first. The census was made ~6x cheaper before
+ * it was raised — see `boundaries()` — and 20s is the same slack `register.ts` takes for
+ * a subprocess, not licence for a slow check.
+ */
+vi.setConfig({ testTimeout: 20_000 });
 
 /**
  * **`scripts/*.mjs` are JavaScript, so `npm run typecheck:test` reads their parameters as
@@ -49,7 +64,7 @@ interface Boundary {
 
 /**
  * Every named import a test file takes from `scripts/*.mjs`, paired with the exported
- * function it names and how many of that function's parameters carry a typed `@param`.
+ * function it names and with the parameters of that function carrying no typed `@param`.
  *
  * `ts.getJSDocTags` rather than reading `node.jsDoc`, and that is not a style pick: a
  * comment above `export const prose = (text) => …` attaches to the VariableStatement, two
@@ -70,7 +85,14 @@ const boundaries = (): Boundary[] => {
 	const imported = new Map<string, Set<string>>();
 	const files = ts.sys.readDirectory(join(REPO, 'test'), ['.ts']);
 	for (const file of files) {
-		const src = ts.createSourceFile(file, readFileSync(file, 'utf8'), ts.ScriptTarget.Latest, true);
+		const text = readFileSync(file, 'utf8');
+		// A NECESSARY condition, not a heuristic: the specifier this walk matches ends
+		// `scripts/<name>.mjs`, so a file whose text lacks that substring cannot hold one.
+		// Parsing all 342 files costs ~800ms and parsing the 17 that can costs ~130ms,
+		// which is the difference between this case fitting vitest's default budget and
+		// timing out on a shared CI runner — it did, on both legs, before the filter.
+		if (!text.includes('scripts/')) continue;
+		const src = ts.createSourceFile(file, text, ts.ScriptTarget.Latest, true);
 		const walk = (node: ts.Node): void => {
 			if (ts.isImportDeclaration(node) && ts.isStringLiteral(node.moduleSpecifier)) {
 				const script = /scripts\/([a-z-]+\.mjs)$/.exec(node.moduleSpecifier.text)?.[1];
@@ -190,5 +212,5 @@ describe('the scripts/ boundary a test calls across', () => {
 		} finally {
 			rmSync(dir, { recursive: true, force: true });
 		}
-	}, 20_000);
+	});
 });
