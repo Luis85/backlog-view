@@ -8,6 +8,13 @@ That boundary is enforced, not described: `no-restricted-syntax` bans
 directory, so a new write path cannot appear by accident and the write-safety invariants
 can be checked by reading one directory.
 
+**"Everywhere outside" is itself checked now** (2026-09-02). Those three selectors are
+spread by hand into each of `eslint.config.mjs`'s regions, and a region added without them
+would drop the ban without a word — so `test/verification/banRegions.test.ts` asks ESLint,
+per file in `src/`, what it would actually apply, and permits the absence only under this
+directory. What it does not answer is whether the three selectors catch every spelling of
+a write; that is the same narrowing every ban here carries.
+
 ## Writing the vault
 
 - Never write frontmatter outside `frontmatter.ts` (`applyWrites` / `applyRestores`), this

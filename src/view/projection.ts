@@ -13,12 +13,14 @@ import { ALL_TYPES } from '../domain/typeVocabulary';
  * it: no column fitting, no refit on resize, the fit classes cleared as though this were
  * a card projection, two dead toolbar buttons, and a row menu with no Move
  * up/down/top/bottom and no indent or outdent — on a tree whose whole point is an order
- * somebody chose. Nothing enforces that mechanically: there is no `no-restricted-syntax`
- * rule forbidding a bare `projection === 'tree'` outside this file, and the comparison
- * already appears directly across the view — the files are counted and named in
- * `docs/issues/The projection predicate has no lint rule behind it.md`, once, because a
- * count restated here is one an edit elsewhere falsifies. The predicate
- * holds only where a caller asks it rather than comparing the value itself.
+ * somebody chose. `PROJECTION_TREE` in `eslint.config.mjs` bans that one spelling — a bare
+ * `projection === 'tree'` anywhere in `src/` but this file — and bans nothing else: every
+ * other comparison the view makes names ONE projection's own behaviour, which is dispatch
+ * rather than drift. Which is which was sorted with an AST sweep in
+ * `docs/issues/The projection predicate has no lint rule behind it.md`, and the count
+ * lives there rather than here, because a count restated here is one an edit elsewhere
+ * falsifies. The ban does not see a `switch (projection)` or a value renamed into a local
+ * first, so the predicate still holds only where a caller asks it.
  *
  * It is its own module rather than a pair of functions on `host.ts`, which stays free of
  * runtime code so imports cannot cycle.

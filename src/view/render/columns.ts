@@ -237,7 +237,7 @@ function columnFit(host: BacklogViewHost, columns: readonly Column[], depth: num
  * It measures `ctx.host.columns` and never `ctx.columns`: the second is the slice the
  * last verdict produced, and measuring it would ratchet the count down for good.
  */
-export function syncColumnFit(ctx: RowContext, viewEl: HTMLElement, treeEl: HTMLElement): boolean {
+export function syncColumnFit(ctx: RowContext, treeEl: HTMLElement): boolean {
 	const width = treeEl.clientWidth;
 	// Zero while detached or before the first layout: keep the last decision.
 	if (width === 0) return false;
@@ -246,13 +246,15 @@ export function syncColumnFit(ctx: RowContext, viewEl: HTMLElement, treeEl: HTML
 	const fit = columnFit(ctx.host, ctx.host.columns, renderedDepth(ctx), width);
 	// Against what this pass actually DREW rather than against the stored number, so a
 	// render that drew a different count than the verdict claims still asks for the pass
-	// that reconciles them.
-	const changed = fit.shown !== ctx.columns.length || fit.rollupDropped !== viewEl.hasClass('pbl-hide-meta');
-	// The whole verdict, stored as one value: the rows slice by `shown` and the header
-	// asks about `rollupDropped`, and two members written separately are two things that
-	// can end up describing different frames.
+	// that reconciles them. `ctx.columns` is the drawn slice; for the rollup the drawn
+	// state IS the stored verdict, read here BEFORE it is overwritten, because
+	// `renderRollup` and `renderColumnHeader` both draw from that same value — which is
+	// what taking the class away bought. Absent verdict draws, so `?? false`.
+	const changed = fit.shown !== ctx.columns.length || fit.rollupDropped !== (ctx.host.columnFit?.rollupDropped ?? false);
+	// The whole verdict, stored as one value: the rows slice by `shown` and the rollup —
+	// rows and header alike — asks about `rollupDropped`, and two members written
+	// separately are two things that can end up describing different frames.
 	ctx.host.setColumnFit(fit);
-	viewEl.toggleClass('pbl-hide-meta', fit.rollupDropped);
 	return changed;
 }
 
@@ -855,10 +857,23 @@ export function rollupChars(host: BacklogViewHost, items: readonly BacklogItem[]
 	return widest;
 }
 
-/** Progress rollup or descendant count, in a column of its own so both align. */
+/**
+ * Progress rollup or descendant count, in a column of its own so both align.
+ *
+ * Two gates, and they answer different questions. `rollupReport` asks whether this VIEW
+ * has a rollup at all — a workflow or counts configured, on a projection that carries one.
+ * `columnFit.rollupDropped` asks whether this PANE can hold the one it has. The second was
+ * a `pbl-hide-meta` class on the view element until 2026-09-02, so the rows drew from the
+ * configuration and the header from the verdict — one concept behind two mechanisms, which
+ * is the shape a later change gets wrong. Both read the one stored verdict now.
+ *
+ * A card projection is unaffected and needs nothing added: `renderPass` calls
+ * `setColumnFit(null)` before any non-tree content renders, so `rollupDropped` reads
+ * `undefined` on a frame that never measured a column ladder and the card draws.
+ */
 export function renderRollup(host: BacklogViewHost, row: HTMLElement, item: BacklogItem): void {
 	const report = rollupReport(host, item);
-	if (!report) return;
+	if (!report || host.columnFit?.rollupDropped) return;
 	const col = row.createDiv({ cls: 'pbl-meta-col' });
 	if (!report.label) return;
 

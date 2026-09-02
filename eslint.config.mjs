@@ -56,7 +56,7 @@ const pluginRules = obsidianmd.configs.recommended.map((c) => ({ ...c, ignores: 
  * line. Collapsed back on 2026-08-25; split it again when a second consumer actually exists,
  * and never spread the split over an index into this array, which a later edit can reorder.
  */
-const WRITE_BOUNDARY = [
+export const WRITE_BOUNDARY = [
 	{
 		selector: "MemberExpression[property.name='processFrontMatter']",
 		message:
@@ -69,6 +69,49 @@ const WRITE_BOUNDARY = [
 	{
 		selector: "MemberExpression[property.name=/^(save|load)LocalStorage$/]",
 		message: 'Persisted view state goes through src/storage/viewStateStore.ts.',
+	},
+];
+
+/**
+ * "Is this projection tree-shaped" is `treeShaped()` in `src/view/projection.ts`, and that
+ * predicate is `'tree' || 'catalog'` — so a bare comparison against `'tree'` alone is
+ * exactly the shape that silently excludes the catalog from a gate it belongs in: no
+ * column fitting, no refit on resize, the fit classes cleared as though it were a card
+ * projection, a row menu with no Move up/down. That is the drift the module exists to
+ * stop, and until 2026-09-02 two guides claimed this rule already existed.
+ *
+ * **`'tree'` only, and that is a classification rather than a shortcut.** The other
+ * comparisons an AST sweep finds — `=== 'board'`, `=== 'roadmap'`, `=== 'deliverables'`,
+ * `=== 'iteration'`, and the two `=== 'catalog'` in `render/emptyStates.ts` and
+ * `render/projections.ts` — are dispatch on ONE projection's own behaviour, which is the
+ * question no predicate on that module answers and which a ban could only permit through
+ * an exemption list that goes stale. They are sorted, named and left alone in
+ * `docs/issues/The projection predicate has no lint rule behind it.md`. There was nothing
+ * to grandfather: the same rule reported zero violations across `src/` before it was
+ * turned on.
+ *
+ * What it SEES is an equality comparison with `projection`, `<x>.projection` or
+ * `<x>?.projection` on one side and the literal `'tree'` on the other. The optional-chain
+ * spelling needed its own term and did not have one for a day: typescript-eslint wraps an
+ * optional member access in a `ChainExpression`, so `left.property.name` reads nothing
+ * through it and `host?.projection === 'tree'` linted clean (Codex, PR #252) — verified by
+ * planting it, watching lint pass, and watching it fail once the term was added. It does not see `switch (projection)` with a
+ * `case 'tree'`, nor a projection first copied into a differently named local. The claim
+ * is therefore "no bare `projection === 'tree'`", not "nothing compares to `'tree'`", and
+ * `src/view/CLAUDE.md` states it that narrowly.
+ */
+export const PROJECTION_TREE = [
+	{
+		selector:
+			"BinaryExpression[operator=/^[!=]==$/]:matches([left.name='projection'], [left.property.name='projection'], [left.expression.property.name='projection'])[right.value='tree']",
+		message:
+			"A bare projection === 'tree' misses the catalog, which is tree-shaped too. Ask src/view/projection.ts — treeShaped(), hidesCompleted(), hasRollup(), projectionPopulation() and the rest.",
+	},
+	{
+		selector:
+			"BinaryExpression[operator=/^[!=]==$/][left.value='tree']:matches([right.name='projection'], [right.property.name='projection'], [right.expression.property.name='projection'])",
+		message:
+			"A bare 'tree' === projection misses the catalog, which is tree-shaped too. Ask src/view/projection.ts — treeShaped(), hidesCompleted(), hasRollup(), projectionPopulation() and the rest.",
 	},
 ];
 
@@ -382,6 +425,20 @@ const ROW_LISTENER = {
  * every selector that applies to it. Adding a region means removing its files from the
  * one it came out of; adding a selector means asking which regions want it. The
  * `syntaxRules` wrapper exists so that is the only decision, and the shape is uniform.
+ *
+ * **Two of those selectors are checked rather than trusted.** `WRITE_BOUNDARY` and
+ * `PROJECTION_TREE` hold across `src/` rather than belonging to one region, and both are
+ * spread in BY HAND — so a block added without them loses them in silence, which is what
+ * happened to `src/storage/` (PR #252). `test/verification/banRegions.test.ts` asks
+ * ESLint itself, per file, what it would actually apply, and fails on a file that carries
+ * neither ban and no exemption. It sees a region that forgot a spread, a later block that
+ * replaced an earlier one's list, and a carve-out given no block at all — the three shapes
+ * a reading of this file cannot. It sees nothing about the OTHER selectors here, which
+ * are per-region by design and have no rule to check them against.
+ *
+ * Both are `export const` for that test alone, so it compares against the selectors this
+ * file actually spreads rather than against a copy. ESLint reads the default export; a
+ * named one changes nothing about how this file is loaded.
  */
 const STORAGE = 'src/storage/**/*.ts';
 // Everything outside view/ that renders text and has been SWEPT, so the text bans land on
@@ -789,7 +846,7 @@ export default defineConfig([
 		// storage/, ui/, commands/, main.ts.
 		files: ['src/**/*.ts'],
 		ignores: [STORAGE, VIEW, ...RANKING_DOMAIN, ...SWEPT],
-		rules: syntaxRules([...WRITE_BOUNDARY, ...SVG_CLASS_TOKENS, MENU_ANCHOR, OVERBY, TREE_SCAN, DROP_TARGET_RESTATEMENT]),
+		rules: syntaxRules([...WRITE_BOUNDARY, ...PROJECTION_TREE, ...SVG_CLASS_TOKENS, MENU_ANCHOR, OVERBY, TREE_SCAN, DROP_TARGET_RESTATEMENT]),
 	},
 	{
 		// ui/ and commands/, carved out of the general region for the two text bans alone:
@@ -813,6 +870,7 @@ export default defineConfig([
 		files: SWEPT,
 		rules: syntaxRules([
 			...WRITE_BOUNDARY,
+			...PROJECTION_TREE,
 			...SVG_CLASS_TOKENS,
 			MENU_ANCHOR,
 			OVERBY,
@@ -841,7 +899,22 @@ export default defineConfig([
 		// title written INTO the `.base`, and it survives because it is at no setter and no
 		// banned property.
 		files: [STORAGE],
-		rules: syntaxRules([...SVG_CLASS_TOKENS, MENU_ANCHOR, OVERBY, TREE_SCAN, ...TEXT_TERNARY, UI_TEXT_LITERAL, UI_TEXT_PROPERTY]),
+		// `PROJECTION_TREE` joins the list here even though this directory carries no
+		// WRITE_BOUNDARY — it IS the write boundary — because the projection ban is about
+		// reach rather than about layer: it holds across `src/` with `view/projection.ts`
+		// as its ONE exemption, and a directory that quietly fell outside it is exactly the
+		// hole this register keeps finding. Verified by planting the comparison here and
+		// watching lint go from silent to red (2026-09-02).
+		rules: syntaxRules([
+			...SVG_CLASS_TOKENS,
+			...PROJECTION_TREE,
+			MENU_ANCHOR,
+			OVERBY,
+			TREE_SCAN,
+			...TEXT_TERNARY,
+			UI_TEXT_LITERAL,
+			UI_TEXT_PROPERTY,
+		]),
 	},
 	{
 		// The menu helper is where the anchoring decision is made, so it is the one place
@@ -855,6 +928,7 @@ export default defineConfig([
 		rules: syntaxRules([
 			...SVG_CLASS_TOKENS,
 			...WRITE_BOUNDARY,
+			...PROJECTION_TREE,
 			OVERBY,
 			TREE_SCAN,
 			DELIVERABLE_FIELD_READ,
@@ -872,7 +946,7 @@ export default defineConfig([
 		// at. It plans writes, which is exactly what overBy must stay out of. No
 		// ALL_TYPES_IMPORT: this file is domain/, not view/.
 		files: RANKING_DOMAIN,
-		rules: syntaxRules([...WRITE_BOUNDARY, ...SVG_CLASS_TOKENS, MENU_ANCHOR, RENDERED_ROOTS, VISUAL_DEPTH, OVERBY, TREE_SCAN]),
+		rules: syntaxRules([...WRITE_BOUNDARY, ...PROJECTION_TREE, ...SVG_CLASS_TOKENS, MENU_ANCHOR, RENDERED_ROOTS, VISUAL_DEPTH, OVERBY, TREE_SCAN]),
 	},
 	{
 		// Ranking code, view half: the same rules as the domain half, plus
@@ -884,6 +958,7 @@ export default defineConfig([
 		rules: syntaxRules([
 			...SVG_CLASS_TOKENS,
 			...WRITE_BOUNDARY,
+			...PROJECTION_TREE,
 			MENU_ANCHOR,
 			...RESOURCE_LABEL_BYPASS,
 			RENDERED_ROOTS,
@@ -924,6 +999,7 @@ export default defineConfig([
 		rules: syntaxRules([
 			...SVG_CLASS_TOKENS,
 			...WRITE_BOUNDARY,
+			...PROJECTION_TREE,
 			MENU_ANCHOR,
 			...RESOURCE_LABEL_BYPASS,
 			TREE_SCAN,
@@ -944,6 +1020,7 @@ export default defineConfig([
 		rules: syntaxRules([
 			...SVG_CLASS_TOKENS,
 			...WRITE_BOUNDARY,
+			...PROJECTION_TREE,
 			MENU_ANCHOR,
 			...RESOURCE_LABEL_BYPASS,
 			TREE_SCAN,
@@ -966,6 +1043,7 @@ export default defineConfig([
 		rules: syntaxRules([
 			...SVG_CLASS_TOKENS,
 			...WRITE_BOUNDARY,
+			...PROJECTION_TREE,
 			MENU_ANCHOR,
 			...RESOURCE_LABEL_BYPASS,
 			TREE_SCAN,
@@ -997,6 +1075,7 @@ export default defineConfig([
 		rules: syntaxRules([
 			...SVG_CLASS_TOKENS,
 			...WRITE_BOUNDARY,
+			...PROJECTION_TREE,
 			MENU_ANCHOR,
 			...RESOURCE_LABEL_BYPASS,
 			TREE_SCAN,
@@ -1029,6 +1108,7 @@ export default defineConfig([
 		rules: syntaxRules([
 			...SVG_CLASS_TOKENS,
 			...WRITE_BOUNDARY,
+			...PROJECTION_TREE,
 			MENU_ANCHOR,
 			...RESOURCE_LABEL_BYPASS,
 			OVERBY,
@@ -1049,6 +1129,7 @@ export default defineConfig([
 		rules: syntaxRules([
 			...SVG_CLASS_TOKENS,
 			...WRITE_BOUNDARY,
+			...PROJECTION_TREE,
 			MENU_ANCHOR,
 			...RESOURCE_LABEL_BYPASS,
 			OVERBY,
@@ -1082,6 +1163,7 @@ export default defineConfig([
 		rules: syntaxRules([
 			...SVG_CLASS_TOKENS,
 			...WRITE_BOUNDARY,
+			...PROJECTION_TREE,
 			MENU_ANCHOR,
 			...RESOURCE_LABEL_BYPASS,
 			OVERBY,
@@ -1139,6 +1221,7 @@ export default defineConfig([
 		rules: syntaxRules([
 			...SVG_CLASS_TOKENS,
 			...WRITE_BOUNDARY,
+			...PROJECTION_TREE,
 			MENU_ANCHOR,
 			...RESOURCE_LABEL_BYPASS,
 			OVERBY,
@@ -1159,6 +1242,7 @@ export default defineConfig([
 		rules: syntaxRules([
 			...SVG_CLASS_TOKENS,
 			...WRITE_BOUNDARY,
+			...PROJECTION_TREE,
 			MENU_ANCHOR,
 			...RESOURCE_LABEL_BYPASS,
 			OVERBY,
@@ -1181,6 +1265,7 @@ export default defineConfig([
 		rules: syntaxRules([
 			...SVG_CLASS_TOKENS,
 			...WRITE_BOUNDARY,
+			...PROJECTION_TREE,
 			MENU_ANCHOR,
 			...RESOURCE_LABEL_BYPASS,
 			OVERBY,
