@@ -179,9 +179,13 @@ menu too — focusing *Bug* gives you a list of every bug, which is the same kin
 Focusing the level an extra type ranks with (*PBI*, by default) shows both together. While
 focused, that button shows the type, accented, with a `✕` beside it that returns to
 everything in one click (so does picking *All types*). Items keep their real parents —
-re-parenting by dropping *into* a row still works — but the top row of a focused view has
-no shared ranking, so reordering, indent/outdent and the top-level drop strip are disabled
-there.
+re-parenting by dropping *into* a row still works — and the top rows of a focused view can
+be put in the order you want: drag one above or below another, or use **Move up / down / to
+top / to bottom** from its menu. That writes the row's rank and leaves its parent alone, so
+a PBI you move to the top of the PBI backlog stays under the feature it belongs to. What is
+missing there is everything that would change parentage instead: **Indent** and **Outdent**
+are unavailable on those rows, and dropping just above or below one re-ranks the row rather
+than making it top-level.
 
 ### Folder-based backlogs
 
@@ -573,7 +577,12 @@ discards any order you set by hand at a focus level.
 Inside a sibling group, items without an `order` sort after ranked ones. A focused list is
 all-or-nothing instead: one row with no rank of its own leaves the whole list in tree order,
 because a global rank orders nothing until every row has one. The toolbar's ✨ button fills
-in the blanks, keeping each row where it is drawn.
+in the blanks, giving each row a number that matches where it is drawn. Filling the last
+blank in a focused list is the one time that can still move things: the list was drawn in
+tree order only because a rank was missing, and once none is it sorts on the ranks — so any
+two rows whose existing numbers already disagreed with the tree swap over. The rows ✨ wrote
+stay put; it is the ones it left alone that move. Nothing that only fills blanks can avoid
+this — **Seed ranks from the hierarchy** rewrites every number and can.
 
 ## The board
 

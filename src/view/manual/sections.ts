@@ -76,7 +76,14 @@ const MOVING: ManualSection = {
 				'row this projection pulled up to the top because its real parent belongs to the ' +
 				'other one — a test whose work item is on the plan. The ' +
 				'same rule governs Move up, Move down, Move to top, Move to bottom and Outdent from ' +
-				'the menu or Alt+arrow. Dropping into a parent stays available in every one of those ' +
+				'the menu or Alt+arrow. A focus level lifts the first of those two, and only where the ' +
+				'excluded parent carries an order of its own: focus rows are ranked against each other ' +
+				'rather than inside a sibling group, so a row with a number on it is a real position to ' +
+				'land beside, and the drag, Alt+arrow and the move menu all take it as one. An excluded ' +
+				'parent with no order is skipped rather than refused — there is nothing to rank ' +
+				'against, so it is neither a row to land beside nor a row to be moved past. Outdent is ' +
+				'refused on a focus row whatever its rank, since it asks about parentage and not about ' +
+				'order. Dropping into a parent stays available in every one of those ' +
 				'cases, since landing last is what it means anyway — and so does Indent, except on a ' +
 				'focus row: dropping between two of those ranks them against each other, which is ' +
 				'what a focus level is for, while nesting one under another is a question about ' +
