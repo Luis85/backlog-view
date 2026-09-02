@@ -53,9 +53,11 @@ ITEM's own two date keys from a value read through it.
 1. The user picks a release for the item.
 2. The plan carries the **link** — a wikilink to that note, spelled from the editing note's
    own path — exactly as it does today.
-3. It carries **due**, the release's own date, when the item has no readable due of its own.
-4. It carries **start**, today, when the item has no readable start of its own and today is
-   not later than the due the item will end up with.
+3. It carries **both candidates** — the release's own date, and today — unfiltered. The plan
+   states what each end WOULD take, never whether it will be taken; see 6c for why filtering
+   here cannot be made correct.
+4. The write lands each candidate only where the note, as it stands, has no readable value at
+   that end and taking it would not reverse the span against the end that does stand.
 5. `applySafely` applies the one batch, and one undo takes the whole commitment back
    ([[Undo and redo]]).
 6. The item now draws on the dated axis ([[Bars from two dates]]).
@@ -160,6 +162,17 @@ ITEM's own two date keys from a value read through it.
   typed: `applyAxis` reads the live value only to skip an equal civil date, and overwrites
   anything else.
 
+  **This holds for a plan that is not empty, and that is the whole of its reach.** Where the
+  captured row already names the picked release and another view moves the item elsewhere
+  before the click, `computeReleaseWrites` returns `[]` from the stale membership: no
+  `processFrontMatter` callback runs, so there is no live check to reach and neither the link
+  nor the dates are restored. That is the opposite direction from 2a's race and it is **not**
+  fixed here — it is [[A pick compared against the model reads as a no-op]], which already
+  names this planner's own comparison among the three it lists, and which the register has
+  already ruled is its own increment. Narrowed on 2026-09-02 after this extension claimed
+  every rule survives any intervening change (Codex, PR #242): a plan that never runs cannot
+  keep one.
+
   This is the register's own rule — *write the guarantee to the check, never ahead of it* —
   and the codebase already keeps it one function over: the stub loop in `applyInto` asks
   `rawValueOf(fm, key).present` at the live note, with the reason stated there in the same
@@ -185,9 +198,8 @@ ITEM's own two date keys from a value read through it.
 - The due written is the release note's own date, read through the backlog view's
   `releaseDateProperty`; a release with no readable date writes and deletes nothing at that
   end.
-- The start is today, and is absent from the plan whenever today is later than the due the
-  item ends up with — checked against **both** sources of that due: the item's own kept date,
-  and the release's.
+- The start written is today, and the due written is the release's own date — asserted of the
+  values the plan carries, which is the whole of what the planner decides.
 - With no due standing at all, the start is still written.
 - Picking the release the item is already in plans **nothing**, so the menu's checkmark keeps
   asking the whole plan and no date is written on a re-pick.
