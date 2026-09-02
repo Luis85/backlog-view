@@ -1,6 +1,6 @@
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { join, resolve } from 'node:path';
+import { join, relative, resolve } from 'node:path';
 import ts from 'typescript';
 import { describe, expect, it } from 'vitest';
 
@@ -148,11 +148,15 @@ describe('the scripts/ boundary a test calls across', () => {
 		);
 		const dir = mkdtempSync(join(tmpdir(), 'pbl-boundary-'));
 		const probe = join(dir, 'probe.ts');
+		// A RELATIVE specifier, forward-slashed: an absolute one would be a rooted path on
+		// one platform and a drive-lettered one on the other, and only the relative form is
+		// classified the same way by the resolver on both. CI gates Windows.
+		const specifier = relative(dir, join(REPO, 'scripts', 'docs-markdown.mjs')).replaceAll('\\', '/');
 		try {
 			writeFileSync(
 				probe,
 				[
-					`import { headings } from '${join(REPO, 'scripts', 'docs-markdown.mjs').replaceAll('\\', '/')}';`,
+					`import { headings } from '${specifier}';`,
 					`headings(42, 2);`,
 					`headings('ok', 'two');`,
 					`headings();`,
