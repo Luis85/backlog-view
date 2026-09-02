@@ -303,8 +303,10 @@ the list keeps it selectable in its own menu.
 The toolbar's eye button (or the **Show completed items** view option) hides finished
 work: an item disappears once it *and its entire subtree* are done — a done parent with
 open children stays visible, so unfinished work can never hide. Progress bars keep
-counting hidden items, and moving or dropping rows around hidden siblings stays safe
-because ranking always runs over the real sibling lists.
+counting hidden items, and moving or dropping rows around hidden ones stays safe because
+a hidden row keeps its number: the arithmetic runs over every row the base loaded, hidden
+and dimmed rows included, so a placement can neither take a number one of them holds nor
+slip past it unnoticed.
 
 While dragging, hovering the middle of a collapsed row expands it after a moment (the
 chevron lights up while the timer runs) so you can drop deeper into the tree. Dropping an
@@ -471,8 +473,8 @@ each PBI still appears under its real Feature and Epic.
 
 Context rows are italic and dimmed, with a `↳` marker. They are **not results**, so:
 
-- they can't be dragged, moved, indented or outdented — the Base never returned their
-  real siblings, so there is no sibling order to rank them within;
+- they can't be dragged, moved, indented or outdented — the Base never returned the rows
+  they really sit among, so where a move put one would be a guess;
 - **nothing ever writes into them.** Their state chip is display-only, and the context
   menu drops **Set type**, **Set state** and the parent-link commands — a note the filter
   excluded is not yours to edit from a view that doesn't contain it. The rows *around* one
@@ -505,13 +507,13 @@ Context rows are italic and dimmed, with a `↳` marker. They are **not results*
   (Children the filter excluded are still not counted — a rollup describes the visible
   subtree, not the whole backlog.)
 
-The last point generalizes into the one real caveat of working in a filtered base: **any
-parent whose children are partly filtered out has a partial sibling list**, whether it is
-a context row or a match. The rank a move computes is a number free among the notes *this
-base returned*, so a note the filter excludes entirely can be holding it already. Nothing
-breaks while that note stays filtered out — and if it comes back, the two equal orders fall
-back to the Base's own sort until **Respace ranks** (command palette) spreads them apart
-again. If you care about exact ranking, do the reordering in an unfiltered base.
+The last point generalizes into the one real caveat of working in a filtered base: **the
+view only knows the numbers of the notes the base returned**. The rank a move computes is
+free among those, so any note the filter leaves out — anywhere in the vault, not only a
+sibling of the row you moved — can be holding it already. Nothing breaks while that note
+stays filtered out — and if it comes back, the two equal orders fall back to the Base's own
+sort until **Respace ranks** (command palette) spreads them apart again. If you care about
+exact ranking, do the reordering in an unfiltered base.
 
 Turn **Show parents outside the filter** off to go back to a flat list of matches, where
 items whose parent is missing show the unlink icon.
@@ -941,7 +943,7 @@ carry their own options, listed in their sections above.
 
 Notes:
 
-- The `order` property always wins for ranked siblings. Items **without** an `order`
+- The `order` property always wins for ranked items. Items **without** an `order`
   sort last — in the order the Base's **sort** setting produces, so sorting by e.g.
   priority or modified date arranges your unranked items until you rank them.
 - **Ignore notes outside the hierarchy** decides what counts as a backlog item. A note
