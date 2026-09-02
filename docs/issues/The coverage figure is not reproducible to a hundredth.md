@@ -3,7 +3,7 @@ type: Issue
 parent: "[[Coverage as a property]]"
 order: 10
 status: Open
-priority: P2
+priority: P3
 area: verification
 created: 2026-08-14
 source: Two runs of `npm run check` on an unchanged tree, 2026-08-14, measuring different coverage
@@ -72,6 +72,11 @@ counters in the view-state path, and every cold unit in those same files was exa
 async race would show as a COLD unit changing, which is the one thing that did not happen.
 Left standing rather than ruled out: three runs cannot rule a candidate out any more than
 they could rule one in, which is this note's own first sentence about samples.
+
+**Twelve runs say the same thing more loudly** (2026-09-02, below): still no cold unit
+moving, and now a measured floor of 13 hits under everything that does move. An async race
+in a view test would land on a branch reached a handful of times, which is the band with
+2,792 units in it and zero drift.
 
 ## The recipe run — 2026-09-02, and what it found
 
@@ -150,6 +155,114 @@ tool holds. It does not rule the open candidate above in or out — a corrupted 
 two overlapping runs and a single-run async race are compatible failure modes at different
 scales, and this note's own standing advice going forward is to run the gate in the
 foreground, alone.
+
+## Twelve runs, two operating systems, and the band the drift lives in — 2026-09-02
+
+The 2026-09-02 recipe run above used three runs and said so about its own limits. This is
+the same recipe at **twelve**, on a frozen copy of merged `main` at `db137c16`
+(`git archive HEAD` into a scratch directory with `node_modules` symlinked, so the
+checkout could not move while the sampling ran — this note's own standing advice about
+running alone, made structural).
+
+**All four figures identical to the unit on all twelve runs**: 10950/11047 statements,
+6854/7153 branches, 2838/2840 functions, 9095/9112 lines. Per unit, at the level the
+percentage is computed from: **zero covered/uncovered flips across 21,040 units in 176
+files.**
+
+### And CI supplied the cross-environment half, unasked
+
+The note's fourth sample argued the split was "environment-shaped, not run-to-run". That is
+now testable from the logs, and it does not hold on this tree. Read out of the `verify`
+job logs for four consecutive `main` commits — `b2907c35`, `d5ecbaac`, `6a2e0d97`,
+`db137c16` — **Ubuntu and Windows agree to the unit on every metric on every one of them**,
+and on `db137c16` both agree with this machine as well.
+
+So **twenty measurements** — twelve local runs, eight CI runs across four commits and two
+operating systems — and not one covered unit apart.
+
+### What that does and does not license
+
+Twelve agreeing runs do not show the flip is gone; they bound how often it can happen. If
+the low figure landed one run in three, twelve agreeing runs is a `(2/3)¹² + (1/3)¹² ≈
+0.8%` event, so a 1-in-3 rate is rejected well past the 95% the sixth sample's arithmetic
+asked for. **A rate up to about 22% is still consistent with this sample** at that
+confidence, which is the honest ceiling and is why this section reports a bound rather
+than an absence.
+
+### The residue is still there, and now it has a BAND
+
+Hit counts still drift, in exactly the five files the three-run sample named:
+
+| | drifting units, 12 runs |
+| --- | --- |
+| `src/storage/viewStateStore.ts` | 84 |
+| `src/view/viewState.ts` | 22 |
+| `src/storage/foldKeys.ts` | 15 |
+| `src/storage/viewIdentity.ts` | 13 |
+| `src/ui/prompts.ts` | 2 |
+
+209 units drift in total across statements, branches and functions. What is new is where
+they sit relative to the edge that matters:
+
+- **The lowest count that drifts is 13** (`viewStateStore.ts`'s branch `9.0`, moving
+  between 13 and 14 across the twelve).
+- **The highest is 387,011.**
+- **398 units sit at zero and 2,792 sit at 1–5, and not one of them ever moved.**
+
+That upgrades the three-run sample's observation — *"concentrated exactly where it cannot
+matter"* — from something watched to something measured. A coverage figure moves only when
+a unit crosses zero, and nothing within twelve counts of zero drifts at all.
+
+The instrument is the `binar` reducer above with one question added — for each unit, the
+MINIMUM count it held across the runs, bucketed:
+
+```js
+// Where does the drift live relative to the covered/uncovered edge? A unit is `file|kind|id`
+// across every statement, branch ARM and function, so the three kinds are asked together.
+const lo = Math.min(...runs.map((u) => u.get(key)));
+if (new Set(runs.map((u) => u.get(key))).size > 1) minDrift = Math.min(minDrift, lo);
+if (lo <= 5) buckets.set(lo, (buckets.get(lo) ?? 0) + 1);
+```
+
+**Tested on a known input before its zero was believed**, the same way and for the same
+reason: one covered statement, one branch arm and one function in a copy of run 1's file
+were set to 0, and all three were reported as flips — while a hit count raised by 1,000 on
+a fourth unit was NOT, which is the half that matters here, since this section's whole
+claim is that a count change and a coverage change are different events. The totals it
+computes were checked against vitest's own printed summary and agree on all four metrics to
+the unit, so the arithmetic under the band is the arithmetic under the gate.
+
+**Stated to what the measurement reaches, and no further.** 13 is not infinity. What would
+make the gap structural rather than incidental is the mechanism — a hot counter losing a
+FRACTION of its increments cannot zero a count of 1, because that would be a 100% loss,
+and the observed drift is under 1% on the hot units and one increment on the smallest. That
+is a hypothesis about the mechanism, consistent with this sample and not established by it;
+this sample distinguishes no cause, exactly as the three-run one did not.
+
+### So: which fix, and the answer is neither
+
+The question this note is asked at every ratchet — *is the fix a floor stated to a
+precision the measurement supports, or is the non-determinism itself worth root-causing?*
+
+**The precision is supported.** Twenty measurements agree to the unit, so the hundredth of
+a percent the floors are written at is not finer than the instrument on this tree. Nothing
+about the numbers needs restating.
+
+**And the non-determinism cannot reach them.** Not "has not been seen to" — the band above
+says every drifting unit is at least 13 counts from the boundary, and every unit within 5
+of it is byte-identical across twelve runs.
+
+So there is nothing to fix and no floor to move, and **the floors are not raised either** —
+the standing reason in `vitest.config.mts` holds and this measurement does not touch it: a
+floor raised on a branch is asserted against a merge that has not happened, which is how
+`main` went red twice in one day. `scripts/coverage-floors.mjs` is what guarantees the
+headroom, per run, on whatever tree actually lands.
+
+**Left Open at P3 rather than closed**, and the demotion is the finding: the historical
+flips were real and this explains none of them. Advancing that needs a disagreement caught
+in the act, which no amount of agreeing runs produces — and the one mechanism this note
+records with a plausible cause, two coverage processes writing at once, is excluded by
+construction from every sample above.
 
 ## How to find it
 

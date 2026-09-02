@@ -131,8 +131,20 @@ describe('the vendored app.css reaches what the harness draws', () => {
 		// that is NOT on the page at the end of the drive, which is what holds the
 		// per-state collection above in place.
 		expect([drawn.has('.modal-title'), drawn.has('.mod-cta')]).toEqual([true, true]);
-		// The one test in this suite carrying a timeout of its own, and the number is
-		// measured rather than picked: the drive costs ~2.4s locally, read with
+		// **Not the only test in this suite carrying a timeout**, which is what this said
+		// until 2026-09-02 — on a `grep '}, [0-9]\{4,\});'` blind to the `_` separator
+		// that hid three of the four then present. Four as this is written
+		// (`test/view/renderCost.test.ts` and `test/view/contextRowWrites.test.ts` at 20s,
+		// `test/docs/markdown.test.ts` at 120s, this at 30s), beside two FILE-WIDE
+		// `vi.setConfig({ testTimeout: 20_000 })` calls — `test/helpers/register.ts`'s, over
+		// the seven files importing it, and `test/verification/scriptBoundary.test.ts`'s
+		// own — and that list is dated, not maintained. The instrument, if it is asked
+		// again: a
+		// TypeScript AST walk for a numeric literal or a `{ timeout }` object argument to
+		// `it`/`test`/`describe`, which is blind in turn to a timeout passed as a named
+		// constant. What matters here is not the count but that a budget of one's own is
+		// ordinary in this suite, so the number below has to justify itself on its own.
+		// It is measured rather than picked: the drive costs ~2.4s locally, read with
 		// `performance.now()` — the suite's `Date`-only freeze leaves that real, where a
 		// first attempt with `Date.now()` reported every phase as 0ms. Renders are all of
 		// it: the mount, the expand and the two knobs are 1.3s between them and each
