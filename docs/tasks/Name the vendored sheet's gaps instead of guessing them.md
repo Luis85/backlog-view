@@ -108,7 +108,46 @@ switch ~150ms, and the ten collections ~8ms each.
 the knobs saves 45% and loses no class today. Applying it would have been the wrong lesson
 — this check exists to catch what ARRIVES, so a state left undriven is coverage traded for
 seconds, and the next Obsidian-classed element on the shelf would go unseen. The budget was
-what was wrong, so the budget moved: 30s, on the only test in the suite that carries one.
+what was wrong, so the budget moved: 30s.
+
+### And the sentence that reported the budget got its own count wrong (2026-09-02)
+
+This section said *"on the only test in the suite that carries one"*, and the comment in
+the test said the same. **There were four**, and the instrument is again the finding.
+
+The grep was `}, [0-9]\{4,\});` — which cannot match `}, 20_000);` or `}, 30_000);`,
+because the numeric separator breaks the digit run. It matched exactly one of the four
+timeouts present (`test/docs/markdown.test.ts`'s `120_000`… which it also missed; what it
+actually matched was nothing, and the "one" was this file's own, read by eye). So the
+answer *"no precedent"* is what licensed writing the sentence, and the sentence was the
+new claim. **A false count inside the sentence claiming to have counted** is the defect
+this whole pass was about, met one paragraph after being written up.
+
+Re-measured with a TypeScript AST walk over `test/**/*.ts` — every numeric literal and
+every `{ timeout }` object argument to `it`, `test`, `describe` or `bench`, through
+`.each` / `.skipIf` / `.concurrent` chains. **Tested on a known input first**: a planted
+file spelling all five of those shapes, each one reported. What it still cannot see is a
+timeout passed as a named constant, which nothing in `test/` does today.
+
+| | |
+| --- | --- |
+| per-test timeouts | **4** — `renderCost` and `contextRowWrites` at 20s, `docs/markdown` at 120s, this at 30s |
+| file-wide | **1** — `test/helpers/register.ts`'s `vi.setConfig({ testTimeout: 20_000 })` |
+
+The same walk found a **second** false count, in that helper: its own doc comment said
+*"every case in the five files that import this"*, and seven files import it. Both are
+corrected, and both are the same failure — a count written once and read as current
+afterwards. The comment here now names its instrument and says the list is dated rather
+than maintained, which is the only version of this sentence that cannot go wrong again in
+the same way.
+
+(`test/verification/scriptBoundary.test.ts` added a **second** file-wide one on the same
+day — see [[The scripts boundary was already typed and nothing was checking it]]. It was
+briefly a fifth per-test timeout instead, and CI is what corrected that: its census case
+was left on the 5s default and went over on both legs, which is this file's own episode
+repeated by the person who had just written it up. The case was made ~6x cheaper first
+and only then given a budget, and the budget went file-wide because a timeout repeated
+per case is one a third case forgets.)
 
 ## What was refused
 
