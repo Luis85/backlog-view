@@ -1,6 +1,7 @@
 import { afterEach, beforeEach } from 'vitest';
 import { en } from '../../src/i18n/en';
 import { Catalog, MessageKey, setLocale } from '../../src/i18n/t';
+import { resetLocale } from '../helpers/locale';
 import { Menu } from '../helpers/obsidian-mock';
 
 /** The prefix a marked catalog puts in front of every value. See `markedCatalog`. */
@@ -21,6 +22,19 @@ export function markedCatalog(keys: readonly MessageKey[] = Object.keys(en) as M
 	);
 }
 
+/**
+ * An English message with its parameters filled in, for an assertion that names a WHOLE
+ * sentence. The code under test calls `t()`, so an expectation built with `t()` would
+ * assert nothing — this substitutes by hand, the same `.replace('{type}', …)` the
+ * assertions here have always spelled, collected once now that a sentence can quote a
+ * view option's own label as a parameter.
+ */
+export function filled(text: string, values: Record<string, string | number>): string {
+	return text.replace(/\{(\w+)\}/g, (whole: string, name: string) =>
+		name in values ? String(values[name]) : whole,
+	);
+}
+
 const mark = (forms: Record<string, string>): Record<string, string> =>
 	Object.fromEntries(Object.entries(forms).map(([form, value]) => [form, MARK + value]));
 
@@ -34,7 +48,9 @@ const mark = (forms: Record<string, string>): Record<string, string> =>
  */
 export function useMarkedLocale(xx: Catalog): void {
 	beforeEach(() => setLocale('xx', { xx }));
-	afterEach(() => setLocale('en'));
+	// `resetLocale`, never a hard-coded 'en': resolution is module state by design, and a
+	// literal restore is what would make CI's second (PBL_TEST_LOCALE) leg green by accident.
+	afterEach(resetLocale);
 }
 
 /** What that key renders as under a marked catalog — the assertion's own single source. */

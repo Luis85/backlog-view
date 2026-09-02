@@ -8,7 +8,7 @@ import { boardVault } from '../helpers/board';
 import { installObsidianDom } from '../helpers/dom';
 import { fakeController, FakeVault } from '../helpers/vault';
 import { fixture, makeView, noOptionalProperties, projectionButton, useViewHarness } from '../helpers/view';
-import { MARK, markedCatalog, useMarkedLocale } from './fixtures';
+import { filled, MARK, markedCatalog, useMarkedLocale } from './fixtures';
 
 installObsidianDom();
 useViewHarness();
@@ -171,7 +171,13 @@ describe('the card-projection empty states read their own text from the catalog'
 		harness.view.setProjection('board');
 
 		expect(titleOf(harness.containerEl)).toBe(MARK + en['emptyState.noWorkflow']);
-		expect(hintOf(harness.containerEl)).toBe(MARK + en['emptyState.noWorkflowBody']);
+		expect(hintOf(harness.containerEl)).toBe(
+			MARK +
+				filled(en['emptyState.noWorkflowBody'], {
+					stateOption: en['option.stateProperty'],
+					statesOption: en['option.stateValues'],
+				}),
+		);
 		expectAllMarked(harness.containerEl);
 	});
 
@@ -182,7 +188,14 @@ describe('the card-projection empty states read their own text from the catalog'
 		// A separate key from the requirements board's, though the English is identical —
 		// `en.ts`'s own rule: two keys holding the same text must not be deduplicated.
 		expect(titleOf(harness.containerEl)).toBe(MARK + en['emptyState.noDeliverableWorkflow']);
-		expect(hintOf(harness.containerEl)).toBe(MARK + en['emptyState.noDeliverableWorkflowBody']);
+		expect(hintOf(harness.containerEl)).toBe(
+			MARK +
+				filled(en['emptyState.noDeliverableWorkflowBody'], {
+					deliverableStateOption: en['option.deliverableStateProperty'],
+					stateOption: en['option.stateProperty'],
+					deliverableStatesOption: en['option.deliverableStateValues'],
+				}),
+		);
 		expectAllMarked(harness.containerEl);
 	});
 
@@ -279,7 +292,15 @@ describe('the roadmap names the half of the axis that is missing, from the catal
 		harness.view.setProjection('roadmap');
 
 		const body = harness.containerEl.querySelector('.pbl-empty')?.textContent ?? '';
-		expect(body).toContain(MARK + en['emptyState.noAxisBodyHalfSet']);
-		expect(body).not.toContain(en['emptyState.noAxisBody']);
+		// The option labels are parameters now, so the expectation fills them the way the
+		// view does — they are NOT in `SWEPT`, so they arrive unmarked inside a marked
+		// sentence, which is what a parameter is supposed to look like here.
+		const axis = {
+			horizonsOption: en['option.horizonValues'],
+			startOption: en['option.startProperty'],
+			targetOption: en['option.targetProperty'],
+		};
+		expect(body).toContain(MARK + filled(en['emptyState.noAxisBodyHalfSet'], axis));
+		expect(body).not.toContain(filled(en['emptyState.noAxisBody'], { ...axis, horizonOption: en['option.horizonProperty'] }));
 	});
 });

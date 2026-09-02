@@ -1,26 +1,6 @@
 /** Fixtures and accessors for the roadmap projection, shared by its view suites. */
-import { addDays, formatCivil } from '../../src/domain/timeline';
-import { todayCivil } from '../../src/domain/noteFields';
 import { FakeVault } from './vault';
 import { Harness, makeView } from './view';
-
-/**
- * A span a few days either side of TODAY, for the fixtures whose subject is the WIDTH of
- * the drawn track rather than any particular calendar date.
- *
- * The dated window pads around today, so "a backlog spanning days around today pads to
- * ~3 months, which at quarter zoom is narrower than the label reserve" — the construction
- * `timelineFurniture.test.ts` states and this returns. **A fixed calendar date cannot say
- * that**, and two suites wrote one anyway: `legend.test.ts` and
- * `absenceCollision.test.ts` each said they were reusing that construction and each typed
- * `2026-08-01`, which was near-term while it was August 2026 and a bar with a label after
- * that. Both tests went green on a premise that had quietly stopped holding, which is a
- * clock the suite cannot see rather than a rule anybody broke.
- */
-export function nearTermSpan(lead = 0, length = 9): { start: string; due: string } {
-	const start = addDays(todayCivil(), lead);
-	return { start: formatCivil(start), due: formatCivil(addDays(start, length)) };
-}
 
 /** The horizon axis the roadmap suites configure: `horizon` as the property. */
 const HORIZON_AXIS = { horizonProperty: 'note.horizon' };

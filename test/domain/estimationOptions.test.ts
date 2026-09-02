@@ -5,6 +5,7 @@ import { dimOption } from '../../src/domain/estimationSettings';
 import { DEFAULT_DIMENSIONS } from '../../src/domain/defaultModel';
 import { FakeViewConfig } from '../helpers/vault';
 import { MARK, markedCatalog } from '../i18n/fixtures';
+import { resetLocale } from '../helpers/locale';
 
 /** Every option across every group, the way `viewOptions.test.ts` flattens the backlog's own. */
 function flatten(options: ReturnType<typeof getEstimationViewOptions>) {
@@ -166,7 +167,7 @@ function shown(options: ReturnType<typeof getEstimationViewOptions>): string[] {
 }
 
 describe("the estimation view's options menu reads its words from the catalog", () => {
-	afterEach(() => setLocale('en'));
+	afterEach(() => resetLocale());
 
 	it('leaves unmarked only the keys a picker suggests and the shipped model a box mirrors', () => {
 		setLocale('xx', { xx });

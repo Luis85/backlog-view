@@ -7,7 +7,7 @@ import { FakeVault, setResults } from '../helpers/vault';
 import { boardVault, makeBoard } from '../helpers/board';
 import { horizonVault, makeRoadmap, roadmapView } from '../helpers/roadmap';
 import { fixture, makeView, toolbarOf, useViewHarness } from '../helpers/view';
-import { MARK, marked, markedCatalog, sweep, unmarked, useMarkedLocale } from './fixtures';
+import { filled, MARK, marked, markedCatalog, sweep, unmarked, useMarkedLocale } from './fixtures';
 
 /**
  * The toolbar row, driven under a catalog that is not English — `render/toolbar.ts`,
@@ -210,8 +210,12 @@ describe('the advisories and the projections nobody else drives read from it too
 		const { containerEl } = makeView(vault, { parentProperty: 'note.rank', orderProperty: 'note.rank' });
 		const drawn = drawnText(toolbarOf(containerEl));
 
-		expect(drawn).toContain(MARK + en['toolbar.ignoredNotes'].one.replace('{count}', '1'));
-		expect(drawn).toContain(MARK + en['toolbar.ignoredTooltip'].one.replace('{count}', '1'));
+		expect(drawn).toContain(MARK + filled(en['toolbar.ignoredNotes'].one, { count: 1 }));
+		// The option this sentence tells the reader to turn off is a PARAMETER, filled from
+		// `option.hierarchyOnly` — the label is keyed once and quoted, never re-spelled.
+		expect(drawn).toContain(
+			MARK + filled(en['toolbar.ignoredTooltip'].one, { count: 1, option: en['option.hierarchyOnly'] }),
+		);
 		expect(drawn).toContain(marked('toolbar.checkViewOptions'));
 		expect(drawn).toContain(marked('toolbar.configHelp'));
 		// The warning's accessible name is ONE sentence from the catalog with the problems

@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it } from 'vitest';
 import { intlLocale, resolveCatalog } from '../../src/i18n/locale';
 import { Catalog, list, setLocale, t, activeLocale } from '../../src/i18n/t';
+import { resetLocale } from '../helpers/locale';
 import { shelfLabel } from '../../src/domain/roadmap';
 import { unscheduledLabel } from '../../src/domain/bars';
 import { noStateCollisionLabel, noStateLabel } from '../../src/domain/board';
@@ -14,7 +15,7 @@ import { pt, reordered, ru, sparse } from './fixtures';
  */
 
 // Resolution is module state by design (once, at load), so each test puts it back.
-afterEach(() => setLocale('en'));
+afterEach(() => resetLocale());
 
 describe('resolveCatalog', () => {
 	const shipped = ['en', 'pt', 'de'];
@@ -191,7 +192,12 @@ describe('the sentence is the unit of translation', () => {
 	});
 
 	it('formats a number inside a message rather than pasting it', () => {
+		// ENGLISH formatting is the subject here, so the locale is driven rather than inherited:
+		// the point is that 12345 comes out grouped at all, and the grouping is the locale's.
+		setLocale('en');
 		expect(t('count.items', { count: 12345 })).toBe('12,345 items');
+		setLocale('de', { de: {} });
+		expect(t('count.items', { count: 12345 })).toBe('12.345 items');
 	});
 });
 
@@ -222,7 +228,7 @@ describe('English, which is what actually ships', () => {
  * Reverting any of these four to a `const` fails here and nowhere else.
  */
 describe('a placement label reads the locale that is active when it is CALLED', () => {
-	afterEach(() => setLocale('en'));
+	afterEach(() => resetLocale());
 
 	const placements: Catalog = {
 		'placement.unplaced': 'Nicht geplant',
