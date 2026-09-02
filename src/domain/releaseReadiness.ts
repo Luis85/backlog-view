@@ -80,16 +80,27 @@ function verdictOf(cleared: number, outstanding: number): Verdict {
 	return 'partly';
 }
 
+/** The three workflows a member — or a prerequisite — can read its done state through. */
+const WORKFLOW_KINDS: WorkflowKind[] = ['requirements', 'deliverable', 'test'];
+
 /**
  * **A key is half of a workflow; the other half is which values clear it** — the same rule
  * the risk criterion keeps, read here for the state vocabulary. A bound `stateKey` with an
  * empty `doneValues` clears nothing, so `ownWorkflowReading(...).done` is false for every
  * item: a figure gated on the key alone reports a measured-looking zero, and a criterion
  * gated on it reports every member of every release as blocked.
+ *
+ * **Only the KEY half is reachable from the view, and the sentence above is written wider
+ * than what a test can drive.** `resolveSettings` replaces an empty `doneValues` with
+ * `DEFAULT_DONE_VALUES` — deliberately, since the done set and the state exclusions must be
+ * built from one list — and `resolveSecondaryWorkflow` does the same for a secondary
+ * vocabulary, so no `.base` can produce a bound key with nothing clearing it. The length
+ * test is kept for callers that build a `BacklogSettings` directly rather than through the
+ * resolver, which is every unit test here and anything reaching this function later; it is
+ * a guard against a configuration the resolver currently forbids, not one seen in a vault.
+ * Raised by a review bot against the plan, and confirmed at `settingsResolve.ts`'s
+ * `effectiveDoneValues` before it was taken.
  */
-/** The three workflows a member — or a prerequisite — can read its done state through. */
-const WORKFLOW_KINDS: WorkflowKind[] = ['requirements', 'deliverable', 'test'];
-
 function workflowClears(kind: WorkflowKind, planSettings: BacklogSettings): boolean {
 	const info = workflowStateInfo(kind, planSettings);
 	return info.key !== '' && info.doneValues.length > 0;

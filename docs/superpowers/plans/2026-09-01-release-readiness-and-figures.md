@@ -498,7 +498,10 @@ member `dependsOn: '[[P4]]'` with `P4` done; `independentVault()` is `effortVaul
 `dependsOn` key anywhere; `unreadablePrereqVault()` has one member naming `'[[Nowhere]]'`,
 a note the vault does not hold. `selfAndCycleVault()` has one member naming ITSELF and two
 members naming each other, with every one of those targets marked `status: Done` — so a
-reader that resolved the raw links would call all three cleared.
+reader that resolved the raw links would call all three cleared. All THREE are unreadable,
+not two: `settle` in `dependencies.ts` breaks an edge whose target shares its own strongly
+connected component, and a self-reference trivially shares one with itself, so the
+self-namer and both ends of the cycle each carry a broken prerequisite.
 `deliverablePrereqVault()` has one member whose prerequisite is a `Deliverable`, in a vault
 binding no `deliverableStateProperty` and no `deliverableDoneValues`. `multiRiskVault()` gives one member
 `risk: ['Low', 'Critical', 'Medium']` and one member `risk: 'Low'`;
@@ -852,19 +855,13 @@ describe('the blocked predicate', () => {
         expect(noState.blocked.unconfigured).toBe(true);
     });
 
-    it('is unconfigured with a state key bound but no done values', () => {
-        // A key is half of a workflow. With an empty `doneValues` nothing clears, so
-        // `ownWorkflowReading(...).done` is false for every prerequisite — a gate on the key
-        // alone reports every member of every release as blocked, which is a configuration
-        // mistake dressed as a finding about the release.
-        const emptyVocabulary = readinessOf(
-            blockedVault(),
-            'R.md',
-            { dependsOnKey: 'dependsOn' },
-            { doneValues: [], dependsOnKey: 'dependsOn' },
-        );
-        expect(emptyVocabulary.blocked.unconfigured).toBe(true);
-    });
+    // NO TEST for "a state key bound but no done values", and the omission is the finding.
+    // `settingsWith` re-derives `resolveSettings`' rule that neither done list is ever
+    // empty, so `doneValues: []` comes back as `DEFAULT_DONE_VALUES` and the assertion goes
+    // red — the fixture models a vault nobody can configure. `workflowClears`' length test
+    // stays as a guard for callers building a `BacklogSettings` directly; only its key half
+    // is reachable, and the case above (`stateKey: ''`) is what drives it. Raised by a
+    // review bot against this plan and confirmed at `settingsResolve.ts`.
 
     it('counts a prerequisite in an unconfigured secondary workflow as unreadable', () => {
         // A Deliverable prerequisite in a vault that never configured the Deliverable
@@ -880,7 +877,7 @@ describe('the blocked predicate', () => {
         // cleared because the target it found is done — a release reporting nothing
         // outstanding on exactly the items whose dependencies are malformed.
         const criterion = blockedReadiness(selfAndCycleVault()).criteria.find((c) => c.key === 'blocked');
-        expect(criterion?.unreadable).toBe(2);
+        expect(criterion?.unreadable).toBe(3);
         expect(criterion?.cleared).toBe(0);
     });
 });
