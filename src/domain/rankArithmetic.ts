@@ -169,7 +169,22 @@ export function placeRun(count: number, floor: number | null, ceiling: number | 
 	// The leading run hangs BELOW its ceiling rather than counting up from a synthetic
 	// zero: the population may already start well below it.
 	const base = floor ?? (ceiling === null ? 0 : ceiling - (count + 1) * ORDER_SPACING);
-	const placed = Array.from({ length: count }, (_, k) => roundOrder(base + step * (k + 1)));
+	// **The bounded spread has `midpoint`'s overflow, and takes `midpoint`'s answer to it.**
+	// `ceiling - floor` overflows across the full float range (`-1e308` to `1e308`), and
+	// then every value here is non-finite and the plan refuses an interval holding every
+	// number there is. Interpolating from WEIGHTED ENDPOINTS cannot overflow — neither term
+	// exceeds a bound's own magnitude — but it is not bit-identical to the subtraction, so
+	// it is reached only where the ordinary form has already given up its answer, exactly
+	// as in `midpoint`. Under that guard the reason this was refused on 2026-08-31 — that
+	// the safe form would perturb every ordinary spread — no longer holds: an ordinary
+	// spread never reaches it and computes what it always did.
+	const wide = floor !== null && ceiling !== null && !Number.isFinite(ceiling - floor);
+	const spread = (k: number): number => {
+		if (!wide || floor === null || ceiling === null) return base + step * (k + 1);
+		const weight = (k + 1) / (count + 1);
+		return floor * (1 - weight) + ceiling * weight;
+	};
+	const placed = Array.from({ length: count }, (_, k) => roundOrder(spread(k)));
 	let previous = floor;
 	for (const order of placed) {
 		if (previous !== null && order <= previous) return null;

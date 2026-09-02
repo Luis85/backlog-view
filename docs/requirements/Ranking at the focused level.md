@@ -139,22 +139,26 @@ from.
   rows squeezed against a number no write path may move has nowhere to go. The advice is
   to run the command on an unfiltered base, which is the one thing that changes the answer.
   **Checked by** `test/domain/rankCommands.test.ts` — "answers with the wedged rows rather than an empty plan"
-  **One case reports wedged for a different reason, and it is accepted rather than fixed**
-  (PR review, 2026-08-31): where two excluded ranks span more than the float range can
-  subtract — `-1e308` and `1e308` — `ceiling - floor` is `Infinity`, every value the spread
-  computes is non-finite, and the plan refuses. The interval has enormous room and the
-  arithmetic cannot see it, so the notice is right that nothing was written and wrong about
-  why. It fails CLOSED, which is the property that matters, and it is unreachable without two
-  hand-edited context ranks at opposite extremes. The overflow-safe form — interpolating from
-  weighted endpoints instead of subtracting the bounds — is refused for a stated reason:
-  `(ceiling - floor) / (n + 1)` and `ceiling / (n + 1) - floor / (n + 1)` are not
-  bit-identical, so it would perturb every ordinary spread to repair one that essentially
-  never happens. The `Infinity` this same overflow used to WRITE was a different matter and
-  was fixed, in `roundOrder`. So is `midpoint`'s own subtraction, fixed 2026-09-02: it
-  refused the same enormous gap as `gapSpent`, and there the safe form costs nothing,
-  because it is asked ONLY where `next - prev` is already non-finite and the ordinary
-  midpoint keeps computing exactly what it always did.
-  **Checked by** `test/domain/rankedPlacement.test.ts` — "places a midpoint in a gap whose width overflows to Infinity"
+  **One case reported wedged for a different reason, was accepted, and is now fixed** —
+  and the sequence is the point rather than the outcome. Where two excluded ranks span more
+  than the float range can subtract — `-1e308` and `1e308` — `ceiling - floor` is `Infinity`,
+  every value the spread computes is non-finite, and the plan refuses. The interval has
+  enormous room and the arithmetic cannot see it, so the notice was right that nothing was
+  written and wrong about why. It fails CLOSED, which is the property that matters, and it is
+  unreachable without two hand-edited context ranks at opposite extremes.
+  A PR review on 2026-08-31 refused the overflow-safe form — interpolating from weighted
+  endpoints instead of subtracting the bounds — for a stated reason: `(ceiling - floor) / (n + 1)`
+  and the weighted form are not bit-identical, so swapping the formula would perturb every
+  ordinary spread to repair one that essentially never happens.
+  **A GUARD voids that reason, and the same entry already carried the precedent.** The
+  `Infinity` this overflow used to WRITE was fixed in `roundOrder`; `midpoint`'s own
+  subtraction was fixed on 2026-09-02 by reaching the safe form ONLY where `next - prev` is
+  already non-finite, so the ordinary midpoint keeps computing exactly what it always did.
+  `placeRun` takes the identical shape as of 2026-09-02, raised a second time in review:
+  under the guard an ordinary spread never reaches the weighted form, so nothing about it
+  moves, and the enormous interval is spread instead of refused. What was refused was the
+  wholesale swap; a guarded fallback was a different proposal and is a better one.
+  **Checked by** `test/domain/rankedPlacement.test.ts` — "places a midpoint in a gap whose width overflows to Infinity", "spreads a run across a gap whose width overflows to Infinity" and "leaves an ordinary spread on the value the subtraction always gave" — the last of which passes with or without the guard on purpose, since a fix that quietly moved the ordinary values would be worse than the defect
 - **3a — the model was rebuilt between opening the menu and clicking it.** The row the
   menu named is re-resolved by path against the live model, and the peers and the
   population are read off that model too. A `DropTarget` finds its anchor by identity, so

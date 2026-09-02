@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { ORDER_SPACING, refusalKey } from '../../src/domain/rankArithmetic';
+import { ORDER_SPACING, placeRun, refusalKey } from '../../src/domain/rankArithmetic';
 import { anchoredOrder, dropPlacement } from '../../src/domain/writePlan';
 import { BacklogItem } from '../../src/domain/model';
 
@@ -339,5 +339,41 @@ describe('refusalKey', () => {
 		// what makes the four it already has stop being each other's.
 		const keys = (['gapSpent', 'parentGone', 'tied', 'unranked'] as const).map(refusalKey);
 		expect(keys).toEqual(['rank.gapSpent', 'rank.parentGone', 'rank.tied', 'rank.unranked']);
+	});
+});
+
+/**
+ * The bounded spread has `midpoint`'s overflow and now takes `midpoint`'s answer to it.
+ *
+ * Refused on 2026-08-31 for a stated reason — the safe form is not bit-identical, so
+ * swapping the formula would perturb every ordinary spread to repair a case that
+ * essentially never happens. That reason is void under a GUARD, which is the shape
+ * `midpoint` itself took: the safe form is reached only where the subtraction has already
+ * gone non-finite, so an ordinary spread computes exactly what it always did. Both halves
+ * are asserted here, because a fix to the extreme case that quietly moved the ordinary one
+ * would be a worse defect than the bug.
+ */
+describe('placeRun at the float extremes', () => {
+	it('spreads a run across a gap whose width overflows to Infinity', () => {
+		// `1e308 - -1e308` is Infinity, so every value the ordinary form computes is
+		// non-finite and the run refuses an interval holding every number there is. Both
+		// bounds are values `readNumber` accepts, so two hand-edited ranks reach this.
+		expect(placeRun(1, -1e308, 1e308)).toEqual([0]);
+		const three = placeRun(3, -1e308, 1e308);
+		expect(three).toHaveLength(3);
+		expect(three?.every((order) => Number.isFinite(order))).toBe(true);
+		// Ascending and strictly inside the bounds — the properties the run is refused on.
+		expect(three).toEqual([...(three ?? [])].sort((a, b) => a - b));
+		expect(three?.[0]).toBeGreaterThan(-1e308);
+		expect(three?.[2]).toBeLessThan(1e308);
+	});
+
+	it('leaves an ordinary spread on the value the subtraction always gave', () => {
+		// The guard's whole point. These are the numbers the plain form produces, asserted
+		// exactly rather than approximately: a weighted interpolation reaching them would
+		// answer 2500.0000000000005 here, and a rank differing in the last bit is a rank
+		// that rounds differently and a diff nobody asked for.
+		expect(placeRun(3, 1000, 5000)).toEqual([2000, 3000, 4000]);
+		expect(placeRun(1, 0, 2000)).toEqual([1000]);
 	});
 });
