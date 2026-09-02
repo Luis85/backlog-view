@@ -4,6 +4,7 @@ import { makeEstimationView, scrollReads } from '../../helpers/estimation';
 import { configured, configuredValues } from '../../helpers/estimationModel';
 import { FakeVault, setResults } from '../../helpers/vault';
 import { key } from '../../helpers/view';
+import { num, numPrecise } from '../../helpers/locale';
 import { computeTotal, stampValue } from '../../../src/domain/weightedScore';
 
 /**
@@ -48,7 +49,7 @@ describe('the estimation table', () => {
 	it("shows the full profile's rounded total and its 8/8 coverage", () => {
 		const { containerEl } = makeEstimationView(fixture(), configuredValues());
 		const full = row(containerEl, 'Full.md');
-		expect(full.querySelector(':scope > .pbl-est-total')?.textContent).toBe('3.55');
+		expect(full.querySelector(':scope > .pbl-est-total')?.textContent).toBe(num(3.55));
 		expect(full.querySelector(':scope > .pbl-est-coverage')?.textContent).toBe('8/8');
 	});
 
@@ -200,6 +201,30 @@ describe('the value and coverage strips', () => {
 		expect(r.querySelector(':scope > .pbl-est-coverage > .pbl-est-strip')).not.toBeNull();
 		expect(r.querySelector(':scope > .pbl-est-cell[data-col="confidence"] > .pbl-est-strip')).toBeNull();
 		expect(r.querySelector(':scope > .pbl-est-cell[data-col="effort"] > .pbl-est-strip')).toBeNull();
+	});
+
+	/**
+	 * Confidence and effort are raw frontmatter reads with no rounding of their own
+	 * (`readNumber` in `src/domain/estimationItems.ts`) — unlike the total and the
+	 * indicator, both `round2`'d before they ever reach a cell. `formatNumber`'s default
+	 * caps at three fraction digits, which would round `3.14159` to `3.142`: a value the
+	 * user typed becomes a value they did not, silently. `numberCell`'s own name promises
+	 * "the number the user typed", so these two cells ask the uncapped formatter instead
+	 * — still through `Intl.NumberFormat`, so the locale's own grouping and decimal
+	 * separator still apply.
+	 */
+	it("shows confidence and effort at the precision the user typed, not Intl's default three-digit cap", () => {
+		const vault = new FakeVault();
+		vault.addFile('Precise.md', { frontmatter: { confidence: 3.14159, effort: 2.5 } });
+		const { containerEl } = makeEstimationView(
+			vault,
+			configuredValues({ confidenceProperty: 'note.confidence', effortProperty: 'note.effort' }),
+		);
+		const r = row(containerEl, 'Precise.md');
+		expect(r.querySelector(':scope > .pbl-est-cell[data-col="confidence"] > .pbl-est-num')?.textContent).toBe(
+			numPrecise(3.14159),
+		);
+		expect(r.querySelector(':scope > .pbl-est-cell[data-col="effort"] > .pbl-est-num')?.textContent).toBe(numPrecise(2.5));
 	});
 
 	it('leaves an unanswered cell with its dash and no strip', () => {

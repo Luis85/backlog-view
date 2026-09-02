@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it } from 'vitest';
 import { intlLocale, resolveCatalog } from '../../src/i18n/locale';
-import { Catalog, list, setLocale, t, activeLocale } from '../../src/i18n/t';
+import { Catalog, compareText, foldForMatch, formatNumber, list, setLocale, t, activeLocale } from '../../src/i18n/t';
 import { resetLocale } from '../helpers/locale';
 import { shelfLabel } from '../../src/domain/roadmap';
 import { unscheduledLabel } from '../../src/domain/bars';
@@ -246,5 +246,208 @@ describe('a placement label reads the locale that is active when it is CALLED', 
 		expect(unscheduledLabel()).toBe('Ohne Termin');
 		expect(noStateLabel()).toBe('Kein Status');
 		expect(noStateCollisionLabel()).toBe('Nicht gesetzt');
+	});
+});
+
+/**
+ * The three presentation helpers, which all take the REQUESTED locale rather than the
+ * catalog's — the split `t()`'s own header states, asked of the half that is data.
+ *
+ * Every case here uses a locale with NO catalog on purpose. That is the arrangement the
+ * host default would survive undetected in: with a shipped catalog beside it, an assertion
+ * cannot tell "took the requested locale" from "took the resolved one".
+ */
+describe('collation, folding and numbers follow the requested locale', () => {
+	afterEach(() => resetLocale());
+
+	it('collates in the requested locale rather than the host default', () => {
+		// Swedish sorts `ä` AFTER `z`; German sorts it with `a`. So the pair is the
+		// assertion: a collator on the host default, or on the English catalog either of
+		// these falls back to, answers the same way twice.
+		setLocale('sv');
+		expect(compareText('ä', 'z')).toBeGreaterThan(0);
+		setLocale('de');
+		expect(compareText('ä', 'z')).toBeLessThan(0);
+	});
+
+	it('builds ONE collator per setLocale, not one per comparison', () => {
+		// The reason the helper exists rather than `localeCompare(b, locale)`, which
+		// constructs a collator for every comparison — n·log n of them inside a sort in a
+		// render path. Counted at the constructor, because the cost is not observable in
+		// any answer the helper gives.
+		const real = Intl.Collator;
+		let built = 0;
+		// A Proxy rather than a subclass: `Intl.Collator` is callable without `new` as well
+		// as constructible, and a `class` satisfies only half of that signature.
+		Intl.Collator = new Proxy(real, {
+			construct: (target, args: ConstructorParameters<typeof real>) => {
+				built++;
+				return new target(...args);
+			},
+		});
+		try {
+			setLocale('sv');
+			expect(built).toBe(1);
+			['a', 'b', 'c', 'd'].sort(compareText);
+			expect(built).toBe(1);
+		} finally {
+			Intl.Collator = real;
+		}
+	});
+
+	it('folds for matching in the requested locale, where toLowerCase would not', () => {
+		// Turkish folds `I` to `ı`. `toLowerCase()` gives `i` in every locale by
+		// specification, which is the bug: the filter misses a note plainly on screen.
+		setLocale('tr');
+		expect(foldForMatch('I')).toBe('ı');
+		setLocale('en');
+		expect(foldForMatch('I')).toBe('i');
+	});
+
+	it('folds an accented capital to the same thing as its lowercase, in every locale', () => {
+		// Lithuanian's casing ADDS a dot above a soft-dotted letter before an accent, so
+		// `Ì` lowercases to `i̇̀` while `ì` stays `ì`. Right for display, wrong for
+		// matching: the query stops meeting the title it was typed from. `J̇` is the pair
+		// that refuses the tempting fix — strip the added dot and an author's OWN dot goes
+		// with it. Found by review (Codex, PR #251).
+		for (const locale of ['lt', 'lt-LT', 'en', 'tr']) {
+			setLocale(locale);
+			expect(foldForMatch('Ì')).toBe(foldForMatch('ì'));
+			expect(foldForMatch('Į́')).toBe(foldForMatch('į́'));
+			expect(foldForMatch('J̈')).toBe(foldForMatch('j̈'));
+			expect(foldForMatch('J̇')).toBe(foldForMatch('j̇'));
+			// Canonically equivalent spellings of one string: decomposed `I` + U+0307
+			// against precomposed `İ`. Both `normalize('NFC')` calls are load-bearing.
+			expect(foldForMatch('\u0049\u0307')).toBe(foldForMatch('\u0130'));
+			expect(foldForMatch('\u0049\u0300')).toBe(foldForMatch('\u00CC'));
+		}
+		// And the tailoring that made the fold locale-aware at all still holds — in every
+		// spelling of the two languages that have it, and in no other language.
+		for (const turkic of ['tr', 'tr-TR', 'az', 'az-Latn-AZ']) {
+			setLocale(turkic);
+			expect(foldForMatch('I')).toBe(foldForMatch('ı'));
+			expect(foldForMatch('I')).not.toBe(foldForMatch('i'));
+		}
+		setLocale('lt');
+		expect(foldForMatch('I')).toBe(foldForMatch('i'));
+	});
+
+	it('finds a base letter inside an accented word, however the word is spelled', () => {
+		// Every call site asks `.includes()` about a SUBSTRING, and a composed `é` has no
+		// `e` in it — so an ASCII query finds a decomposed title and misses the composed
+		// one, which is a coin toss on how the name reached the vault. Folding both sides
+		// to NFD settles it in one direction. Found by review (Codex, PR #251).
+		setLocale('en');
+		for (const title of ['Caf\u00E9 notes', 'Cafe\u0301 notes']) {
+			expect(foldForMatch(title).includes(foldForMatch('cafe'))).toBe(true);
+			expect(foldForMatch(title).includes(foldForMatch('caf\u00E9'))).toBe(true);
+			expect(foldForMatch(title).includes(foldForMatch('cafe\u0301'))).toBe(true);
+		}
+		// Equality is untouched: an accented word is still not the unaccented one.
+		expect(foldForMatch('Caf\u00E9')).not.toBe(foldForMatch('Cafe'));
+	});
+
+	it('formats a bare number with the SAME formatter a sentence uses', () => {
+		// German groups with a dot and there is no German catalog, so the sentence is
+		// English. The two numbers agreeing is what stops a count outside a sentence
+		// disagreeing with one inside it — they did, at a thousand.
+		setLocale('de', { en: sparse });
+		expect(formatNumber(12345)).toBe('12.345');
+		expect(t('count.items', { count: 12345 })).toBe('12.345 items');
+	});
+
+	it('caps a bare number at three fraction digits by default, and not when asked to be precise', () => {
+		// The default is right for a COUNT, which is never this precise. `precise` is for
+		// a VALUE someone typed — the estimation view's confidence and effort cells — where
+		// the same cap would silently round what the user entered.
+		setLocale('en');
+		expect(formatNumber(3.14159)).toBe('3.142');
+		expect(formatNumber(3.14159, true)).toBe('3.14159');
+		// Still the SAME locale's separators either way — `precise` changes the
+		// fraction-digit cap, not which formatter's locale is asked.
+		setLocale('de', { en: sparse });
+		expect(formatNumber(3.14159, true)).toBe('3,14159');
+	});
+
+	it('keeps a precise value readable at any magnitude, in the locale', () => {
+		// Two ways an extreme value stops being readable, and the cell that shows it is
+		// `flex: 0 0 72px` with `overflow: hidden` (`styles/estimation.css`), so a long
+		// string is not merely ugly — it is clipped to nothing useful.
+		//
+		// ROUNDED AWAY: a cap on FRACTION digits is a cap on magnitude, so at
+		// `maximumFractionDigits: 20` every value under 1e-20 formatted as `0` — a nonzero
+		// number displayed as zero.
+		//
+		// SPELLED OUT: standard notation has to write every zero, so `1e100` came to 134
+		// characters and `5e-324` to 326. That one arrived with the original `String()` →
+		// `Intl` switch rather than with the fix for the first, and it is why the boundary
+		// below is a boundary rather than a bigger cap.
+		//
+		// The threshold is `Number.prototype.toString`'s own — exponential below 1e-6 and
+		// at or above 1e21 — so a cell shows the SHAPE the user typed, localized.
+		// Found by review (Codex, PR #251, two rounds).
+		setLocale('en');
+		expect(formatNumber(1e-21, true)).toBe('1E-21');
+		expect(formatNumber(5e-324, true)).toBe('5E-324');
+		expect(formatNumber(1e100, true)).toBe('1E100');
+		// Just inside the threshold on both sides, standard notation is kept — the
+		// boundary is `String()`'s, not one invented here.
+		expect(formatNumber(0.000001, true)).toBe('0.000001');
+		expect(formatNumber(1e20, true)).toBe('100,000,000,000,000,000,000');
+		// Zero is not "very small" — it has no exponent to show and must stay `0`.
+		expect(formatNumber(0, true)).toBe('0');
+		// Every ordinary value is untouched, which is what makes this a boundary rather
+		// than a second formatting policy.
+		expect(formatNumber(3.14159, true)).toBe('3.14159');
+		expect(formatNumber(1234.5, true)).toBe('1,234.5');
+		expect(formatNumber(0.1 + 0.2, true)).toBe('0.30000000000000004');
+		// Scientific or not, it is still the requested locale's separators.
+		setLocale('de', { en: sparse });
+		expect(formatNumber(9.9e-7, true)).toBe('9,9E-7');
+		expect(formatNumber(1234.5, true)).toBe('1.234,5');
+	});
+
+	it('takes the exponent branch on a COMPUTED number too, and inside a sentence', () => {
+		// `precise` says whether typed digits may be rounded; the MAGNITUDE says whether
+		// the number can be written out at all. Tying the second to the first left every
+		// computed score spelling itself across 25 characters in a 72px cell: totals and
+		// indicators pass `precise` false, and a total is bounded by a range the USER
+		// writes — `parseRange` takes `-?\d+` and `modelProblems` asks only for integers,
+		// so `0-1000000000000000000000` is a valid model. Found by review (Codex, PR #251).
+		setLocale('en');
+		expect(formatNumber(1e21)).toBe('1E21');
+		expect(formatNumber(1e-21)).toBe('1E-21');
+		// A count still formats as a count — the branch is unreachable for a tally, which
+		// is why this was invisible for three rounds.
+		expect(formatNumber(1234)).toBe('1,234');
+		expect(formatNumber(0)).toBe('0');
+		// Rounding is still `precise`'s alone: the default cap keeps its three fraction
+		// digits, and nothing about the magnitude branch changes that.
+		expect(formatNumber(3.14159)).toBe('3.142');
+		expect(formatNumber(3.14159, true)).toBe('3.14159');
+		// And a number inside a sentence agrees with the same number outside one, which
+		// is the property `formatNumber` exists for.
+		expect(t('count.items', { count: 1e21 })).toBe('1E21 items');
+	});
+
+	it('shows a rounded-away negative as zero, not as minus zero', () => {
+		// IEEE negative zero is a real value `Math.round` produces — `round2(-0.001)` is
+		// `-0`, and a scoring model may legitimately span negatives (`outputMin` need only
+		// be an integer below `outputMax`, so `-1`..`1` is valid), so a weighted total
+		// landing just under zero rounds to `-0` and reaches the table.
+		//
+		// `String(-0)` is `'0'`; `Intl.NumberFormat` renders `'-0'`. So the switch to
+		// `Intl` put a meaningless minus sign on a score that had rounded to nothing.
+		// Normalized once where the numbers reach `Intl`, not at the callers.
+		// Found by review (Codex, PR #251, third round).
+		setLocale('en');
+		expect(formatNumber(-0)).toBe('0');
+		expect(formatNumber(-0, true)).toBe('0');
+		// A real negative keeps its sign — the guard is for the signed ZERO alone.
+		expect(formatNumber(-0.01, true)).toBe('-0.01');
+		// The same guard on the other path a number takes to `Intl` in this module: a
+		// numeric message parameter, which `fill` formats itself.
+		expect(t('count.shownOfTotal', { shown: -0, total: 3 })).toContain('0');
+		expect(t('count.shownOfTotal', { shown: -0, total: 3 })).not.toContain('-0');
 	});
 });

@@ -2,7 +2,7 @@ import { setIcon } from 'obsidian';
 import type { EstimationView } from './estimationView';
 import { INDICATOR_BLOCK_KEYS, renderPanel } from './panel';
 import { renderCurrencyChip } from './currencyChip';
-import { t } from '../../i18n/t';
+import { compareText, formatNumber, t } from '../../i18n/t';
 import { EstimationItem, EstimationModel } from '../../domain/estimationItems';
 import { Indicator } from '../../domain/scoringModel';
 import { Currency, IndicatorBlock, indicatorFormula } from '../../domain/weightedScore';
@@ -287,7 +287,7 @@ function compareItems(a: EstimationItem, b: EstimationItem, pick: SortPick): num
 	// Absence partitions AFTER the sorted block in both directions — never negated by
 	// `pick.direction`, which is what keeps it out of the ascending/descending swap below.
 	if (av === null || bv === null) return av === bv ? 0 : av === null ? 1 : -1;
-	const cmp = typeof av === 'string' ? av.localeCompare(bv as string) : av - (bv as number);
+	const cmp = typeof av === 'string' ? compareText(av, bv as string) : av - (bv as number);
 	return pick.direction === 'asc' ? cmp : -cmp;
 }
 
@@ -418,8 +418,16 @@ function renderHead(view: EstimationView, tableEl: HTMLElement, pick: SortPick |
 }
 
 /**
- * A row's numeric cell: the exact number, and — where the cell is one of the two the reader
+ * A row's numeric cell: the number, and — where the cell is one of the two the reader
  * scans for extremes — a strip under it saying how much of a DECLARED range it reached.
+ *
+ * `precise` asks `formatNumber`'s uncapped formatter rather than its default one — the
+ * default caps at three fraction digits, which is right for a computed total or an
+ * indicator (both `round2`'d before they ever reach here) and wrong for confidence and
+ * effort, raw frontmatter reads with no rounding of their own: `3.14159` rounded to
+ * `3.142` is not "the number the user typed" any more, which is what this cell's own
+ * name promises. Both still get the locale's own grouping and decimal separator —
+ * `precise` changes the fraction-digit cap, not which formatter's locale is asked.
  *
  * Left EMPTY rather than a literal dash when there is no value: `styles/estimation.css`'s
  * `:empty::before` rule supplies the dash, so a computed absence and a row still mid-render
@@ -432,9 +440,9 @@ function renderHead(view: EstimationView, tableEl: HTMLElement, pick: SortPick |
  * `-2` effort clamps to an empty strip, saying *low* where the truth is *invalid* directly
  * beside the cell showing the number the user typed.
  */
-function numberCell(el: HTMLElement, value: number | null, range: [number, number] | null): void {
+function numberCell(el: HTMLElement, value: number | null, range: [number, number] | null, precise = false): void {
 	if (value === null) return;
-	el.createSpan({ cls: 'pbl-est-num', text: String(value) });
+	el.createSpan({ cls: 'pbl-est-num', text: formatNumber(value, precise) });
 	if (!range) return;
 	const [min, max] = range;
 	if (max <= min) return;
@@ -460,12 +468,15 @@ function renderRow(listEl: HTMLElement, item: EstimationItem, output: [number, n
 	numberCell(row.createDiv({ cls: 'pbl-est-total' }), item.result?.total ?? null, output);
 	const coverage = row.createDiv({ cls: 'pbl-est-coverage' });
 	if (item.result) {
-		coverage.createSpan({ cls: 'pbl-est-num', text: `${item.result.coverage.answered}/${item.result.coverage.enabled}` });
+		coverage.createSpan({
+			cls: 'pbl-est-num',
+			text: `${formatNumber(item.result.coverage.answered)}/${formatNumber(item.result.coverage.enabled)}`,
+		});
 		const ratio = item.result.coverage.enabled === 0 ? 0 : item.result.coverage.answered / item.result.coverage.enabled;
 		coverage.createDiv({ cls: 'pbl-est-strip' }).setCssProps({ '--pbl-progress': `${Math.round(ratio * 100)}%` });
 	}
-	numberCell(row.createDiv({ cls: 'pbl-est-cell', attr: { 'data-col': 'confidence' } }), item.confidence, null);
-	numberCell(row.createDiv({ cls: 'pbl-est-cell', attr: { 'data-col': 'effort' } }), item.effort, null);
+	numberCell(row.createDiv({ cls: 'pbl-est-cell', attr: { 'data-col': 'confidence' } }), item.confidence, null, true);
+	numberCell(row.createDiv({ cls: 'pbl-est-cell', attr: { 'data-col': 'effort' } }), item.effort, null, true);
 	let blocked: string | null = null;
 	if (indicator.operands.length > 0) {
 		const cell = row.createDiv({ cls: 'pbl-est-cell', attr: { 'data-col': 'indicator' } });

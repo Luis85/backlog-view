@@ -7,6 +7,7 @@ import { childrenLabel, listedChildren } from '../../src/view/childrenList';
 import { TIMELINE_SCOPE } from '../../src/view/viewState';
 import { Menu } from '../helpers/obsidian-mock';
 import { laneRoadmap, makeRoadmap, roadmapView, rowFor } from '../helpers/roadmap';
+import { num } from '../helpers/locale';
 
 useViewHarness();
 
@@ -732,6 +733,31 @@ describe('children on the card', () => {
 		const toggle = cardByTitle(containerEl, 'Monthly statement').querySelector<HTMLElement>('.pbl-card-kids-toggle');
 		expect(toggle?.querySelector('.pbl-card-kids-count')?.textContent).toBe('1');
 		expect(toggle?.getAttribute('aria-label')).toBe('1 task');
+	});
+
+	/**
+	 * The identical span-vs-`aria-label` agreement `test/view/shelfCount.test.ts` pins for
+	 * the shelf's OWN count, asked of this on-line count instead — the same
+	 * `formatNumber` call, a different span. A fix that touched one of the two call sites
+	 * and not the other would leave this one still spelling `1000`.
+	 *
+	 * Focused on Epic, so the thousand children roll up into the ONE shelved card's own
+	 * disclosure instead of becoming a thousand roadmap cards of their own — the same
+	 * re-rooting the focused case above (`roadmap under a focus`) already relies on, and
+	 * what keeps this test cheap: one card renders, and its own disclosure opens shut
+	 * (a parent nobody has seen before), so the thousand `<li>` entries themselves are
+	 * never drawn — only the toggle's count and accessible name are, unconditionally.
+	 */
+	it('agrees with its own accessible name at a thousand children', () => {
+		const vault = new FakeVault();
+		vault.addFile('Untriaged.md', { frontmatter: { type: 'Epic', order: 10 } });
+		for (let i = 0; i < 1000; i++) {
+			vault.addFile(`Child ${i}.md`, { frontmatter: { type: 'Task', order: i }, parentLink: 'Untriaged' });
+		}
+		const { containerEl } = makeRoadmap(vault, {}, { focus: 'Epic', shelfList: true });
+		const toggle = cardByTitle(containerEl, 'Untriaged').querySelector<HTMLElement>('.pbl-card-kids-toggle');
+		expect(toggle?.querySelector('.pbl-card-kids-count')?.textContent).toBe(num(1000));
+		expect(toggle?.getAttribute('aria-label')).toContain(num(1000));
 	});
 
 	it('leaves the card grid’s own disclosure exactly where it was', () => {

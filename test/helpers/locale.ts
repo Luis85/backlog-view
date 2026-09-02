@@ -56,3 +56,43 @@ resetLocale();
 export function num(value: number): string {
 	return new Intl.NumberFormat(intlLocale(TEST_LOCALE)).format(value);
 }
+
+/**
+ * `num()`'s sibling for the one caller that must NOT go through the default three-
+ * fraction-digit cap — `formatNumber(value, true)`, the estimation table's confidence
+ * and effort cells, which show a value the user typed rather than a count this plugin
+ * computed. Same reason `num()` exists: an expectation spelling `3.142` for `3.14159`
+ * would be pinning `Intl`'s default rounding rather than what the cell promises.
+ *
+ * The options here MIRROR `activate`'s `numberPrecise` and have to keep mirroring it —
+ * significant digits rather than fraction digits, for the reason stated there. A helper
+ * that drifted from the formatter it stands in for would assert the old policy while the
+ * view rendered the new one, which is the one failure a helper like this can cause.
+ *
+ * It stands in for the SPELLED-OUT branch only. `formatNumber(value, true)` switches to
+ * an exponent outside `String()`'s own threshold, and this does not: every caller here
+ * passes an ordinary value, so a mirrored branch would be a line no test reaches. Hand it
+ * something below 1e-6 or at 1e21 and the expectation it builds is the wrong one — the
+ * branch belongs in `test/i18n/locale.test.ts`, which asserts the boundary directly.
+ */
+export function numPrecise(value: number): string {
+	return new Intl.NumberFormat(intlLocale(TEST_LOCALE), { maximumSignificantDigits: 21 }).format(value);
+}
+
+/**
+ * Run `body` with the plugin resolved to `code`, and put the locale back afterwards —
+ * for a test that asks the same question in two locales and compares the answers.
+ *
+ * Here rather than in each file that wants it: the `beforeEach` above covers a test that
+ * never touches the locale, and `resetLocale` covers a body that throws, but neither
+ * covers a test resolving TWICE inside one `it`. Two files needed exactly that and each
+ * had its own copy.
+ */
+export function withLocale<T>(code: string, body: () => T): T {
+	setLocale(code);
+	try {
+		return body();
+	} finally {
+		resetLocale();
+	}
+}

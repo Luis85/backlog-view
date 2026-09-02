@@ -136,6 +136,24 @@ function grammarFor(locale: string): Grammar {
 }
 
 /**
+ * The locale a MATCHING fold may be taken in — the requested one only where lowercasing
+ * really differs by language, and the root locale (`und`) everywhere else.
+ *
+ * Unicode's own model, taken rather than invented: case FOLDING is locale-independent
+ * apart from one Turkic tailoring, while case MAPPING carries several more. Turkish and
+ * Azerbaijani are the tailoring — `I` lowercases to `ı`, which is the whole reason this
+ * fold takes a locale at all. Lithuanian is the case that made the distinction matter: its
+ * mapping adds a dot above `i`/`j` before an accent, which is right for display and wrong
+ * for deciding whether two strings are the same word.
+ *
+ * A language subtag test rather than a list of full codes, so `tr-TR` and `az-Latn-AZ`
+ * answer the same as `tr` and `az`. Found by review (Codex, PR #251).
+ */
+function foldLocale(requested: string): string {
+	return /^(tr|az)\b/i.test(requested) ? requested : 'und';
+}
+
+/**
  * The resolved locale and the formatters that follow from it. Built once rather than per
  * call: `t()` runs inside render loops, and an `Intl` constructor there would be a cost
  * with no observable benefit — Obsidian needs a restart to change its language, so this
@@ -151,14 +169,51 @@ function activate(code: string, catalogs: Record<string, Catalog>): {
 	grammar: Grammar;
 	source: Grammar;
 	number: Intl.NumberFormat;
+	numberPrecise: Intl.NumberFormat;
+	numberScientific: Intl.NumberFormat;
+	collator: Intl.Collator;
+	requested: string;
+	fold: string;
 } {
 	const name = resolveCatalog(code, Object.keys(catalogs));
+	// The ONE answer to "which locale does presentation use", taken once and shared by the
+	// two formatters and the fold below. `number.resolvedOptions().locale` is what `Intl`
+	// RESOLVED to and can differ from what was asked for, so a second reader taking it from
+	// there would be a second idea of the locale rather than the same one.
+	const requested = intlLocale(code);
 	return {
 		name,
 		messages: catalogs[name] ?? en,
 		grammar: grammarFor(name),
 		source: grammarFor(SOURCE_LOCALE),
-		number: new Intl.NumberFormat(intlLocale(code)),
+		number: new Intl.NumberFormat(requested),
+		// `formatNumber(value, true)`'s own formatter, built once beside the other one for
+		// the reason stated there: a VALUE someone typed (estimation's confidence and
+		// effort) rather than a COUNT this plugin computed.
+		//
+		// **SIGNIFICANT digits, not fraction digits, and the difference is not cosmetic.**
+		// A fraction-digit cap is a cap on MAGNITUDE: at `maximumFractionDigits: 20` every
+		// value below 1e-20 has no digit left to land in and formats as `0`, so a
+		// confidence of `1e-21` displayed as zero — a nonzero number rendered as nothing,
+		// which is exactly the silent-wrong-answer shape this whole PBI is about. 21 is
+		// `Intl`'s own ceiling and comfortably past a JS number's ~17, so no value is cut
+		// for precision; every ordinary number formats identically either way, which is
+		// what made this a swap rather than a second formatting policy.
+		// Found by review (Codex, PR #251).
+		numberPrecise: new Intl.NumberFormat(requested, { maximumSignificantDigits: 21 }),
+		// The same precision in the notation standard cannot keep SHORT. Standard notation
+		// has to write every zero, so `1e100` spells 134 characters and `5e-324` spells
+		// 326 — and `.pbl-est-cell` is `flex: 0 0 72px` with `overflow: hidden`, so the
+		// cell shows an ellipsis instead of a number. That is not a cost of the
+		// significant-digit cap: it arrived with the original `String()` → `Intl` switch,
+		// where `1e100` was already 134 characters. Found by review (Codex, PR #251).
+		numberScientific: new Intl.NumberFormat(requested, {
+			notation: 'scientific',
+			maximumSignificantDigits: 21,
+		}),
+		collator: new Intl.Collator(requested),
+		requested,
+		fold: foldLocale(requested),
 	};
 }
 
@@ -213,6 +268,144 @@ function localeOverride(): string | null {
 /** Which catalog is being read, and which locale `Intl` was given. */
 export function activeLocale(): { catalog: string; numbers: string } {
 	return { catalog: active.name, numbers: active.number.resolvedOptions().locale };
+}
+
+/**
+ * Collation, in the REQUESTED locale — an ordering is presentation of the user's own data,
+ * so it follows the user rather than the catalog: a French reader with no French catalog
+ * still sorts in French.
+ *
+ * The helper exists rather than a locale-passing `localeCompare` because of WHERE the
+ * comparison happens. `a.localeCompare(b, locale)` builds a fresh `Intl.Collator` per
+ * comparison, so a sort in a render path constructs n·log n of them; this one is built
+ * once per `setLocale`, beside the formatters, for the same reason they are. A bare
+ * `localeCompare(b)` is worse again — it takes the HOST's default, which is the operating
+ * system's language rather than Obsidian's. Both spellings are banned in `src/` by
+ * `no-restricted-properties` in `eslint.config.mjs`.
+ */
+export function compareText(a: string, b: string): number {
+	return active.collator.compare(a, b);
+}
+
+/**
+ * A string folded for MATCHING — what the user typed against what they can see — in the
+ * REQUESTED locale, for the same reason collation takes it: a filter that cannot find a
+ * note plainly on screen is the fold getting the locale wrong. Turkish is the worked
+ * example, where `I` folds to `ı` and `toLowerCase()` gives `i`.
+ *
+ * **This is the one fold in `src/` whose job is matching**, and it must stay the only one:
+ * every other fold decides what something *is* — a type name, a state, a persisted option
+ * key — and folding those with a locale corrupts vaults. `test/i18n/foldSites.ts`
+ * classifies all of them and the suite holds the split.
+ *
+ * **The locale it takes is `fold`, not `requested`**, and that is the whole of what three
+ * review rounds cost (Codex, PR #251). Lowercasing is correct CASING and is not a
+ * case-INSENSITIVE form: Lithuanian's tailoring ADDS a dot above a soft-dotted letter when
+ * an accent follows, so `Ì` lowercases to `i̇̀` while `ì` stays `ì` and a query stops
+ * meeting the title it was typed from. `foldLocale` is where that is answered.
+ *
+ * **Both normalizations are load-bearing and they are different forms on purpose.** `NFC`
+ * goes first because the fold itself is not canonical-equivalence-safe: under `tr` a
+ * decomposed `I` + `U+0307` lowercases to `ı` + `U+0307` while the precomposed `İ` gives
+ * `i`, so two spellings of one string fold apart. `NFD` goes last because every call site
+ * asks `.includes()` about a SUBSTRING, and a composed `é` has no `e` in it: an ASCII
+ * query `cafe` finds a decomposed `Café` and, composed, would not. Decomposing both sides
+ * settles it in one direction rather than leaving it to how the name reached the vault.
+ * Found by review (Codex, PR #251).
+ *
+ * Two shapes were tried and are worse. Stripping the added dot back off (`[ij]`, then
+ * `\p{Soft_Dotted}`) cannot tell a tailoring's dot from one an author WROTE, so it united
+ * `Ì`/`ì` at the price of splitting `J̇`/`j̇`. `Intl.Collator` with `sensitivity: 'base'`
+ * answers a different question entirely: every call site asks `.includes(needle)` about a
+ * SUBSTRING, and a collator compares whole strings.
+ */
+export function foldForMatch(value: string): string {
+	return value.normalize('NFC').toLocaleLowerCase(active.fold).normalize('NFD');
+}
+
+/**
+ * Where a precise value stops being spelled out and starts being written with an exponent
+ * — `Number.prototype.toString`'s OWN boundary, taken rather than invented.
+ *
+ * Borrowed because it is the shape the value already had: these cells show back a number
+ * someone typed into frontmatter, and a note carrying `1e-21` should read as an exponent
+ * in the table too. Picking a threshold of our own would make the table disagree with the
+ * note for a band of values, and there is no reading of "show back what was entered" that
+ * wants that.
+ */
+const SPELLED_OUT_FROM = 1e-6;
+const SPELLED_OUT_BELOW = 1e21;
+
+/**
+ * IEEE negative zero, made ordinary before any formatter sees it.
+ *
+ * `-0` is a value arithmetic really produces — `Math.round(-0.001)` is `-0`, so
+ * `weightedScore.ts`'s `round2` returns it for any weighted total that lands just below
+ * zero, and a scoring model may legitimately span negatives (`outputMin` need only be an
+ * integer below `outputMax`). `String(-0)` is `'0'` and hid this; `Intl.NumberFormat`
+ * spells it `'-0'`, so the switch to `Intl` put a meaningless minus sign on a score that
+ * had rounded away to nothing.
+ *
+ * Normalized HERE rather than at the callers, because "a number this module hands to
+ * `Intl`" is one category with exactly two members — `formatNumber` and `fill` — and a
+ * guard placed at the sites that happen to produce a score today would miss the next one.
+ * `Object.is` rather than `=== -0`, which is true for plain zero as well.
+ * Found by review (Codex, PR #251).
+ */
+function withoutNegativeZero(value: number): number {
+	return Object.is(value, -0) ? 0 : value;
+}
+
+/**
+ * Which of the three number formatters a value gets — asked of the VALUE's own magnitude,
+ * and only then of who is asking.
+ *
+ * The two questions are independent and were tangled once: `precise` says whether the
+ * digits someone TYPED may be rounded, while the magnitude says whether the number can be
+ * written out at all. Tying the second to the first left every computed score — totals and
+ * indicators, which pass `precise` false — spelling `1e21` across 25 characters in a cell
+ * that clips at 72px. Found by review (Codex, PR #251).
+ *
+ * `fill` asks it too, so a number inside a sentence and the same number outside one still
+ * cannot disagree — the property `formatNumber`'s own doc exists for.
+ */
+function formatterFor(shown: number, precise: boolean): Intl.NumberFormat {
+	const magnitude = Math.abs(shown);
+	const spelledOut = magnitude === 0 || (magnitude >= SPELLED_OUT_FROM && magnitude < SPELLED_OUT_BELOW);
+	if (!spelledOut) return active.numberScientific;
+	return precise ? active.numberPrecise : active.number;
+}
+
+/**
+ * A bare number shown to a person, in the REQUESTED locale — presentation, like collation.
+ * The SAME formatter `t()` gives a `{count}` parameter, so a count outside a sentence and
+ * one inside it cannot disagree; they did, at a thousand, which is what this exists for.
+ *
+ * `precise`, for the one shape of number this default formatter is wrong for: a VALUE
+ * someone TYPED rather than a count this plugin computed. `Intl.NumberFormat`'s default
+ * caps at three fraction digits, silently rounding `3.14159` to `3.142` — fine for a
+ * count, which is never that precise, and wrong for the estimation view's confidence and
+ * effort cells, whose whole promise is showing back the number the user entered. `true`
+ * asks the same locale's grouping and decimal separator, capped at 21 SIGNIFICANT digits
+ * instead — see `activate`, which says why that is the cap that follows the value.
+ *
+ * **Outside `SPELLED_OUT_FROM`…`SPELLED_OUT_BELOW` it switches to an exponent**, because
+ * precision and compactness are two different failures and a cell 72px wide has both: a
+ * fraction cap rounds `1e-21` away to `0`, and standard notation spells `1e100` across 134
+ * characters that `overflow: hidden` then clips. Neither is a number anyone can read.
+ * Zero is excluded explicitly — it is not "very small", it has no exponent to show, and
+ * `Intl` would otherwise render it `0E0`.
+ *
+ * **`precise` does not gate that branch, and this paragraph said it did.** The claim was
+ * that a COUNT cannot reach either extreme, which is true and answers the wrong question:
+ * `precise` is false for every COMPUTED number too, and a computed score is bounded by a
+ * range the user writes. `parseRange` takes `-?\d+` and `modelProblems` asks only for
+ * integers, so an output range of `0-1000000000000000000000` is a valid model and its
+ * total lands at `1e21` in the same 72px cell. Found by review (Codex, PR #251).
+ */
+export function formatNumber(value: number, precise = false): string {
+	const shown = withoutNegativeZero(value);
+	return formatterFor(shown, precise).format(shown);
 }
 
 /**
@@ -283,6 +476,8 @@ function fill(text: string, grammar: Grammar, values: Values | undefined): strin
 		const value = values[name];
 		if (value === undefined) return whole;
 		if (Array.isArray(value)) return grammar.list.format(value as readonly string[]);
-		return typeof value === 'number' ? active.number.format(value) : (value as string);
+		if (typeof value !== 'number') return value as string;
+		const shown = withoutNegativeZero(value);
+		return formatterFor(shown, false).format(shown);
 	});
 }

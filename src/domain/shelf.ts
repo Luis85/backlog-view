@@ -1,6 +1,7 @@
 import { displayType } from './itemTypes';
 import { ALL_TYPES } from './typeVocabulary';
 import { ShelfCard } from './bars';
+import { compareText, foldForMatch } from '../i18n/t';
 
 /** Display-only ordering of cards within a group. Never written anywhere. */
 export type ShelfSort = 'tree' | 'title' | 'modified';
@@ -41,7 +42,7 @@ function groupKey(card: ShelfCard): string {
 }
 
 function compareCards(sort: ShelfSort, a: ShelfCard, b: ShelfCard): number {
-	if (sort === 'title') return a.item.title.localeCompare(b.item.title);
+	if (sort === 'title') return compareText(a.item.title, b.item.title);
 	if (sort === 'modified') return b.item.file.stat.mtime - a.item.file.stat.mtime;
 	// 'tree': the input is already sibling order: `roadmap.shelf` keeps it, and a
 	// stable sort over an already-ordered array leaves it exactly where it was.
@@ -52,12 +53,16 @@ function compareCards(sort: ShelfSort, a: ShelfCard, b: ShelfCard): number {
  * The shelf's own title search, applied BEFORE the grouping rather than inside it: the
  * type picker is built from the unsearched grouping, so a search can never take a type's
  * own way back off the list that restores it — the same rule hiding already keeps.
- * Display-only like the sort and the type filter; nothing here is ever written to a note.
+ * Display-only like the sort and the type filter; nothing here is ever written to a note —
+ * which is why both sides fold through `foldForMatch`, in the reader's own locale: this
+ * compares what was typed against what is on screen, so a Turkish reader must find `Işık`
+ * by typing `ışık`. A boolean `includes`, never an index back into the unfolded title;
+ * folding is not length-preserving. See `test/i18n/foldSites.ts`.
  */
 export function searchShelf(cards: ShelfCard[], search: string): ShelfCard[] {
-	const needle = search.trim().toLowerCase();
+	const needle = foldForMatch(search.trim());
 	if (needle === '') return cards;
-	return cards.filter((card) => card.item.title.toLowerCase().includes(needle));
+	return cards.filter((card) => foldForMatch(card.item.title).includes(needle));
 }
 
 /**
