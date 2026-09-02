@@ -152,6 +152,7 @@ function activate(code: string, catalogs: Record<string, Catalog>): {
 	source: Grammar;
 	number: Intl.NumberFormat;
 	numberPrecise: Intl.NumberFormat;
+	numberScientific: Intl.NumberFormat;
 	collator: Intl.Collator;
 	requested: string;
 } {
@@ -181,6 +182,16 @@ function activate(code: string, catalogs: Record<string, Catalog>): {
 		// what made this a swap rather than a second formatting policy.
 		// Found by review (Codex, PR #251).
 		numberPrecise: new Intl.NumberFormat(requested, { maximumSignificantDigits: 21 }),
+		// The same precision in the notation standard cannot keep SHORT. Standard notation
+		// has to write every zero, so `1e100` spells 134 characters and `5e-324` spells
+		// 326 — and `.pbl-est-cell` is `flex: 0 0 72px` with `overflow: hidden`, so the
+		// cell shows an ellipsis instead of a number. That is not a cost of the
+		// significant-digit cap: it arrived with the original `String()` → `Intl` switch,
+		// where `1e100` was already 134 characters. Found by review (Codex, PR #251).
+		numberScientific: new Intl.NumberFormat(requested, {
+			notation: 'scientific',
+			maximumSignificantDigits: 21,
+		}),
 		collator: new Intl.Collator(requested),
 		requested,
 	};
@@ -272,6 +283,19 @@ export function foldForMatch(value: string): string {
 }
 
 /**
+ * Where a precise value stops being spelled out and starts being written with an exponent
+ * — `Number.prototype.toString`'s OWN boundary, taken rather than invented.
+ *
+ * Borrowed because it is the shape the value already had: these cells show back a number
+ * someone typed into frontmatter, and a note carrying `1e-21` should read as an exponent
+ * in the table too. Picking a threshold of our own would make the table disagree with the
+ * note for a band of values, and there is no reading of "show back what was entered" that
+ * wants that.
+ */
+const SPELLED_OUT_FROM = 1e-6;
+const SPELLED_OUT_BELOW = 1e21;
+
+/**
  * A bare number shown to a person, in the REQUESTED locale — presentation, like collation.
  * The SAME formatter `t()` gives a `{count}` parameter, so a count outside a sentence and
  * one inside it cannot disagree; they did, at a thousand, which is what this exists for.
@@ -284,14 +308,21 @@ export function foldForMatch(value: string): string {
  * asks the same locale's grouping and decimal separator, capped at 21 SIGNIFICANT digits
  * instead — see `activate`, which says why that is the cap that follows the value.
  *
- * What it still does not reproduce is `String()`'s SCIENTIFIC notation: `Intl` is asked
- * for standard notation, so `5e-324` spells out its 324 characters rather than staying
- * short. That is the narrow guarantee this makes — no value is rounded away, not every
- * value is rendered compactly — and the extreme is unreachable from an estimation cell
- * anyone types into.
+ * **Outside `SPELLED_OUT_FROM`…`SPELLED_OUT_BELOW` it switches to an exponent**, because
+ * precision and compactness are two different failures and a cell 72px wide has both: a
+ * fraction cap rounds `1e-21` away to `0`, and standard notation spells `1e100` across 134
+ * characters that `overflow: hidden` then clips. Neither is a number anyone can read.
+ * Zero is excluded explicitly — it is not "very small", it has no exponent to show, and
+ * `Intl` would otherwise render it `0E0`.
+ *
+ * `precise` alone takes this branch. A COUNT is a tally this plugin computed and cannot
+ * reach either extreme, so the default formatter stays one formatter.
  */
 export function formatNumber(value: number, precise = false): string {
-	return (precise ? active.numberPrecise : active.number).format(value);
+	if (!precise) return active.number.format(value);
+	const magnitude = Math.abs(value);
+	const spelledOut = magnitude === 0 || (magnitude >= SPELLED_OUT_FROM && magnitude < SPELLED_OUT_BELOW);
+	return (spelledOut ? active.numberPrecise : active.numberScientific).format(value);
 }
 
 /**

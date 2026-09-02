@@ -68,6 +68,12 @@ export function num(value: number): string {
  * significant digits rather than fraction digits, for the reason stated there. A helper
  * that drifted from the formatter it stands in for would assert the old policy while the
  * view rendered the new one, which is the one failure a helper like this can cause.
+ *
+ * It stands in for the SPELLED-OUT branch only. `formatNumber(value, true)` switches to
+ * an exponent outside `String()`'s own threshold, and this does not: every caller here
+ * passes an ordinary value, so a mirrored branch would be a line no test reaches. Hand it
+ * something below 1e-6 or at 1e21 and the expectation it builds is the wrong one — the
+ * branch belongs in `test/i18n/locale.test.ts`, which asserts the boundary directly.
  */
 export function numPrecise(value: number): string {
 	return new Intl.NumberFormat(intlLocale(TEST_LOCALE), { maximumSignificantDigits: 21 }).format(value);

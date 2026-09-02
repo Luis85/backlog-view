@@ -326,20 +326,41 @@ describe('collation, folding and numbers follow the requested locale', () => {
 		expect(formatNumber(3.14159, true)).toBe('3,14159');
 	});
 
-	it('does not round a precise value away to zero, however small it is', () => {
-		// A CAP on fraction digits is a cap on magnitude, not on precision: at
-		// `maximumFractionDigits: 20` every value under 1e-20 formats as `0`, so a
-		// confidence of `1e-21` read straight off a note rendered as nothing at all — a
-		// nonzero number displayed as zero, which is the shape of defect this whole PBI
-		// is about. Significant digits is the cap that follows the VALUE rather than the
-		// decimal point. Found by review (Codex, PR #251).
+	it('keeps a precise value readable at any magnitude, in the locale', () => {
+		// Two ways an extreme value stops being readable, and the cell that shows it is
+		// `flex: 0 0 72px` with `overflow: hidden` (`styles/estimation.css`), so a long
+		// string is not merely ugly — it is clipped to nothing useful.
+		//
+		// ROUNDED AWAY: a cap on FRACTION digits is a cap on magnitude, so at
+		// `maximumFractionDigits: 20` every value under 1e-20 formatted as `0` — a nonzero
+		// number displayed as zero.
+		//
+		// SPELLED OUT: standard notation has to write every zero, so `1e100` came to 134
+		// characters and `5e-324` to 326. That one arrived with the original `String()` →
+		// `Intl` switch rather than with the fix for the first, and it is why the boundary
+		// below is a boundary rather than a bigger cap.
+		//
+		// The threshold is `Number.prototype.toString`'s own — exponential below 1e-6 and
+		// at or above 1e21 — so a cell shows the SHAPE the user typed, localized.
+		// Found by review (Codex, PR #251, two rounds).
 		setLocale('en');
-		expect(formatNumber(1e-21, true)).not.toBe('0');
-		expect(formatNumber(1e-21, true)).toBe('0.000000000000000000001');
-		// The ordinary values are untouched by the change — this is the same output the
-		// fraction-digit cap gave, which is what makes it a safe swap rather than a
-		// second formatting policy.
+		expect(formatNumber(1e-21, true)).toBe('1E-21');
+		expect(formatNumber(5e-324, true)).toBe('5E-324');
+		expect(formatNumber(1e100, true)).toBe('1E100');
+		// Just inside the threshold on both sides, standard notation is kept — the
+		// boundary is `String()`'s, not one invented here.
+		expect(formatNumber(0.000001, true)).toBe('0.000001');
+		expect(formatNumber(1e20, true)).toBe('100,000,000,000,000,000,000');
+		// Zero is not "very small" — it has no exponent to show and must stay `0`.
+		expect(formatNumber(0, true)).toBe('0');
+		// Every ordinary value is untouched, which is what makes this a boundary rather
+		// than a second formatting policy.
+		expect(formatNumber(3.14159, true)).toBe('3.14159');
 		expect(formatNumber(1234.5, true)).toBe('1,234.5');
 		expect(formatNumber(0.1 + 0.2, true)).toBe('0.30000000000000004');
+		// Scientific or not, it is still the requested locale's separators.
+		setLocale('de', { en: sparse });
+		expect(formatNumber(9.9e-7, true)).toBe('9,9E-7');
+		expect(formatNumber(1234.5, true)).toBe('1.234,5');
 	});
 });
