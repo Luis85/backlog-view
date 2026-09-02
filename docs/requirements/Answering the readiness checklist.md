@@ -89,5 +89,9 @@ The criteria are evaluated in `src/domain/releaseReadiness.ts`, beside the summa
 model in `src/domain/model.ts`, rather than a second walk of it — reading
 `src/domain/dependencies.ts` for the edges. Every
 key and every value list is declared in `src/domain/viewOptions.ts`, checked for consistency
-in `src/domain/settingsConsistency.ts`, and the checklist is drawn by the release view's
-render module in `src/view/render/`.
+in `src/domain/settingsConsistency.ts`, and the checklist is drawn by
+`src/view/release/renderReadiness.ts` — the chip row under the header's footline, and the
+effort figures that join the summary strip `src/view/release/renderScope.ts` already draws.
+A module of its own rather than more of that one: it draws a different thing from a
+different model, and nothing in it derives a number — every figure and every verdict is
+handed to it by the one walk above.

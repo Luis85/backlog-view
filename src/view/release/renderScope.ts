@@ -14,6 +14,8 @@ import { drawScopeToolbar } from './scopeToolbar';
 import { wireScopeKeys } from '../scopeKeys';
 import { wireScopeCreate } from './scopeCreate';
 import { drawReleaseActions } from './releaseClose';
+import { drawReadiness, drawReadinessFigures } from './renderReadiness';
+import { releaseReadiness, ReleaseReadiness } from '../../domain/releaseReadiness';
 import { RELEASE_FOLD } from '../viewState';
 
 /**
@@ -195,8 +197,14 @@ function drawHeader(
 	// drawn on every screen, so the empty-scope case that `Generating the release notes`
 	// extension 1a is about now gets the actions by construction.
 	const footEl = headerEl.createDiv({ cls: 'pbl-rel-footline' });
-	drawSummary(footEl, release, scope.members, planSettings);
+	// Computed ONCE and handed to both — the chips and the figures are the same walk, and a
+	// second call here would be the second opinion `domain/releaseReadiness.ts` exists to
+	// prevent. `view.settings` is this view's own `ReleaseSettings`, the same object the
+	// model was built from, for `planSettings`' own reason above.
+	const readiness = releaseReadiness(view.app, scope, view.settings, planSettings);
+	drawSummary(footEl, release, scope.members, planSettings, readiness);
 	drawReleaseActions(view, footEl, release, scope, planSettings);
+	drawReadiness(headerEl, readiness);
 }
 
 /**
@@ -460,12 +468,23 @@ function drawDescription(view: ReleaseView, headerEl: HTMLElement, release: Rele
  * live-vault question, the same one `src/view/CLAUDE.md`'s resize-grip section leaves open
  * for a `role="separator"`.
  */
-function drawSummary(headerEl: HTMLElement, release: ReleaseRow, members: number, planSettings: BacklogSettings): void {
+function drawSummary(
+	headerEl: HTMLElement,
+	release: ReleaseRow,
+	members: number,
+	planSettings: BacklogSettings,
+	readiness: ReleaseReadiness,
+): void {
 	if (release.members.unconfigured || members === 0) return;
 	const sumEl = headerEl.createDiv({ cls: 'pbl-rel-summary' });
 	if (release.done.unconfigured || release.done.value === null) {
 		sumEl.createSpan({ cls: 'pbl-rel-figure', text: t('release.scope.members', { count: members }) });
 		sumEl.createSpan({ cls: 'pbl-rel-unreadable', text: unconfiguredProgressText(release.unconfiguredWorkflows) });
+		// **In BOTH branches, and that is the point.** The effort figures read the ESTIMATE
+		// key rather than the state workflow, so a release with an estimate key bound and no
+		// workflow that can say done would otherwise lose readable figures along with the one
+		// that really is unreadable.
+		drawReadinessFigures(sumEl, readiness);
 		return;
 	}
 	const done = release.done.value;
@@ -483,6 +502,7 @@ function drawSummary(headerEl: HTMLElement, release: ReleaseRow, members: number
 	// No `aria-hidden` either: with no description to double against, this text is meant to
 	// be read exactly once, as ordinary content of the strip.
 	sumEl.createSpan({ cls: 'pbl-sr-only', text: provenance });
+	drawReadinessFigures(sumEl, readiness);
 }
 
 /**

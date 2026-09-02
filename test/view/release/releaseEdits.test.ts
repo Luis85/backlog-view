@@ -546,7 +546,11 @@ describe('what an edit is, and is not', () => {
 		expect(containerEl.querySelector('.pbl-rel-status')).toBeNull();
 		expect(containerEl.querySelector('.pbl-rel-desc')).toBeNull();
 		const said = Array.from(containerEl.querySelectorAll('.pbl-rel-unreadable')).map((el) => el.textContent);
-		expect(said).toEqual(['Status unreadable', 'Description unreadable']);
+		// The third is the summary strip's own effort note (2026-09-02): this fixture binds no
+		// estimate key, and an unconfigured figure is NAMED rather than merely absent, the same
+		// rule the two above keep. Listed rather than filtered out, so the exact list still says
+		// no OTHER field went quietly unreadable.
+		expect(said).toEqual(['Status unreadable', 'Description unreadable', 'Effort is not configured']);
 	});
 
 	it('refuses every edit while two release properties name one key', async () => {

@@ -1987,6 +1987,39 @@ export const en = {
 		other: '{count} items',
 	},
 	/**
+	 * The three readiness criteria, named. Each is the criterion's own name, read into every
+	 * sentence below rather than spelled beside one — a chip that names itself and a tooltip
+	 * that names it differently are the same drift a second reader would be.
+	 */
+	'release.scope.readinessEstimated': 'Estimated',
+	'release.scope.readinessBlocked': 'Dependencies resolved',
+	'release.scope.readinessRisk': 'Critical risks addressed',
+	/**
+	 * A criterion not fully met: the number somebody actually acts on comes first, and the
+	 * criterion NAMES itself — two chips both reading "2 of 5 outstanding" are
+	 * indistinguishable, and the only identity would be a tooltip on a static, unfocusable
+	 * div, which reaches a pointer alone.
+	 */
+	'release.scope.readinessPartly': '{criterion}: {outstanding} of {count} outstanding',
+	/** The same, where some of those could not be read at all — extension 5a wants the
+	 *  unreadable ones stated rather than folded into the total. */
+	'release.scope.readinessPartlyUnreadable': '{criterion}: {outstanding} of {count} outstanding, {unreadable} unreadable',
+	'release.scope.readinessUnconfigured': '{criterion}: not configured',
+	/** Every criterion unconfigured — one chip rather than three saying nothing. The chip's
+	 *  own hidden text names all three, so nothing is hidden by the collapse. */
+	'release.scope.readinessNoneConfigured': {
+		one: 'Readiness: {count} criterion not configured',
+		other: 'Readiness: {count} criteria not configured',
+	},
+	/** The estimate progress: ONE figure with its denominator inside it, never a sum and a
+	 *  second percentage competing with the items bar beside it. */
+	'release.scope.effort': '{done} of {total} pts ({pct}%)',
+	/** Estimated but not measurable: the estimate key is bound and no workflow can say what
+	 *  done means, so there is a total and no progress through it. */
+	'release.scope.effortEstimated': '{total} pts estimated',
+	'release.scope.effortUnconfigured': 'Effort is not configured',
+	'release.scope.unestimated': '{count} unestimated',
+	/**
 	 * The summary strip's own label for the progress figure, read into
 	 * `release.figureUnconfigured` (no workflow to name — see
 	 * `release.scope.progressUnconfigured`'s own comment) or into that key itself when
