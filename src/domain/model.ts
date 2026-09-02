@@ -57,7 +57,13 @@ interface LinkedItem extends RawItem {
  * Phase 3 — everything derived from an item's position in the finished tree: levels,
  * visual depth, and the rollups counted back up from the leaves. This is the only
  * phase anything outside `model.ts` ever sees.
+ *
+ * Which is why `LinkedItem` stays private and this is suppressed rather than exported: the
+ * sentence above is the decision, and publishing phase 2 so a signature stops being
+ * reported would reverse it for the tool's benefit. The other nineteen leaks this rule
+ * found on 2026-09-02 were narrowings a caller could legitimately name — those are exported.
  */
+// fallow-ignore-next-line private-type-leak
 export interface BacklogItem extends LinkedItem {
 	parent: BacklogItem | null;
 	children: BacklogItem[];

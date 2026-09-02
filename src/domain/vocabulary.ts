@@ -23,7 +23,7 @@ import { compareText } from '../i18n/t';
  * phase types, and naming the three fields they read keeps that phase private while
  * saying exactly what a vocabulary depends on.
  */
-interface VocabularySource {
+export interface VocabularySource {
 	outsideFilter: boolean;
 	stateValue: string | null;
 	tags: string[];
@@ -38,7 +38,7 @@ interface VocabularySource {
  * deliberately runs off the LINKED phase, before `ladder` exists, and a field every
  * collector must carry would break that call site for a field only one of them reads.
  */
-interface CatalogVocabularySource extends VocabularySource {
+export interface CatalogVocabularySource extends VocabularySource {
 	ladder: string[];
 	testStateValue: string | null;
 }

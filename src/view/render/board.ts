@@ -31,7 +31,7 @@ import { childTypeChoices, focusTarget, isDeliverableType } from '../../domain/i
 import { BacklogItem, inPlan } from '../../domain/model';
 
 /** What differs between the two board-shaped projections' render passes. */
-interface BoardRenderOptions {
+export interface BoardRenderOptions {
 	/** Which screen these columns are drawn on, so two boards' `Done` are two folds. */
 	scope: ColumnScope;
 	/**
