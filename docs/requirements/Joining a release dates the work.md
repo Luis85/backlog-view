@@ -256,19 +256,32 @@ states no `ends`, so the writer's reversed-span guard (`refusesAxis` in
 `src/storage/frontmatter.ts`) does not run on it — which is correct here because extension 4b
 makes the pair coherent rather than leaving the writer to refuse a legitimate join.
 
-**Extension 6c puts emptiness, the ordering and the join test in `applyAxis`**, in the same
-`processFrontMatter` call that lands the write, beside the `sameCivil` skip it already makes
-there. It is reached by a flag the `AxisWrite` carries, so the horizon drag, the timeline
+**Extension 6c's three questions are asked in `plannedAxis` and `suppressedAxis`
+(`src/storage/writeKeys.ts`), not in `applyAxis`** — in the same `processFrontMatter` call
+that lands the write, but BEFORE `applyLinks` replaces the membership and before any end is
+written. `applyAxis` receives the entries already decided and keeps only the `sameCivil` skip
+it always made.
+
+**That location is the rule rather than a detail, and this paragraph named the wrong one
+until 2026-09-02** (Codex, PR #242). A check written inside `applyAxis`'s own loop reads, at
+`target`, a start it wrote itself one iteration earlier — `AXIS_FIELDS` runs `start` first —
+so an undated item joining a past release takes today and loses the due, which is 4b
+inverted. A future change that followed the old sentence would rebuild exactly the bug this
+use case was rewritten to prevent.
+
+The rule is reached by a flag the `AxisWrite` carries, so the horizon drag, the timeline
 resize and the iteration join keep overwriting; the flag is not an `AxisField`, so
-`axisEntries` in `src/storage/writeKeys.ts` neither emits it as an entry nor lets it disturb
-`touchedKeys`.
+`axisEntries` neither emits it as an entry nor lets it disturb `touchedKeys`. `landsMembership`
+beside it asks the join question for the LINK, so a settled race keeps the note's own spelling
+rather than taking `wikilinkTo`'s canonical one.
 
 **What stays in the planner is the two VALUES and nothing else** — the release's own date and
 today, neither of which the writer can know. It carries both on every join, unfiltered. Which
 of them land is three live questions, all asked at the write: does the note still hold that
 end, does writing it reverse the span against the end that stands, and is this pick still a
 join. The last needs the membership read BEFORE `applyLinks` writes it, the way `leaving`
-already captures the state before it is replaced. Applying it is `src/storage/frontmatter.ts` through `axisEntries` in
+already captures the state before it is replaced — which is why all three are answered where
+the paragraph above says and not one layer down. Applying it is `src/storage/frontmatter.ts` through `axisEntries` in
 `src/storage/writeKeys.ts`, which carries the "unconfigured key dropped, `null` deletes" rule
 this note leans on and is already captured for undo; the membership key is already in
 `touchedKeys` beside it.
