@@ -1,5 +1,5 @@
 import { setTooltip } from 'obsidian';
-import { t } from '../../i18n/t';
+import { formatNumber, t } from '../../i18n/t';
 import { drawIcon } from './icons';
 import { createCard, renderCardBody, renderColumnFold, wireCardActivation } from './board';
 import {
@@ -428,7 +428,7 @@ function renderShelfGroup(ctx: RowContext, shelfEl: HTMLElement, group: ShelfGro
 	const header = groupEl.createDiv({ cls: 'pbl-shelf-group-header' });
 	renderColumnFold(host, header, 'shelf', group.type, { folded, label: group.type });
 	header.createSpan({ cls: 'pbl-shelf-group-name', text: group.type });
-	header.createSpan({ cls: 'pbl-shelf-group-count', text: String(group.cards.length) });
+	header.createSpan({ cls: 'pbl-shelf-group-count', text: formatNumber(group.cards.length) });
 	if (folded) return [];
 	const cardsEl = groupEl.createDiv({ cls: 'pbl-shelf-cards' });
 	for (const entry of group.cards) renderShelfCard(ctx, cardsEl, entry, wiring);

@@ -1,5 +1,5 @@
 import { setTooltip } from 'obsidian';
-import { t } from '../../i18n/t';
+import { formatNumber, t } from '../../i18n/t';
 import { drawIcon } from './icons';
 import { renderCardChildren } from './cardChildren';
 import { renderPropCells, renderRollup, RowContext } from './columns';
@@ -431,9 +431,9 @@ function renderColumnHeader(
 
 /** How many cards, and how many the stage agreed to. */
 function renderColumnCount(header: HTMLElement, col: BoardColumn): void {
-	header.createSpan({ cls: 'pbl-board-col-count', text: String(col.count) });
+	header.createSpan({ cls: 'pbl-board-col-count', text: formatNumber(col.count) });
 	if (col.limit === null) return;
-	header.createSpan({ cls: 'pbl-board-col-limit', text: `/ ${col.limit}` });
+	header.createSpan({ cls: 'pbl-board-col-limit', text: `/ ${formatNumber(col.limit)}` });
 	// More than colour alone: the class carries the colour, the icon carries the shape,
 	// and `columnLabel` carries the words.
 	if (overBy(col) === 0) return;

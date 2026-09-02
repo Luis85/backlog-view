@@ -1,5 +1,5 @@
 import { Menu, setIcon, setTooltip } from 'obsidian';
-import { t } from '../../i18n/t';
+import { formatNumber, t } from '../../i18n/t';
 import { BacklogViewHost } from '../host';
 import { showMenuAtElement, showMenuForClick } from '../interactions/menu';
 import { addShelfLayoutItems, addShelfSortItems, addShelfTypeItems, shelfLayoutIcon } from '../interactions/shelfMenu';
@@ -68,7 +68,7 @@ export function renderShelfControls(
 	setIcon(disclosure.createSpan({ cls: 'pbl-shelf-collapse-icon' }), collapsed ? 'chevron-right' : 'chevron-down');
 	setIcon(disclosure.createSpan({ cls: 'pbl-shelf-icon' }), 'inbox');
 	disclosure.createSpan({ cls: 'pbl-shelf-name', text: opts.name });
-	disclosure.createSpan({ cls: 'pbl-shelf-count', text: String(shelf.length) });
+	disclosure.createSpan({ cls: 'pbl-shelf-count', text: formatNumber(shelf.length) });
 	// `aria-expanded` carries the state an icon and a chevron only show: without it a
 	// screen-reader user at this button cannot tell a shut shelf from an open one.
 	const action = t(collapsed ? 'fold.expandShelf' : 'fold.collapseShelf', {

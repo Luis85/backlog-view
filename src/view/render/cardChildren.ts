@@ -1,5 +1,5 @@
 import { setTooltip } from 'obsidian';
-import { t } from '../../i18n/t';
+import { formatNumber, t } from '../../i18n/t';
 import { drawIcon } from './icons';
 import { RowContext } from './columns';
 import { renderBadge } from './rows';
@@ -70,7 +70,7 @@ export function renderCardChildren(
 	// that cannot drift from what is on screen.
 	const label = childrenLabel(children);
 	const onLine = toggleEl !== undefined;
-	toggle.createSpan({ cls: 'pbl-card-kids-count', text: onLine ? String(children.length) : label });
+	toggle.createSpan({ cls: 'pbl-card-kids-count', text: onLine ? formatNumber(children.length) : label });
 	if (onLine) toggle.setAttribute('aria-label', label);
 	// The disclosure counts what it LISTS and the rollup beside it counts everything
 	// beneath, so with completed work hidden the two disagree on purpose. Said out loud

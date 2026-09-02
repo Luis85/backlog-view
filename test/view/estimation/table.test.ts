@@ -4,6 +4,7 @@ import { makeEstimationView, scrollReads } from '../../helpers/estimation';
 import { configured, configuredValues } from '../../helpers/estimationModel';
 import { FakeVault, setResults } from '../../helpers/vault';
 import { key } from '../../helpers/view';
+import { num } from '../../helpers/locale';
 import { computeTotal, stampValue } from '../../../src/domain/weightedScore';
 
 /**
@@ -48,7 +49,7 @@ describe('the estimation table', () => {
 	it("shows the full profile's rounded total and its 8/8 coverage", () => {
 		const { containerEl } = makeEstimationView(fixture(), configuredValues());
 		const full = row(containerEl, 'Full.md');
-		expect(full.querySelector(':scope > .pbl-est-total')?.textContent).toBe('3.55');
+		expect(full.querySelector(':scope > .pbl-est-total')?.textContent).toBe(num(3.55));
 		expect(full.querySelector(':scope > .pbl-est-coverage')?.textContent).toBe('8/8');
 	});
 

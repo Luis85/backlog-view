@@ -1,5 +1,5 @@
 import { setIcon } from 'obsidian';
-import { t } from '../../i18n/t';
+import { formatNumber, t } from '../../i18n/t';
 import { BacklogViewHost, BusyState } from '../host';
 import { manualLink } from '../../ui/manualDialog';
 import { manualSections } from '../manual/sections';
@@ -72,13 +72,16 @@ function syncBusyCount(el: HTMLElement, busy: BusyState | null): boolean {
 	// and the label wears the ellipsis instead, which is why that string is chosen here
 	// rather than being one fixed word.
 	const counting = busy !== null && busy.total > 1;
-	setTextIfChanged(done, counting && busy ? String(busy.done) : '');
-	setTextIfChanged(of, counting && busy ? ` of ${busy.total}` : '');
+	setTextIfChanged(done, counting && busy ? formatNumber(busy.done) : '');
+	setTextIfChanged(of, counting && busy ? ` of ${formatNumber(busy.total)}` : '');
 	// Published as a custom property rather than set as `min-width` directly: every number
 	// this codebase computes in TS reaches CSS that way (`--pbl-prop-col`, `--pbl-depth`,
 	// `--pbl-today-left`), so the stylesheet holds what the reservation MEANS and this
 	// holds only how wide it is.
-	done.setCssProps({ '--pbl-busy-digits': counting && busy ? `${String(busy.total).length}ch` : '0' });
+	// The character count of the FORMATTED total, not its raw digit count: a grouping
+	// separator (`1,234` against `1234`) is a character the reservation has to hold too,
+	// and `formatNumber` is the same call the text above was just set from.
+	done.setCssProps({ '--pbl-busy-digits': counting && busy ? `${formatNumber(busy.total).length}ch` : '0' });
 	// …and the ladder re-measures when the DIGIT COUNT changes, which is the one tick where
 	// the reservation is certainly wrong: `digits(total)ch` cannot hold a value a digit
 	// longer, whatever the font does. Twice in a 340-file batch rather than 340 times, so
@@ -98,7 +101,7 @@ function syncBusyCount(el: HTMLElement, busy: BusyState | null): boolean {
 	// Recorded on the counter, which is inside the `aria-hidden` subtree, rather than on
 	// `.pbl-busy` itself: an attribute write on a live region is a question this file has
 	// been wrong about once already, and one it does not need to ask.
-	const digits = counting && busy ? String(busy.done).length : 0;
+	const digits = counting && busy ? formatNumber(busy.done).length : 0;
 	const moved = done.dataset.pblDigits !== String(digits);
 	done.dataset.pblDigits = String(digits);
 	return moved;

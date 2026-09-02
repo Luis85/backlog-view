@@ -2,7 +2,7 @@ import { setIcon } from 'obsidian';
 import type { EstimationView } from './estimationView';
 import { INDICATOR_BLOCK_KEYS, renderPanel } from './panel';
 import { renderCurrencyChip } from './currencyChip';
-import { compareText, t } from '../../i18n/t';
+import { compareText, formatNumber, t } from '../../i18n/t';
 import { EstimationItem, EstimationModel } from '../../domain/estimationItems';
 import { Indicator } from '../../domain/scoringModel';
 import { Currency, IndicatorBlock, indicatorFormula } from '../../domain/weightedScore';
@@ -435,7 +435,7 @@ function renderHead(view: EstimationView, tableEl: HTMLElement, pick: SortPick |
  */
 function numberCell(el: HTMLElement, value: number | null, range: [number, number] | null): void {
 	if (value === null) return;
-	el.createSpan({ cls: 'pbl-est-num', text: String(value) });
+	el.createSpan({ cls: 'pbl-est-num', text: formatNumber(value) });
 	if (!range) return;
 	const [min, max] = range;
 	if (max <= min) return;
@@ -461,7 +461,10 @@ function renderRow(listEl: HTMLElement, item: EstimationItem, output: [number, n
 	numberCell(row.createDiv({ cls: 'pbl-est-total' }), item.result?.total ?? null, output);
 	const coverage = row.createDiv({ cls: 'pbl-est-coverage' });
 	if (item.result) {
-		coverage.createSpan({ cls: 'pbl-est-num', text: `${item.result.coverage.answered}/${item.result.coverage.enabled}` });
+		coverage.createSpan({
+			cls: 'pbl-est-num',
+			text: `${formatNumber(item.result.coverage.answered)}/${formatNumber(item.result.coverage.enabled)}`,
+		});
 		const ratio = item.result.coverage.enabled === 0 ? 0 : item.result.coverage.answered / item.result.coverage.enabled;
 		coverage.createDiv({ cls: 'pbl-est-strip' }).setCssProps({ '--pbl-progress': `${Math.round(ratio * 100)}%` });
 	}
