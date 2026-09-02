@@ -2,7 +2,7 @@
 type: PBI
 parent: "[[The release summary]]"
 order: 10
-status: Done
+status: Active
 created: 2026-08-21
 source: user request — release management concept refinement, 2026-08-21
 started: ""
