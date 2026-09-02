@@ -184,8 +184,9 @@ walk on 2026-08-29, which is how `scoringModel.ts` came off this list — and ev
 stays for a stated reason
 — the type names and shipped value lists are data, `defaultModel.ts`'s rubrics are in the
 model FINGERPRINT so two locales would stamp two models, `timeline.ts`'s month names are a
-formatting question that follows the USER's locale through `Intl` and belongs to
-[[Locale-aware sorting and formatting]], and `backlogReadme.ts`, `readmeStamps.ts` and
+formatting question that SHOULD follow the USER's locale through `Intl` and does not yet —
+`MONTH_LABELS` is still a hard-coded `['Jan', 'Feb', …]` and every reader sees English —
+which is the one criterion [[Locale-aware sorting and formatting]] is left `Active` for, and `backlogReadme.ts`, `readmeStamps.ts` and
 `readmePlanning.ts` write authored prose INTO the vault, which is `view/manual/`'s own open
 question wearing three more instances. `roadmap.ts`'s shelf label is NOT among them and this paragraph said it was
 until 2026-08-22: it was keyed on 2026-08-19 and three places went on claiming otherwise,

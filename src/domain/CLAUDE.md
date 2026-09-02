@@ -27,12 +27,17 @@ and the order it produces (alphabetical, through `compareText` in `src/i18n/t.ts
 following the USER's locale because a name is data) is itself the thing being asked for,
 not a byproduct of a faster structure. `compareText` rather than `localeCompare` is what
 keeps that sort cheap as well as correct: it collates through ONE `Intl.Collator`, built
-per `setLocale`, where `localeCompare` constructs a fresh one per comparison — n·log n of
-them in a sort this paragraph is otherwise counting comparisons for. A bare
-`localeCompare` is refused in all of `src/` by `no-restricted-properties` in
-`eslint.config.mjs`. The build's bound is still **O(n log n)** with `r ≤ n` folded in — what the
-older wording of this paragraph got wrong was forbidding a *second* superlinear step
-outright rather than bounding it: the rule that matters is that nothing here sorts a set
+per `setLocale`, where `localeCompare(b, locale)` — the spelling that fixes the locale —
+constructs a fresh one per comparison, n·log n of them in a sort this paragraph is
+otherwise counting comparisons for. The qualifier is load-bearing and this paragraph
+dropped it once: the BARE `localeCompare(b)` this sort actually used to spell is cached by
+V8, so what `compareText` bought here was the LOCALE — the host's default rather than
+Obsidian's — and the collator is what it buys against the fix somebody would reach for
+next. Both spellings are refused in all of `src/` by `no-restricted-properties` in
+`eslint.config.mjs`, which is why the ban is on the METHOD.
+The build's bound is still **O(n log n)** with `r ≤ n` folded in — what the older wording
+of this paragraph got wrong was forbidding a *second* superlinear step outright rather
+than bounding it: the rule that matters is that nothing here sorts a set
 that can outgrow the items, not that there is exactly one sort.
 
 Three of those properties are checks (`test/domain/modelCost.test.ts`) and the rest of the

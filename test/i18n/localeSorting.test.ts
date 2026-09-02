@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { backlogReadmeContent } from '../../src/domain/backlogReadme';
 import { buildModel } from '../../src/domain/model';
 import { buildRoadmap } from '../../src/domain/roadmap';
 import { organizeShelf } from '../../src/domain/shelf';
@@ -10,8 +11,18 @@ import { FakeVault } from '../helpers/vault';
 /**
  * The guarantee `docs/requirements/Locale-aware sorting and formatting.md` states, asked
  * of the code rather than written in a comment beside it: **collation is presentation
- * only.** A list a reader looks at is sorted in the reader's own alphabet; a rank, a
- * result position and a planned write are the same bytes in every locale.
+ * only.** A list a reader looks at is sorted in the reader's own alphabet; no note
+ * property, no rank and no persisted key follows the collator.
+ *
+ * **That sentence is narrower than "no bytes reach the vault in a locale order", and the
+ * narrowing is a finding rather than a hedge.** `Generate README` writes a document whose
+ * state table IS locale-ordered — `readmeStates` takes `stateMenuValues`, which hands back
+ * `observedStates` verbatim when no workflow is declared, and `observedStates` is sorted
+ * by `compareText`. Two collaborators in different locales regenerating one backlog's
+ * README therefore produce a reorder diff. That was decided to be RIGHT rather than fixed:
+ * a reader's own README in the reader's own alphabet is what the collation is for, and the
+ * table carries no key, no property and no rank. It is pinned below so it is a decision
+ * somebody can find rather than an accident somebody re-derives.
  *
  * Swedish and English are the pair, because they disagree about one letter and about
  * nothing else: `Ö` sorts after `Z` in Swedish and beside `O` in English. So each list
@@ -23,6 +34,11 @@ import { FakeVault } from '../helpers/vault';
  * THE MENU, and what a pick writes is the value the user chose, never the position the
  * locale sorted it into; `order` is a fractional rank and `entryIndex` is the Bases result
  * order, and neither is a comparison of text at all.
+ *
+ * What the second half DRIVES is narrower again, and the note says so too: two plans, the
+ * state write and the drop. Nothing here drives the horizon or board moves, the tag deltas
+ * or the label writers — none of those takes a sorted list as an argument, which is a
+ * structural statement rather than a test.
  */
 
 const SWEDISH = 'sv';
@@ -129,5 +145,26 @@ describe('and no rank, no result position and no planned write follows it', () =
 		const [sv, en] = inBothLocales(planned);
 
 		expect(sv).toBe(en);
+	});
+});
+
+describe('and the one document that does follow it, which is a decision rather than a leak', () => {
+	it('writes the backlog README\'s state table in the reader\'s own alphabet', () => {
+		const observed = () => modelOf(vaultOfThree()).observedStates;
+		const [sv, en] = inBothLocales(() => backlogReadmeContent(settings, observed(), 'Backlog.base — Tree'));
+		// The state table, addressed by its own heading rather than by the shape of a row:
+		// the type table above it is three cells wide too.
+		const statesOf = (doc: string) =>
+			doc
+				.split('## Workflow states')[1]
+				.split('\n## ')[0]
+				.split('\n')
+				.filter((line) => line.startsWith('| `'))
+				.map((row) => row.split('`')[1]);
+
+		// `Done` is the value `stateMenuValues` appends so marking work done stays reachable;
+		// it is not observed, so it is not collated with the three that are.
+		expect(statesOf(sv)).toEqual(['Apfel', 'Zebra', 'Öl', 'Done']);
+		expect(statesOf(en)).toEqual(['Apfel', 'Öl', 'Zebra', 'Done']);
 	});
 });

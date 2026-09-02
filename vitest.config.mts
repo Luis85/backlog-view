@@ -273,11 +273,16 @@ export default defineConfig({
 			// here is the rule and the episodes that shaped it. The history of which decimal
 			// moved in which increment is in git, which this comment already said once.
 			//
-			// **Every rise the arithmetic allows is declined for the same reason.** A floor
-			// raised on a branch is asserted against a merge, and that is exactly the move that
-			// produced the red above. A raise is worth taking when the tree it was measured on
-			// is the tree that lands, and a branch open beside four others is never that tree.
-			// The four numbers below stay; the gate is what guarantees they have room.
+			// **A rise is still declined by DEFAULT, and this is the shape of the exception.** A
+			// floor raised on a branch is asserted against a merge, and that is exactly the move
+			// that produced the red above — so a raise is worth taking only when the tree it was
+			// measured on is the tree that lands, and it is re-measured on the merged tree rather
+			// than carried across from the branch that computed it. Root `CLAUDE.md` states the
+			// other half ("thresholds only ever go up"), and the two meet at the one-fewer
+			// arithmetic: statements went to 99.11 and lines to 99.80 on 2026-09-02, with
+			// branches left alone because its own one-fewer figure floors to the number already
+			// standing and functions left alone because its one-fewer figure is a DECREASE.
+			// No measurement is written here; the gate prints it per run.
 			//
 			// **The mechanism that would have prevented all of it is not in this file.** No check
 			// that runs on a tree can see a merge that has not happened yet — a branch's floor is
@@ -287,10 +292,10 @@ export default defineConfig({
 			// `docs/issues/Two spec branches predate the use-case gate.md` has been asking for it
 			// since the same class last broke `main`.
 			thresholds: {
-				statements: 99.04,
+				statements: 99.11,
 				branches: 95.72,
 				functions: 99.92,
-				lines: 99.78,
+				lines: 99.80,
 			},
 		},
 	},

@@ -72,7 +72,7 @@ function firstSeen<T extends VocabularySource>(
  */
 function sortOpenThenDone(values: string[], doneValues: string[]): string[] {
 	const done = new Set(doneValues.map((v) => v.toLowerCase()));
-	const sorted = values.sort((a, b) => compareText(a, b));
+	const sorted = values.sort(compareText);
 	return [...sorted.filter((v) => !done.has(v.toLowerCase())), ...sorted.filter((v) => done.has(v.toLowerCase()))];
 }
 
@@ -88,7 +88,7 @@ export function collectObservedStates(all: VocabularySource[], settings: Backlog
 
 /** Every tag the results carry, alphabetical and deduped case-insensitively. */
 export function collectObservedTags(all: VocabularySource[]): string[] {
-	return firstSeen(all, (item) => item.tags, tagKey).sort((a, b) => compareText(a, b));
+	return firstSeen(all, (item) => item.tags, tagKey).sort(compareText);
 }
 
 /**

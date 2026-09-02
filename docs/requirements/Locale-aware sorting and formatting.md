@@ -30,7 +30,7 @@ alphabet and the filter finds what is plainly on screen.
 | **Actor** | Anyone whose locale is not the host's default |
 | **Trigger** | Sorting a suggest list, filtering by title, or rendering a count |
 | **Preconditions** | The locale layer exposes both the catalog locale and the requested one |
-| **Guarantee** | Collation and folding are presentation only. No write path depends on a locale-sorted list, and no identity comparison changes with the locale. |
+| **Guarantee** | Collation and folding are presentation only: no note property, no rank and no persisted key follows the collator, and no identity comparison changes with the locale. The generated README is the one document that IS locale-ordered, knowingly — see the sorting criterion below. |
 
 **Main flow**
 
@@ -360,23 +360,52 @@ or the guard has to be remembered eleven times.
   workflow option keys, the state colour and the per-type folder — under `setLocale('tr')`
   and asserts they do not move, so a sweep to `toLocaleLowerCase(requested)` or to
   `foldForMatch` fails on behaviour. It stays GREEN against a sweep to a **bare**
-  `.toLocaleLowerCase()`, which takes the host's default locale — `en` under vitest — and
-  only the table's spelling check sees that shape, by its letters. `view/viewState.ts`'s
+  `.toLocaleLowerCase()`, which takes the host's default locale — `en` under vitest — so the
+  bare form is held by `foldSites.test.ts` alone. **Two checks there, not one, and the second
+  arrived on 2026-09-02 because the first was reviewer-dependent.** The spelling check reads
+  the TABLE, so a sweep whose row was edited to match — one `kind`, one `text`, two counts —
+  passed all 280 tests in `test/i18n/` with a bare `toLocaleLowerCase` live in `wipLimitKey`
+  and the row still reading `PERSISTED option key`, because `why` is only checked for
+  non-emptiness. The complement asserts at the forbidden thing instead — which files in
+  `src/` SPELL `toLocaleLowerCase` — and the answer is one, `foldForMatch`'s own body. A row
+  can be edited to describe a new one; that list cannot. `view/viewState.ts`'s
   column fold key is left to the spelling check alone on purpose: it is device-local view
   state rather than a vault value, so a locale-dependent fold there re-opens a folded column
   instead of resetting a configuration.
 
   **Checked by** `test/i18n/localeFolds.test.ts` — "keeps a persisted option key spelled the way every other locale spells it"
-- **Met.** Sorting affects **presentation only**. `order` is a fractional rank and
-  `entryIndex` is the Bases result order; neither is touched by collation, and no write path
-  depends on a locale-sorted list. The state and tag vocabularies are sorted for the menu —
-  what gets *written* is the value the user picked. Asserted rather than asserted-about:
-  four lists are asked for in Swedish and in English, which disagree about where `Ö` sorts
-  and about nothing else, and the two answers must DIFFER — while the ranks and the result
-  positions beside them stay the same bytes.
 
-  **The write half is narrower than "every planned write", and the sentence says so rather
-  than the check being widened to meet it.** Two plans are driven: a state write
+  **Checked by** `test/i18n/foldSites.test.ts` — "spells toLocaleLowerCase in one place — foldForMatch itself"
+- **Met, and narrowed on 2026-09-02 to what is actually true.** Sorting affects
+  **presentation only**, and the sentence that says so now names what it covers: no note
+  property, no rank and no persisted key follows the collator. `order` is a fractional rank
+  and `entryIndex` is the Bases result order; neither is touched by collation. The state and
+  tag vocabularies are sorted for the menu — what gets *written* is the value the user
+  picked. Asserted rather than asserted-about: four lists are asked for in Swedish and in
+  English, which disagree about where `Ö` sorts and about nothing else, and the two answers
+  must DIFFER — while the ranks and the result positions beside them stay the same bytes.
+
+  **The wider sentence — "no write path depends on a locale-sorted list" — was FALSE, and
+  the counter-example is a write.** `Generate README` (`src/commands/readme.ts`) reaches
+  `readmeStates`, which takes `stateMenuValues`; `menuValues` returns `observedStates`
+  verbatim when no workflow is declared, and `observedStates` is sorted by `compareText`.
+  So the generated README's state table is ordered in the reader's alphabet, and two
+  collaborators in different locales regenerating one backlog's README produce a reorder
+  diff — `docs/` here is a git-tracked vault, so that diff is real. Found by review,
+  reproduced end to end rather than reasoned about.
+
+  **It was narrowed rather than fixed, and that is the decision.** A reader's own README in
+  the reader's own alphabet is what the collation is FOR; the table carries no key, no
+  property and no rank, and nothing reads it back. Re-sorting `readmeStates`
+  locale-independently was the alternative and it is the larger change — it would put a
+  second ordering rule into a path a write reads, to buy a diff nobody has reported. So the
+  guarantee says less and one assertion pins the behaviour, which is what this register asks
+  for when a check cannot reach a wider sentence.
+
+  **Checked by** `test/i18n/localeSorting.test.ts` — "writes the backlog README's state table in the reader's own alphabet"
+
+  **The rest of the write half is narrower than "every planned write", and the sentence says
+  so rather than the check being widened to meet it.** Two plans are driven: a state write
   (`computeStateWrites`, the vocabulary the menu sorts) and a drop
   (`computeDropWrites`, the one plan that computes a RANK). Nothing drives the horizon or
   board moves, the tag deltas or the label writers. The guarantee those rest on is

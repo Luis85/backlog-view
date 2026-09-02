@@ -46,6 +46,17 @@ import { FOLD_SITES, FoldSite } from './foldSites';
  * without moving anything real. It is dated for that reason, and the walk's own count is
  * what the suite holds.
  *
+ * **One assertion is on the FORBIDDEN THING rather than on the table**, and it is the one
+ * shape the behavioural mirror cannot reach. `test/i18n/localeFolds.test.ts` drives four
+ * vault-facing keys under `setLocale('tr')`, so a sweep of `wipLimitKey` to
+ * `foldForMatch(state)` goes red there — but a sweep to a BARE `state.toLocaleLowerCase()`
+ * takes the HOST's default, which under vitest is English, and the mirror stays GREEN.
+ * Measured: with the table edited to match (one `kind`, one `text`, two counts), the whole
+ * of `test/i18n/` passed on that sweep with `wipLimit.${state.toLocaleLowerCase()}` live in
+ * `settings.ts`, because `why` is only checked for non-emptiness. So the count of files
+ * that SPELL `toLocaleLowerCase` is asserted directly: it is one, and it is
+ * `foldForMatch`'s own body. A row can be edited to describe a new one; that list cannot.
+ *
  * What the walk cannot see, stated rather than implied: a fold reached other than by its
  * own name — a `toLowerCase` through a variable (`const fold = s.toLowerCase; fold()`) or
  * through element access (`s['toLowerCase']()`), or a `foldForMatch` renamed on import or
@@ -156,6 +167,12 @@ describe('every case fold in src/ is classified', () => {
 		).map((site) => `${site.file} :: ${site.text} is ${site.kind}`);
 
 		expect(wrong).toEqual([]);
+	});
+
+	it('spells toLocaleLowerCase in one place — foldForMatch itself', () => {
+		const spelled = calls.filter((call) => call.text.includes('toLocaleLowerCase')).map((call) => call.file);
+
+		expect(spelled).toEqual(['src/i18n/t.ts']);
 	});
 
 	it('says what every identity fold decides', () => {
