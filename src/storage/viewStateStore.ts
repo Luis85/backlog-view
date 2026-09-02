@@ -567,6 +567,29 @@ export function loadViewState(app: App, id: ViewIdentity): ViewStateSnapshot {
 }
 
 /**
+ * Change some of a view's preferences and leave the rest — the read-modify-write four
+ * callers were each spelling out, stated once here instead.
+ *
+ * **What it removes is a hazard rather than four lines.** A caller reaching for
+ * {@link saveViewState} directly writes the whole snapshot, so the two spreads are what
+ * stop one pick erasing every other pref this view has stored and the folds beside them.
+ * Dropping either is a silent data loss the caller cannot see: the value it set is there,
+ * and everything it did not name is gone. Every such call went through this shape
+ * correctly, which is exactly when a rule is worth moving somewhere it cannot be forgotten.
+ *
+ * A patch key set to `undefined` REMOVES the pref rather than storing an empty one —
+ * {@link saveViewState}'s own absence rule, which is why `path ?? undefined` at a caller
+ * means "clear the pick" and needs nothing else.
+ *
+ * Not offered for `folds`: a fold write is a whole map by nature (see `scopeFolds.ts`'s
+ * collapse-all), so a patch helper there would carry no rule anybody could otherwise miss.
+ */
+export function updateViewPrefs(app: App, id: ViewIdentity, patch: Partial<ViewPrefs>): void {
+	const state = loadViewState(app, id);
+	saveViewState(app, id, { ...state, prefs: { ...state.prefs, ...patch } });
+}
+
+/**
  * Write this view's entry, leaving every other view's alone. Entries whose base file is
  * gone go with it — the only chance to notice, since nothing enumerates the bases that
  * ever wrote here.

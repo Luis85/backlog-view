@@ -7,7 +7,7 @@ import { EstimationItem, EstimationModel } from '../../domain/estimationItems';
 import { Indicator } from '../../domain/scoringModel';
 import { Currency, IndicatorBlock, indicatorFormula } from '../../domain/weightedScore';
 import { uniqueElementId } from '../selection';
-import { loadViewState, saveViewState } from '../../storage/viewStateStore';
+import { loadViewState, updateViewPrefs } from '../../storage/viewStateStore';
 import { resolveViewIdentity } from '../../storage/viewIdentity';
 
 /**
@@ -319,8 +319,7 @@ function setSort(view: EstimationView, pick: string): void {
 	view.sortPick = pick;
 	const id = resolveViewIdentity(view.app, view.viewEl, view.config.name ?? '');
 	if (id === null) return;
-	const snapshot = loadViewState(view.app, id);
-	saveViewState(view.app, id, { ...snapshot, prefs: { ...snapshot.prefs, estimationSort: pick } });
+	updateViewPrefs(view.app, id, { estimationSort: pick });
 }
 
 /** One header button's fixed shape — bundled into one param so `sortHeader` stays under the parameter-count budget. */

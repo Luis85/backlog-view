@@ -10,7 +10,7 @@ import { configProblems } from '../../domain/settingsConsistency';
 import { BacklogSettings, defaultSettings } from '../../domain/settings';
 import { ItemWrite } from '../../domain/writePlan';
 import { applyWrites } from '../../storage/frontmatter';
-import { loadViewState, saveViewState } from '../../storage/viewStateStore';
+import { loadViewState, updateViewPrefs } from '../../storage/viewStateStore';
 import { resolveViewIdentity } from '../../storage/viewIdentity';
 import { guidanceShell } from '../render/emptyStates';
 import { OpenContext, OpenController } from '../openTarget';
@@ -98,10 +98,7 @@ export class MyWorkView extends BasesView {
 		this.pickedPerson = path;
 		this.activeRowFile = null;
 		const id = resolveViewIdentity(this.app, this.viewEl, this.config.name ?? '');
-		if (id) {
-			const state = loadViewState(this.app, id);
-			saveViewState(this.app, id, { ...state, prefs: { ...state.prefs, person: path ?? undefined } });
-		}
+		if (id) updateViewPrefs(this.app, id, { person: path ?? undefined });
 		this.render();
 	}
 

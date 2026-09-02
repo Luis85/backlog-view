@@ -73,18 +73,23 @@ export function wireRowOpen(view: RowOpener, rowEl: HTMLElement, row: ScopeRow):
 /**
  * The type badge.
  *
- * **The empty-text guard is kept, and the two copies disagreed about whether it can
- * fire.** `scopeTree.ts` had it; `renderTree.ts` argued at length that it is unreachable,
- * since every row either tree draws is a `ScopeRow` from `scopeRows.ts`'s own walk, which
- * keeps only a real `BacklogItem`, and `displayType` answers `''` only for an item that is
- * both off the ladder and untyped. Both files draw rows from that same walk, so they cannot
- * both be right. Neither claim was checked by anything, and this is not the change to
- * settle it in: an unreachable guard costs a comparison, while removing one that turns out
- * to be reachable draws an empty badge box on a real row.
+ * **The empty-text guard is GONE, and that is now a checked claim rather than the standoff
+ * it inherited.** `scopeTree.ts` carried `if (!badgeText) return;` and `renderTree.ts`
+ * argued at length that such a guard is unreachable — both drawing rows from the same walk,
+ * so they could not both be right, and nothing checked either.
+ *
+ * `renderTree.ts` was right, and the reason is a property of `displayType` rather than of
+ * this walk: `typeName` reaches an item through `readString`, which nulls a blank; every
+ * ladder is `LEVELS` or `TEST_LEVELS` and so never empty; and an untyped item's
+ * `levelIndex` is `childLevelIndex`, clamped into that ladder's own range. So there is no
+ * item, in any projection, that `displayType` answers nothing for.
+ *
+ * The check is on `displayType` and not here, because that is where the property lives —
+ * `test/domain/itemTypes.test.ts`, driving the real model over each of the three ways it
+ * could break, both of the mechanisms watched failing.
  */
 export function drawScopeBadge(rowEl: HTMLElement, row: ScopeRow): void {
 	const badgeText = displayType(row.item);
-	if (!badgeText) return;
 	const style = badgeStyleFor(badgeText);
 	const badgeEl = rowEl.createSpan({ cls: 'pbl-badge' });
 	if (style.icon) drawIcon(badgeEl.createSpan({ cls: 'pbl-badge-icon' }), style.icon);
