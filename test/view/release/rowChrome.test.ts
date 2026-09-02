@@ -200,3 +200,38 @@ describe('the scope header’s three write surfaces do not paint as Obsidian but
 		expect(block?.[0]).not.toContain('box-shadow');
 	});
 });
+
+/**
+ * The state column's own width (`releaseScope.css`), corrected on 2026-09-01 alongside the
+ * my-work tree's identical cell, which was copied from this one.
+ *
+ * It was a fixed `inline-size: 92px` — narrower than the 140px cap `columns.css` puts on
+ * `.pbl-state-chip` itself — so a chip in it was truncated at EVERY pane width, `In
+ * progress` reading `In progr…` with hundreds of pixels of spare row beside it. The cell
+ * keeps a gap for a stateless row, as it always has; what changed is that the gap is the
+ * chip's own icon rather than four times it, and that the cell may now shrink to that
+ * floor rather than truncating a chip it had room to show. It does not go BELOW the floor:
+ * the chip cannot shrink past its icon, so a cell that could would clip the icon to a
+ * sliver — which is what the my-work tree (whose cell was copied from this one) did at
+ * 280px before this pass gave both the same floor. `styles/mywork.css` is where the whole
+ * argument is written; this partial sits one line under the 400-line cap `npm run build`
+ * enforces, so its own comment is the short form deliberately.
+ *
+ * Comments are STRIPPED before matching — this file's rules are written beside paragraphs
+ * quoting the declaration they replaced, and a `not.toMatch` otherwise reads the prose
+ * saying why the declaration is gone (the shape that failed in the my-work half of this
+ * pass the moment it was written).
+ */
+describe('the scope tree’s state column is sized by what it holds', () => {
+	const css = readFileSync('styles/releaseScope.css', 'utf8').replace(/\/\*[\s\S]*?\*\//g, '');
+
+	it('sizes it to its content, with a floor at the chip’s own icon', () => {
+		const block = /\.pbl-rel-statecol\s*\{([^}]*)\}/.exec(css)?.[1] ?? '';
+		expect(block).toMatch(/flex:\s*0 1 auto/);
+		expect(block).toMatch(/min-inline-size:\s*22px/);
+		// The floor is what stops the cell shrinking past the chip inside it, which is how
+		// the my-work column clipped its own icon to a sliver before the floor was added.
+		expect(block).not.toMatch(/[^-]inline-size:\s*92px/);
+	});
+
+});

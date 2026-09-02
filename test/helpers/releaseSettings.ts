@@ -31,6 +31,13 @@ export function releaseSettingsWith(overrides: Partial<ReleaseSettings> = {}): R
 		// now: a field added to `ReleaseSettings` fails the gate here until it is added.
 		releasedDateKey: '',
 		descriptionKey: '',
+		// Five more added 2026-09-02 with the readiness criteria — same by-hand rule, and
+		// each unconfigured: absence is a value here too.
+		estimateKey: '',
+		dependsOnKey: '',
+		riskKey: '',
+		criticalRiskValues: [],
+		addressedRiskValues: [],
 		statusValues: [],
 		// Three more added 2026-08-29 with the closing actions (Task 1 of [[Closing a
 		// release]]) — the same by-hand rule stated above, now paid a second time.

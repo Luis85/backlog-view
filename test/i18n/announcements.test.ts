@@ -1,13 +1,13 @@
 // @vitest-environment jsdom
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { en } from '../../src/i18n/en';
-import { Catalog, setLocale } from '../../src/i18n/t';
+import { Catalog } from '../../src/i18n/t';
 import { announced } from '../helpers/dnd';
 import { installObsidianDom } from '../helpers/dom';
 import { roadmapView } from '../helpers/roadmap';
 import { FakeVault } from '../helpers/vault';
 import { itemAt, useViewHarness } from '../helpers/view';
-import { MARK, markedCatalog } from './fixtures';
+import { MARK, markedCatalog, useMarkedLocale } from './fixtures';
 
 installObsidianDom();
 useViewHarness();
@@ -36,8 +36,7 @@ useViewHarness();
 
 const xx: Catalog = markedCatalog();
 
-beforeEach(() => setLocale('xx', { xx }));
-afterEach(() => setLocale('en'));
+useMarkedLocale(xx);
 
 /**
  * The whole announcement, composed the way the view composes it: the frame with each end

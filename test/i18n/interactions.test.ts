@@ -1,11 +1,11 @@
 // @vitest-environment jsdom
-import { describe, expect, it, afterEach, beforeEach } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import { en } from '../../src/i18n/en';
-import { Catalog, setLocale } from '../../src/i18n/t';
+import { Catalog } from '../../src/i18n/t';
 import { FuzzySuggestModal, Menu, Modal, Notice } from '../helpers/obsidian-mock';
 import { FakeVault } from '../helpers/vault';
 import { flush, makeView, rowByTitle, useViewHarness } from '../helpers/view';
-import { MARK, markedCatalog } from './fixtures';
+import { MARK, markedCatalog, useMarkedLocale } from './fixtures';
 
 useViewHarness();
 
@@ -57,9 +57,7 @@ useViewHarness();
  */
 const xx: Catalog = markedCatalog();
 
-beforeEach(() => setLocale('xx', { xx }));
-// Resolution is module state by design (once, at load), so each test puts it back.
-afterEach(() => setLocale('en'));
+useMarkedLocale(xx);
 
 /** Two siblings under an epic, so there is always something legal to depend on. */
 function vault(): FakeVault {

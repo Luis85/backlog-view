@@ -1,6 +1,26 @@
 /** Fixtures and accessors for the roadmap projection, shared by its view suites. */
+import { addDays, formatCivil } from '../../src/domain/timeline';
+import { todayCivil } from '../../src/domain/noteFields';
 import { FakeVault } from './vault';
 import { Harness, makeView } from './view';
+
+/**
+ * A span a few days either side of TODAY, for the fixtures whose subject is the WIDTH of
+ * the drawn track rather than any particular calendar date.
+ *
+ * The dated window pads around today, so "a backlog spanning days around today pads to
+ * ~3 months, which at quarter zoom is narrower than the label reserve" — the construction
+ * `timelineFurniture.test.ts` states and this returns. **A fixed calendar date cannot say
+ * that**, and two suites wrote one anyway: `legend.test.ts` and
+ * `absenceCollision.test.ts` each said they were reusing that construction and each typed
+ * `2026-08-01`, which was near-term while it was August 2026 and a bar with a label after
+ * that. Both tests went green on a premise that had quietly stopped holding, which is a
+ * clock the suite cannot see rather than a rule anybody broke.
+ */
+export function nearTermSpan(lead = 0, length = 9): { start: string; due: string } {
+	const start = addDays(todayCivil(), lead);
+	return { start: formatCivil(start), due: formatCivil(addDays(start, length)) };
+}
 
 /** The horizon axis the roadmap suites configure: `horizon` as the property. */
 const HORIZON_AXIS = { horizonProperty: 'note.horizon' };
@@ -19,6 +39,58 @@ export function horizonVault(): FakeVault {
 	vault.addFile('Later item.md', { frontmatter: { type: 'Epic', order: 20, horizon: 'Later' } });
 	vault.addFile('Untriaged.md', { frontmatter: { type: 'Epic', order: 30 } });
 	return vault;
+}
+
+/**
+ * The marker row's own fixture: an epic spanning the window, plus whichever markers the
+ * case needs — `'milestone'` for a dated `Milestone`, `'iteration'` for a dated
+ * `Iteration`, both for the mixed row that has to name what it actually draws.
+ *
+ * Here rather than in a suite, and that is the point rather than tidiness. It was
+ * byte-identical in `iterationBars.test.ts` and `markerLabels.test.ts`, copied on a stated
+ * rule — no `test/view/*.test.ts` file imports another's fixtures. The rule is right and
+ * this keeps it: a HELPER is what more than one suite shares, so neither file reaches into
+ * the other. Two copies of one vault are two vaults free to drift while both claim to
+ * describe the marker row, which is the reason `countingVault` above gives for itself.
+ */
+export function markerVault(kinds: ('milestone' | 'iteration')[]): FakeVault {
+	const vault = new FakeVault();
+	vault.addFile('An epic.md', { frontmatter: { type: 'Epic', order: 1, start: '2026-09-01', due: '2026-10-15' } });
+	if (kinds.includes('milestone')) {
+		vault.addFile('Ship 1.0.md', { frontmatter: { type: 'Milestone', order: 10, due: '2026-09-30' } });
+	}
+	if (kinds.includes('iteration')) {
+		vault.addFile('Sprint 12.md', {
+			frontmatter: { type: 'Iteration', order: 20, start: '2026-09-07', due: '2026-09-20' },
+		});
+	}
+	return vault;
+}
+
+/** The three keys a marker fixture needs bound — both date ends and the iteration link.
+ *  File-private: `datedAxis` is the only thing that ever spreads it, and an export nothing
+ *  imports is what `npm run analyze` calls dead. */
+const MARKER_OPTIONS = {
+	startProperty: 'note.start',
+	targetProperty: 'note.due',
+	iterationProperty: 'note.iteration',
+};
+
+/**
+ * `markerVault` mounted on the dated axis, which is where a marker draws at all.
+ *
+ * The vault rides back beside the harness's own fields because `Harness` does not carry
+ * one, and a case asserting on `writeLog` needs it — cheaper than every caller keeping the
+ * vault it just passed in.
+ */
+export function datedAxis(
+	vault: FakeVault,
+	extra: Record<string, unknown> = {},
+): Harness & { vault: FakeVault } {
+	const harness = makeView(vault, { ...MARKER_OPTIONS, ...extra }, { base: 'Plan.base' });
+	harness.view.setProjection('roadmap');
+	harness.view.setAxisPick('dates');
+	return { ...harness, vault };
 }
 
 /**

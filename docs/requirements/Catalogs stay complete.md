@@ -2,12 +2,12 @@
 type: PBI
 parent: "[[Multilang]]"
 order: 110
-status: Open
-started: ""
-finished: ""
+status: Done
+started: 2026-09-01
+finished: 2026-09-01
 horizon: ""
-start: ""
-due: ""
+start: 2026-09-01
+due: 2026-09-01
 risk: ""
 assignee: ""
 priority: ""
@@ -118,11 +118,97 @@ rather than an assumption that `npm run check` already covers it.
 - A deliberately broken locale fixture proves each check fails. A completeness check that
   has never failed is a check nobody has tested.
 
+## What landed (2026-09-01)
+
+`test/i18n/parity.ts` is the comparator and `test/i18n/parity.test.ts` drives it. It runs
+inside `npm run check` as part of the suite rather than as a step of its own, which is
+what the design above meant by "the same shape as the register's gate" — a gate is a gate
+wherever it is spelled, and a `.test.ts` file needs no new script, no new CI entry and no
+second way to be run.
+
+**It reads the REGISTRY, not a list of its own.** `CATALOGS` is exported from `t.ts` for
+exactly that: a language added there is compared against English with no test edit, which
+is the claim [[English ships alone]] makes about this round being a starting point. The
+sweep over the registry is `it.each` over its entries, so the failure names the locale.
+
+Four divergences, kept apart because they have four different fixes — `missing` (English
+has the key, this catalog does not, so it renders in English), `stale` (nothing will ever
+read it), `parameters`, and `plurals`. Each is proved by a fixture that breaks it and by
+nothing else: a complete clone of English passes, one key deleted reports `missing` and
+not `stale`, one key added reports the reverse, a message with `{type}` removed reports
+the parameter and a message with `{kind}` invented reports both directions at once.
+
+**The plural rule asks the CATALOG's own locale**, so English carrying `one` and `other`
+does not force Japanese to invent a second form — the fixture asserts both halves of that
+in one test, since the entry English calls complete is over-supplied for `ja` and the one
+`ja` calls complete is incomplete for English. A malformed tag goes through `intlLocale`
+and falls back rather than throwing a `RangeError` out of a check.
+
+**The plural rule took two rounds of review to state, and both corrections are the same
+mistake: it read English's SHAPE where it should have read the message.** It is three
+cases now, kept apart because a shape is wrong for three different reasons and a
+translator reading a failure has to know which.
+
+- **Forms where nothing selects them.** `selectForm` reads `values.count`, so a key naming
+  no `{count}` is called without one and `select(0)` picks `other` at every use. Every
+  other form there is text nothing can reach, and even a lone `other` is a plain string
+  wearing an object. Reported whole, as `extra`, because the fix is to spell it as a
+  string — the first version of this rule reported a MISSING `one` on that entry, which is
+  the opposite advice.
+- **Forms that are not this locale's.** Supplying any means supplying exactly the
+  categories `Intl.PluralRules` gives the catalog's language.
+- **A plain string where English needed forms.** Refused wherever the locale has more than
+  one category, accepted where it does not. The first version accepted it everywhere,
+  written as "an entry supplying no forms has no categories to have" — which reads as
+  tolerance for Japanese and is a hole in German, where the message would render one form
+  forever.
+
+**The predicate is the parameter, never English's shape**, and that is what the second
+round found: seven English messages name `{count}` and spell one string, because English
+needs no second form for them. A rule asking "is the English entry plural" would refuse a
+legitimate German translation of those seven AND miss a German catalog spelling them
+plainly. Nothing in English is plural without a count, measured on the merged tree, so the
+rule fires on no shipped key.
+
+Both rounds found by review (Codex, PR #240), and in both the test that had asserted the
+old behaviour is the one that was watched failing.
+
+**A third round asked for the rule to go further, and it cannot — the guarantee is
+narrowed here instead of the check being widened.** The ask was: once a message names
+`{count}`, require the locale's forms whatever the SOURCE entry's shape is, so a German
+catalog spelling `toolbar.levelCount` plainly is refused. The gap is real — German would
+want two forms for `release.close.outstanding`, where English wants one — but the rule
+refuses English itself: applied, `compareToSource('en', en)` reports all **seven** of the
+English messages that name `{count}` and spell one string, and ten tests go red including
+the registry sweep. Measured on this tree rather than argued.
+
+So the line the check can hold is this: **English's own shape is the only evidence
+available about whether a message's wording varies with its count, and the check uses it.**
+A catalog is refused for spelling plainly what English spelled plurally, and accepted for
+spelling plainly what English also spelled plainly — which may be wrong in that catalog's
+language and is not decidable from anything here. What would decide it is a translator or
+a per-message declaration, and neither exists in this round. Stated so nobody reads
+"catalogs stay complete" as "every plural in every language is correct".
+
+**The parameter rule is UNIONED across a plural entry's forms, and that ceiling is written
+into the check rather than left to be found.** English's own `lane.absenceClash` names
+`{count}` in `other` and not in `one` — *an absence* needs no count and *three absences* do
+— so a per-form rule would refuse the source catalog. What this cannot see is a translation
+that drops a parameter from one form and keeps it in another; the test asserts that
+limitation directly, next to the case it does catch.
+
+**Fallow needed nothing, and that is the decision rather than an accident.** The design
+asked for whatever it takes to be written into `.fallowrc.json` with a reason; the answer
+is that the file is unchanged. `en` is read through `t.ts` from `main.ts`, so the catalog
+is reachable from an entry point and its keys are values in an object literal rather than
+members fallow resolves — there is no lookup shape for it to follow and nothing to
+override. `CATALOGS` was made an export in this change and stays reachable the same way.
+
 ## Where it lives
 
-**Nothing yet — this note is design.** The check runs as part of `npm run check`, which
-already chains `npm run docs` for the register's own gate — the same shape, applied to the
-catalog.
-
-The fixtures live under `test/`, beside the harness in `test/helpers/view.ts` that already
-owns per-test setup.
+`test/i18n/parity.ts` holds `compareToSource`, the comparator, and
+`test/i18n/parity.test.ts` its fixtures and the registry sweep ·
+`src/i18n/t.ts` exports `CATALOGS`, which is what the sweep reads ·
+`src/i18n/locale.ts`'s `intlLocale` is how a locale code reaches `Intl.PluralRules`
+without throwing · `test/i18n/fixtures.ts`'s `markedCatalog()` builds the complete clone
+every broken fixture is a single delta against.

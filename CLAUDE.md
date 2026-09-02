@@ -23,7 +23,12 @@ npm run check   # build + test typecheck + lint + markdown + coverage-thresholde
 
 All seven must pass before committing; CI runs the same steps, on Ubuntu **and Windows** —
 paths and line endings are the only things that differ between them, and both have already
-produced a defect this repository could not see. Coverage thresholds
+produced a defect this repository could not see. CI adds two jobs `check` does not: the
+`npm audit` one ADR 0022 argues for, and — since 2026-09-01 — a second pass of the whole
+suite under `PBL_TEST_LOCALE: de-DE`, because a suite that has only ever run in the source
+language proves nothing about the translation layer. That leg exercises the catalog
+FALLBACK and `Intl.NumberFormat`; it does not run the suite in a second catalog, since most
+assertions here name the English text on purpose. Coverage thresholds
 (vitest.config.mts) only ever go up. Fallow (config: .fallowrc.json) gates dead code,
 duplication, complexity/CRAP (fed by the vitest coverage file) and dependency hygiene —
 framework-invoked members (`BasesView.type`, suggest callbacks) are declared in
@@ -108,12 +113,22 @@ and no key list has to be kept in step. The sentence is the unit of translation:
 builds a message by joining pieces, plural forms and list joining follow the CATALOG's
 locale because they are grammar, and numbers follow the USER's because they are data
 presentation. `initLocale()` runs once in `main.ts`; Obsidian needs a restart to change
-language, so nothing re-reads it. What must never enter the catalog is anything the plugin
+language, so nothing re-reads it — and in a DEVELOPMENT build it reads one override ahead
+of Obsidian's own answer, `localStorage['product-backlog-locale']`, which is the only way
+to ask for the pseudo-locale `pseudo.ts` registers. Both strings are gated on the build's
+`NODE_ENV` and the release bundle is read and refused if it carries either: the catalog
+falls back in a release but the requested code still reaches `Intl`, so an override left
+in a vault would have changed a reader's NUMBERS.
+A message may not re-spell a view option's LABEL: it takes it as a parameter from the
+option's own key, and `test/i18n/optionLabels.test.ts` refuses a quoted one anywhere else.
+Every catalog in the registry is compared to English — keys, parameters and plural
+categories — by `test/i18n/parity.ts`, driven off `CATALOGS` rather than a list, so a
+language is one file and one row. What must never enter the catalog is anything the plugin
 writes, matches or persists — type names, state values, option keys, tags, file names. The
 test when it is not obvious: **ask what breaks if two people with different Obsidian
 languages open the same vault.** "One sees different words" is text; "one writes notes the
-other's view cannot read" is data. 763 keys are in it, counted two ways on the MERGED tree
-on 2026-08-31 and agreeing — `Object.keys` over the BUNDLED
+other's view cannot read" is data. 816 keys are in it, counted two ways on the MERGED tree
+on 2026-09-02 and agreeing — `Object.keys` over the BUNDLED
 catalog, and a match-counting
 `grep -Po` over the key lines. Two rather than the three the 2026-08-26 count used: the
 AST walk over the `as const` object's own properties was not re-run, and this sentence
@@ -123,10 +138,10 @@ some of these keys carry their value on the FOLLOWING line, which is exactly wha
 instrument gets wrong. The two DISAGREEING would itself be a finding rather than a nuisance:
 a walk that reports its DISTINCT properties beside its total drops a duplicate key the text
 still shows, so the pair answers "how many" and "are any of them the same key twice" in one
-pass — 763 total and 763 distinct on 2026-08-31. **A count is dated the moment
+pass — 816 total and 816 distinct on 2026-09-02. **A count is dated the moment
 it is written, and this paragraph has now been a merge conflict five times in one day** —
-550, 542, 553, 577, 556, 588, 591, 559, 597, 630, 643, 655, 686 and 761 were each true of the
-branch that wrote them and of nothing else, and 763 is what the merged tree measures rather
+550, 542, 553, 577, 556, 588, 591, 559, 597, 630, 643, 655, 686, 761 and 763 were each true of
+the branch that wrote them and of nothing else, and 816 is what the merged tree measures rather
 than what any side's arithmetic predicted. Re-measure on the merged tree rather than picking a side.
 **686 is the worked example of why**: it was measured on a merged tree too, and 0.10.0
 shipping the release view, the estimation view and the resource roster took it to 761 without

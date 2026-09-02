@@ -2,6 +2,7 @@
 import { describe, expect, it } from 'vitest';
 import { FakeVault } from '../helpers/vault';
 import { makeView, useViewHarness } from '../helpers/view';
+import { nearTermSpan } from '../helpers/roadmap';
 import { STATE_COLOR_SLOTS } from '../../src/domain/settings';
 import { readDate, todayStamp } from '../../src/domain/noteFields';
 import { addDays, formatCivil, MAX_TIMELINE_DAYS } from '../../src/domain/timeline';
@@ -262,13 +263,21 @@ describe('the roadmap legend', () => {
 		// claim a key for a mark nothing on screen makes. Reached the same way
 		// `absenceCollision.test.ts` reaches it: a near-term backlog at quarter zoom, where
 		// `timelineFurniture.test.ts` already establishes every bar's label is dropped.
+		//
+		// `nearTermSpan` and not a typed date, for the reason the header above already gives
+		// about the far-future ones: near-term is a position relative to TODAY, and the two
+		// August 2026 dates this used to carry stopped being near-term on the clock rather
+		// than on any change to the plugin — both this case and its twin in
+		// `absenceCollision.test.ts` failed on 2026-09-01 with the label back.
+		const span = nearTermSpan();
+		const away = nearTermSpan(3, 2);
 		const vault = new FakeVault();
 		vault.addFile('Alice.md', { frontmatter: { type: 'Resource' } });
 		vault.addFile('Work.md', {
-			frontmatter: { type: 'Epic', order: 10, assignee: 'Alice', start: '2026-08-01', due: '2026-08-10' },
+			frontmatter: { type: 'Epic', order: 10, assignee: 'Alice', start: span.start, due: span.due },
 		});
 		vault.addFile('Alice away.md', {
-			frontmatter: { type: 'Absence', assignee: 'Alice', start: '2026-08-04', due: '2026-08-06' },
+			frontmatter: { type: 'Absence', assignee: 'Alice', start: away.start, due: away.due },
 		});
 		const { view, containerEl } = makeView(
 			vault,

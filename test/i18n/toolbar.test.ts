@@ -1,13 +1,13 @@
 // @vitest-environment jsdom
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it } from 'vitest';
 import { en } from '../../src/i18n/en';
-import { Catalog, MessageKey, setLocale } from '../../src/i18n/t';
+import { Catalog, MessageKey } from '../../src/i18n/t';
 import { Menu } from '../helpers/obsidian-mock';
 import { FakeVault, setResults } from '../helpers/vault';
 import { boardVault, makeBoard } from '../helpers/board';
 import { horizonVault, makeRoadmap, roadmapView } from '../helpers/roadmap';
-import { fixture, makeView, useViewHarness } from '../helpers/view';
-import { MARK, markedCatalog } from './fixtures';
+import { fixture, makeView, toolbarOf, useViewHarness } from '../helpers/view';
+import { filled, MARK, marked, markedCatalog, sweep, unmarked, useMarkedLocale } from './fixtures';
 
 /**
  * The toolbar row, driven under a catalog that is not English — `render/toolbar.ts`,
@@ -57,67 +57,14 @@ const SWEPT: MessageKey[] = [...OWN, ...REUSED];
 
 const xx: Catalog = markedCatalog(SWEPT);
 
-const marked = (key: MessageKey): string => {
-	const entry = en[key];
-	if (typeof entry !== 'string') throw new Error(`${key} is a plural entry; assert its form directly`);
-	return MARK + entry;
-};
+useMarkedLocale(xx);
+beforeEach(() => Menu.forget());
 
 /**
  * Every marked string this file watched reach a surface, accumulated across the whole run
- * and audited by the last test. Module state on purpose: the audit's question is about
- * the file, not about any one test in it.
+ * and audited by the last test — `sweep()`'s own reason for being a factory.
  */
-const seen = new Set<string>();
-
-const record = (strings: readonly string[]): string[] => {
-	for (const text of strings) if (text.startsWith(MARK)) seen.add(text);
-	return strings.slice();
-};
-
-beforeEach(() => {
-	Menu.forget();
-	setLocale('xx', { xx });
-});
-// Resolution is module state by design (once, at load), so each test puts it back.
-afterEach(() => setLocale('en'));
-
-const barOf = (containerEl: HTMLElement): HTMLElement => {
-	const bar = containerEl.querySelector<HTMLElement>('.pbl-toolbar');
-	if (!bar) throw new Error('no toolbar rendered');
-	return bar;
-};
-
-/**
- * Every string the row puts in front of a reader, sighted or not: the visible words of
- * each leaf element, plus every `aria-label` and every tooltip. All three, because the
- * acceptance criterion is that screen-reader text moves WITH the visible text — a row
- * translated for sighted users only passes any check that reads `textContent` alone.
- */
-function drawnText(bar: HTMLElement): string[] {
-	const out: string[] = [];
-	for (const el of bar.querySelectorAll<HTMLElement>('*')) {
-		const label = el.getAttribute('aria-label');
-		if (label) out.push(label);
-		if (el.dataset.tooltip) out.push(el.dataset.tooltip);
-		if (el.childElementCount === 0 && el.textContent) out.push(el.textContent);
-	}
-	return record(out);
-}
-
-/** Every title a menu draws, following submenus — the whole of what the reader sees. */
-function titlesOf(menu: Menu): string[] {
-	const out: string[] = [];
-	for (const item of menu.items) {
-		out.push(item.titleText);
-		if (item.submenu) out.push(...titlesOf(item.submenu));
-	}
-	return record(out);
-}
-
-const unmarked = (strings: readonly string[]): string[] => [
-	...new Set(strings.filter((text) => !text.startsWith(MARK))),
-];
+const { seen, drawnText, titlesOf } = sweep();
 
 /** Open the control this selector names, and hand back the menu it showed. */
 function open(bar: HTMLElement, selector: string): Menu {
@@ -141,7 +88,7 @@ const openByClass = (bar: HTMLElement, cls: string): Menu => open(bar, `.${cls}`
 describe('the toolbar row reads its own text from the catalog', () => {
 	it('draws the tree row from it — every label, tooltip and visible word', () => {
 		const { containerEl } = makeView(fixture());
-		const drawn = drawnText(barOf(containerEl));
+		const drawn = drawnText(toolbarOf(containerEl));
 
 		expect(drawn).toContain(marked('toolbar.expandAll'));
 		expect(drawn).toContain(marked('toolbar.undo'));
@@ -159,7 +106,7 @@ describe('the toolbar row reads its own text from the catalog', () => {
 
 	it('names the focused tree from a key of its own, with the type as the parameter', () => {
 		const { containerEl } = makeView(fixture(), {}, { focus: 'Feature' });
-		const drawn = drawnText(barOf(containerEl));
+		const drawn = drawnText(toolbarOf(containerEl));
 
 		expect(drawn).toContain(MARK + en['toolbar.focusOn'].replace('{type}', 'Feature'));
 		expect(drawn).toContain(marked('toolbar.showAllTypes'));
@@ -173,7 +120,7 @@ describe('the toolbar row reads its own text from the catalog', () => {
 		vault.addFile('Epic A.md', { frontmatter: { type: 'Epic', order: 10, status: 'Done' } });
 		vault.addFile('Epic B.md', { frontmatter: { type: 'Epic', order: 20 } });
 		const { containerEl } = makeView(vault, { stateProperty: 'note.status' }, { hideCompleted: true });
-		const drawn = drawnText(barOf(containerEl));
+		const drawn = drawnText(toolbarOf(containerEl));
 
 		expect(drawn).toContain(MARK + en['toolbar.showCompletedHidden'].replace('{count}', '1'));
 		expect(drawn).not.toContain(marked('toolbar.showCompleted'));
@@ -181,12 +128,12 @@ describe('the toolbar row reads its own text from the catalog', () => {
 
 	it('draws the item count and its breakdown from the catalog, over the vault own words', () => {
 		const { containerEl } = makeView(fixture());
-		const drawn = drawnText(barOf(containerEl));
+		const drawn = drawnText(toolbarOf(containerEl));
 
 		expect(drawn).toContain(MARK + en['count.items'].other.replace('{count}', '4'));
 		// The breakdown is one key per reading, so the type names it counts are the only
 		// unmarked text in it — and they arrive as parameters inside marked sentences.
-		const tooltip = barOf(containerEl).querySelector<HTMLElement>('.pbl-count-label')?.dataset.tooltip ?? '';
+		const tooltip = toolbarOf(containerEl).querySelector<HTMLElement>('.pbl-count-label')?.dataset.tooltip ?? '';
 		expect(tooltip).toContain(MARK + '2 Epic');
 		expect(tooltip).toContain(MARK + '2 Feature');
 	});
@@ -195,7 +142,7 @@ describe('the toolbar row reads its own text from the catalog', () => {
 describe('every projection draws its own controls from the catalog', () => {
 	it('draws the board scope picker and its menu from it', () => {
 		const { containerEl } = makeBoard(boardVault());
-		const bar = barOf(containerEl);
+		const bar = toolbarOf(containerEl);
 		const drawn = drawnText(bar);
 
 		expect(drawn).toContain(MARK + en['toolbar.scopeAria'].replace('{scope}', marked('toolbar.scopeProduct')));
@@ -210,7 +157,7 @@ describe('every projection draws its own controls from the catalog', () => {
 
 	it('draws the roadmap zone from it — the axis picker, its menu and the bucket toggle', () => {
 		const { containerEl } = makeRoadmap(horizonVault(), { startProperty: 'note.start', targetProperty: 'note.due' });
-		const bar = barOf(containerEl);
+		const bar = toolbarOf(containerEl);
 		const drawn = drawnText(bar);
 
 		expect(drawn).toContain(MARK + en['toolbar.axisAria'].replace('{axis}', marked('toolbar.axisHorizons')));
@@ -227,7 +174,7 @@ describe('every projection draws its own controls from the catalog', () => {
 		const vault = new FakeVault();
 		vault.addFile('Epic A.md', { frontmatter: { type: 'Epic', order: 10, start: '2026-08-01', due: '2026-08-20' } });
 		const { containerEl } = roadmapView(vault, { startProperty: 'note.start', targetProperty: 'note.due' });
-		const bar = barOf(containerEl);
+		const bar = toolbarOf(containerEl);
 		const drawn = drawnText(bar);
 
 		expect(drawn).toContain(marked('toolbar.compactRows'));
@@ -243,7 +190,7 @@ describe('every projection draws its own controls from the catalog', () => {
 	it('names the inert focus control from the projection it stands on, type as parameter', () => {
 		const { containerEl, view } = makeBoard(boardVault());
 		view.setProjection('deliverables');
-		const drawn = drawnText(barOf(containerEl));
+		const drawn = drawnText(toolbarOf(containerEl));
 
 		// The LABEL names the board, so it is this catalog's word; the tip names the
 		// `type:` value beside it, so that arrives as a parameter and stays English.
@@ -261,10 +208,14 @@ describe('the advisories and the projections nobody else drives read from it too
 		vault.addFile('Loose.md', { frontmatter: { note: 'nothing' } });
 		// Two owned properties on one key is a configuration the view refuses to guess at.
 		const { containerEl } = makeView(vault, { parentProperty: 'note.rank', orderProperty: 'note.rank' });
-		const drawn = drawnText(barOf(containerEl));
+		const drawn = drawnText(toolbarOf(containerEl));
 
-		expect(drawn).toContain(MARK + en['toolbar.ignoredNotes'].one.replace('{count}', '1'));
-		expect(drawn).toContain(MARK + en['toolbar.ignoredTooltip'].one.replace('{count}', '1'));
+		expect(drawn).toContain(MARK + filled(en['toolbar.ignoredNotes'].one, { count: 1 }));
+		// The option this sentence tells the reader to turn off is a PARAMETER, filled from
+		// `option.hierarchyOnly` — the label is keyed once and quoted, never re-spelled.
+		expect(drawn).toContain(
+			MARK + filled(en['toolbar.ignoredTooltip'].one, { count: 1, option: en['option.hierarchyOnly'] }),
+		);
 		expect(drawn).toContain(marked('toolbar.checkViewOptions'));
 		expect(drawn).toContain(marked('toolbar.configHelp'));
 		// The warning's accessible name is ONE sentence from the catalog with the problems
@@ -282,22 +233,22 @@ describe('the advisories and the projections nobody else drives read from it too
 		const { containerEl, view } = makeView(vault, { iterationProperty: 'note.iteration' });
 
 		view.setProjection('catalog');
-		expect(drawnText(barOf(containerEl))).toContain(marked('toolbar.focusCatalogLabel'));
-		expect(drawnText(barOf(containerEl))).toContain(marked('toolbar.focusCatalogTip'));
+		expect(drawnText(toolbarOf(containerEl))).toContain(marked('toolbar.focusCatalogLabel'));
+		expect(drawnText(toolbarOf(containerEl))).toContain(marked('toolbar.focusCatalogTip'));
 
 		view.setProjection('board');
 		// The iteration entries and the two dialog doors are the picker's, and they draw
 		// only once an iteration property is named.
-		const titles = titlesOf(openFrom(barOf(containerEl), 'scope'));
+		const titles = titlesOf(openFrom(toolbarOf(containerEl), 'scope'));
 		expect(titles).toContain(marked('toolbar.newIteration'));
 		expect(unmarked(titles)).toEqual(['Sprint 12']);
 
 		view.setBoardScope('Sprint 12.md');
-		const onIteration = drawnText(barOf(containerEl));
+		const onIteration = drawnText(toolbarOf(containerEl));
 		expect(onIteration).toContain(marked('toolbar.focusIterationLabel'));
 		expect(onIteration).toContain(marked('toolbar.focusIterationTip'));
 		// The scope button now carries the note's own title, which is the vault's word.
-		expect(titlesOf(openFrom(barOf(containerEl), 'scope'))).toContain(marked('toolbar.editIteration'));
+		expect(titlesOf(openFrom(toolbarOf(containerEl), 'scope'))).toContain(marked('toolbar.editIteration'));
 	});
 
 	it('names the resources axis and the state-colour door from the catalog', () => {
@@ -312,7 +263,7 @@ describe('the advisories and the projections nobody else drives read from it too
 			stateProperty: 'note.status',
 			stateValues: 'New, Done',
 		});
-		const bar = barOf(containerEl);
+		const bar = toolbarOf(containerEl);
 
 		expect(drawnText(bar)).toContain(marked('toolbar.stateColours'));
 		expect(titlesOf(openFrom(bar, 'axis'))).toContain(marked('toolbar.axisResources'));
@@ -321,14 +272,14 @@ describe('the advisories and the projections nobody else drives read from it too
 		// priority order), so the resources axis's own creation control draws only once
 		// it is picked.
 		view.setAxisPick('resources');
-		expect(drawnText(barOf(containerEl))).toContain(marked('toolbar.newResource'));
+		expect(drawnText(toolbarOf(containerEl))).toContain(marked('toolbar.newResource'));
 	});
 
 	it('draws the grouping advisory from the catalog when Bases reports a group-by', () => {
 		const vault = fixture();
 		const { view, containerEl } = makeView(vault);
 		setResults(view, vault.entries(), [{ hasKey: () => true, entries: [] }]);
-		const drawn = drawnText(barOf(containerEl));
+		const drawn = drawnText(toolbarOf(containerEl));
 
 		expect(drawn).toContain(marked('toolbar.groupingIgnored'));
 		expect(drawn).toContain(marked('toolbar.groupingIgnoredTooltip'));
@@ -339,14 +290,14 @@ describe('the advisories and the projections nobody else drives read from it too
 		vault.addFile('Epic A.md', { frontmatter: { type: 'Epic', order: 10, status: 'Doing' } });
 		const { containerEl } = makeView(vault, { stateProperty: 'note.status' }, { hideCompleted: true });
 
-		expect(drawnText(barOf(containerEl))).toContain(marked('toolbar.showCompleted'));
+		expect(drawnText(toolbarOf(containerEl))).toContain(marked('toolbar.showCompleted'));
 	});
 });
 
 describe('the menus the toolbar opens read their entries from the catalog', () => {
 	it('draws the New-type picker from one key with the type as its parameter', () => {
 		const { containerEl } = makeView(fixture());
-		const titles = titlesOf(openByClass(barOf(containerEl), 'pbl-new-pick'));
+		const titles = titlesOf(openByClass(toolbarOf(containerEl), 'pbl-new-pick'));
 
 		expect(titles).toContain(MARK + 'New Epic');
 		expect(titles).toContain(MARK + 'New Bug');
@@ -355,7 +306,7 @@ describe('the menus the toolbar opens read their entries from the catalog', () =
 
 	it('draws the focus menu from it, with every type name arriving as data', () => {
 		const { containerEl } = makeView(fixture());
-		const titles = titlesOf(openFrom(barOf(containerEl), 'focus'));
+		const titles = titlesOf(openFrom(toolbarOf(containerEl), 'focus'));
 
 		expect(titles).toContain(marked('toolbar.allTypes'));
 		// Every entry below the first IS a type name, so the unmarked remainder is exactly
@@ -367,7 +318,7 @@ describe('the menus the toolbar opens read their entries from the catalog', () =
 
 	it('draws the overflow menu from it, mirroring the buttons it stands in for', () => {
 		const { containerEl } = makeView(fixture());
-		const titles = titlesOf(openFrom(barOf(containerEl), 'overflow'));
+		const titles = titlesOf(openFrom(toolbarOf(containerEl), 'overflow'));
 
 		expect(titles).toContain(marked('toolbar.expandAll'));
 		expect(titles).toContain(marked('toolbar.collapseAll'));

@@ -26,6 +26,39 @@ a watched-failing test" — stay in [`../CLAUDE.md`](../CLAUDE.md).
 - `test/helpers/vault.ts` — `FakeVault` (metadata cache, vault, `processFrontMatter`, workspace
   recorder) and `FakeViewConfig` (records `set()` calls). Assert writes via
   `vault.fm(path)` / `vault.writeLog`; assert navigation via `vault.opened`.
+- `test/helpers/locale.ts` — the locale the run resolves, once and explicitly, from
+  `PBL_TEST_LOCALE` (default `en`). It is vitest's `setupFiles` entry, so a file that never
+  mentions a locale still runs in the one the run asked for, and `resetLocale()` is what a
+  test restores after driving `setLocale` itself — never a hard-coded `'en'`, which is
+  what would make CI's second pass green by accident. `PBL_TEST_LOCALE=de-DE npx vitest run`
+  is that pass locally; it exercises the catalog FALLBACK and `Intl.NumberFormat`, not a
+  second catalog, because most assertions here name the English text on purpose. `num()`
+  is beside it: an expectation spelling `2.5` or `12,345` is asserting English number
+  formatting, which is the one thing that pass varies — it found five such assertions on
+  its first run, in three files none of which was about a number.
+- `test/helpers/window.ts` — fixture dates for the timeline's drawn window, and the one
+  rule behind them: `timelineWindow` clamps to `MAX_TIMELINE_DAYS` **centred on today**, so
+  "outside the window" is a POSITION (`today ± 915`) rather than a date. A fixture that
+  spells it as a literal is true the day it is typed and false once the clock arrives —
+  which is what happened to eight tests across six files, and to two others a month
+  earlier. `fromToday` is the primitive; `clampingSpan`, `pastWindow`, `beforeWindow` and
+  `beyondPlan` sit on it. **`beyondPlan` is not `pastWindow`**: a mark past the window's
+  edge but still inside the long plan's own span draws as an ordinary marker, measured
+  rather than assumed. A LEAF — it imports `src/domain/` and nothing else in `test/` —
+  because `fixtures.ts` needs it and the browser harness bundles that file.
+  Where the quantity is a whole padding month rather than a distance, PIN instead
+  (`legend.test.ts`, `absenceCollision.test.ts`, `timelineFurniture.test.ts`), and pin with
+  `vi.useFakeTimers({ toFake: ['Date'] })` before `setSystemTime` — a bare `setSystemTime`
+  is not undone by the harness's `useRealTimers`, and leaked into a later test in the same
+  file the first time it was tried.
+- **`npm run clock` runs the whole suite with `Date` shifted** — `PBL_SHIFT_DAYS=1460 npm
+  run clock`. It reports rather than gates, like `npm run perf`, and is not part of `npm
+  run check`. It exists for the one class of defect a green suite cannot see: a test that
+  passes today and fails on a date nobody chose. Only `Date`'s no-argument construction and
+  `now()` move, so a fixture naming an explicit date still gets it — the fixture stays put
+  while today moves under it. Measured 2026-09-02: clean at +0, +180, +1095 and +1460;
+  **69 tests across 19 files fail at +1825**, which is the roadmap suites' everyday
+  `2026-08-…` fixtures and a separate decision. Re-measure rather than quoting that.
 - `test/helpers/view.ts` — the view harness every `test/view/*.test.ts` file shares:
   `makeView`, `refresh`, `fixture`, the row/tree accessors, `drag`, `key`, `stubRect`,
   `flush`, `submitPrompt`, and `useViewHarness()` for the per-test reset. Call

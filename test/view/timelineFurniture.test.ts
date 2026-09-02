@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { FakeVault } from '../helpers/vault';
 import { makeView, useViewHarness } from '../helpers/view';
 import { gridDrag, overlayOf } from '../helpers/dnd';
@@ -128,9 +128,22 @@ describe('row tracking', () => {
 
 describe('bar labels', () => {
 	it('labels the bar where the eye is, flipping sides at the window edge', () => {
+		// The clock is PINNED, and the 2030 dates below are what need it: the window pads to
+		// include TODAY, so once the clock reaches them the free room right of the bar is no
+		// longer the padding month and the flip happens at a different zoom. "Far enough out
+		// that the real clock cannot move the window edge" was true when written and stopped
+		// being so — a shifted-`Date` probe puts this test on the wrong side of it at +1460
+		// days. Pinned rather than derived because the room is a whole-month quantity and a
+		// date derived from today lands on an arbitrary day of an arbitrary-length month.
+		// `useFakeTimers({ toFake: ['Date'] })` and not a bare `setSystemTime`: the harness's
+		// own `afterEach` restores through `useRealTimers`, which reverses this pair and does
+		// NOT reverse a lone `setSystemTime` — the pin leaked into a later test in this same
+		// file and put a note dated off the real clock back inside the window. Date only, so
+		// the view's own timers still run.
+		vi.useFakeTimers({ toFake: ['Date'] });
+		vi.setSystemTime(new Date('2026-08-05T12:00:00Z'));
 		const vault = new FakeVault();
-		// Far enough out that the real clock cannot move the window edge: the free
-		// room right of the bar is 46 days (Jun 15 → Jul 31 2030, the padding month).
+		// The free room right of the bar is 46 days (Jun 15 → Jul 31 2030, the padding month).
 		vault.addFile('Far off.md', { frontmatter: { type: 'PBI', order: 10, start: '2030-06-01', due: '2030-06-15' } });
 		const { view, containerEl } = datedRoadmap(vault);
 
@@ -239,6 +252,10 @@ describe('bar labels', () => {
 	});
 
 	it('flips a milestone label to the diamond\'s own left edge, not across its left half', () => {
+		// Pinned for the same reason as the flip test above: these are 2030 dates whose
+		// distance from today is the premise.
+		vi.useFakeTimers({ toFake: ['Date'] });
+		vi.setSystemTime(new Date('2026-08-05T12:00:00Z'));
 		const vault = new FakeVault();
 		// Dated late enough in the window that no reserve fits after it, so the label
 		// flips — and far enough from the left edge that it is not dropped instead.

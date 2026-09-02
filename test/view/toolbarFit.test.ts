@@ -1,10 +1,9 @@
 // @vitest-environment jsdom
-import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { Menu } from '../helpers/obsidian-mock';
 import { syncBusy } from '../../src/view/render/toolbar';
 import { syncToolbarFit } from '../../src/view/render/toolbarFit';
-import { fixture, makeView, refresh, treeOf, useViewHarness } from '../helpers/view';
+import { fixture, loadToolbarStyles, makeView, refresh, toolbarOf, treeOf, useViewHarness } from '../helpers/view';
 
 useViewHarness();
 
@@ -49,38 +48,7 @@ const stubFlooredWidths = (bar: HTMLElement, pane: number, content: number) => {
 	});
 };
 
-/**
- * The SHIPPED rules, in the document, so a question about what a step hides is asked of
- * the stylesheet rather than of a copy of it. jsdom applies no stylesheet of its own but
- * it does parse one it is given — `:not()` chains included — so
- * `getComputedStyle(el).display` becomes a real answer, which is what
- * `refocusShedControl` reads.
- *
- * EVERY partial that writes a rule the questions below read, in the order
- * `styles/index.css` declares them, and that is not tidiness.
- * The `⋯` is `display: none` by DEFAULT — that rule is in `toolbar.css` — and
- * `toolbarFit.css` only turns it ON from step 2. Loading the fit
- * partial alone left it reading as visible at step 0, which is precisely the state the
- * relaxing-direction test is about, so the test would have asked its question of a
- * document where the answer could not be wrong.
- *
- * `busy.css` is here for the same reason, found the same way: `.pbl-busy` is
- * `display: none` until a batch runs, that rule lives in the partial the indicator moved
- * to at the 400-line cap, and without it the indicator read as VISIBLE at every rung — so
- * the assertion that a rung sheds it was passing against a document where it had never
- * been hidden by anything.
- *
- * In `head`, once for the module: `useViewHarness` empties the BODY between tests.
- */
-for (const partial of ['styles/toolbar.css', 'styles/toolbarFit.css', 'styles/busy.css']) {
-	document.head.createEl('style', { text: readFileSync(partial, 'utf8') });
-}
-
-const toolbarOf = (containerEl: HTMLElement) => {
-	const bar = containerEl.querySelector<HTMLElement>('.pbl-toolbar');
-	if (!bar) throw new Error('toolbar not rendered');
-	return bar;
-};
+loadToolbarStyles();
 
 describe('the toolbar fit ladder', () => {
 	it('stops at the first step that fits', () => {

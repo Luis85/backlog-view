@@ -6,7 +6,7 @@ import { BacklogItem, BacklogModel } from '../../domain/model';
 import { projectionPopulation, toolbarPosition, treeShaped } from '../projection';
 import { isIterationType } from '../../domain/itemTypes';
 import { selectableIteration } from '../../domain/iterations';
-import { activeAxis, configuredAxes, drawsGrid, RoadmapAxis } from '../../domain/roadmap';
+import { activeAxis, configuredAxes, drawsGrid, laneIdentity, RoadmapAxis } from '../../domain/roadmap';
 import { ScaleId } from '../../domain/timeline';
 import { showMenuForClick } from '../interactions/menu';
 import { runInit } from '../interactions/structure';
@@ -616,18 +616,39 @@ function collapsiblePopulation(host: BacklogViewHost, model: BacklogModel): Back
 }
 
 /**
+ * The BANDS these two controls reach — the resources axis's third disclosure, beside the
+ * tree's own chevron and the dated axis's bar fold, and the one a roster of twenty people
+ * makes the whole point of a bulk control.
+ *
+ * Read off the RENDERED roadmap rather than off the model, for the reason
+ * `collapseCtlsDisabled` below already relies on: `RoadmapModel.lanes` is empty by
+ * construction on every axis that draws no bands, so this needs no axis test of its own.
+ * The milestones' row is dropped because `laneEntries` gives it no rows to fold and draws
+ * it no disclosure — a bulk fold able to take the dates the plan is measured against off
+ * screen, with no chevron left to undo it, is exactly what that row exists to prevent.
+ *
+ * Identities, never names: a fold keyed on the caption would reopen silently the moment a
+ * rename or a second resource of that basename changed it (`renderLaneChevron`).
+ */
+function foldableLanes(host: BacklogViewHost): string[] {
+	return (host.roadmap?.roadmap.lanes ?? []).filter((lane) => !lane.markers).map(laneIdentity);
+}
+
+/**
  * The two bulk collapse ACTIONS, extracted from the buttons that used to hold them
  * inline, because the `⋯` menu invokes the same action from a second input. The rule
  * this codebase already keeps for a move — one method, several inputs — applied to a
  * command: a second caller calls the first one's function rather than repeating its loop.
  */
 export function expandAll(host: BacklogViewHost): void {
+	host.setLanesCollapsed(foldableLanes(host), false);
 	const model = host.model;
 	if (!model) return;
 	for (const item of collapsiblePopulation(host, model)) host.setCollapsed(item.file.path, false);
 }
 
 export function collapseAll(host: BacklogViewHost): void {
+	host.setLanesCollapsed(foldableLanes(host), true);
 	const model = host.model;
 	if (!model) return;
 	for (const item of collapsiblePopulation(host, model)) {
@@ -651,6 +672,11 @@ export function collapseAll(host: BacklogViewHost): void {
  */
 export function collapseCtlsDisabled(host: BacklogViewHost): boolean {
 	if (treeShaped(host.projection)) return false;
+	// A band is a genuine row disclosure and not a card's, so a resources axis drawing one
+	// is something these buttons really reach — asked before the bar walk below, since a
+	// roster whose bars all sit at the top level draws no bar chevron at all and would
+	// otherwise leave the controls dead over a screen full of foldable rows.
+	if (foldableLanes(host).length > 0) return false;
 	const barPaths = new Set((host.roadmap?.roadmap.bars ?? []).map((bar) => bar.item.file.path));
 	for (const path of host.cardChildrenShown) {
 		if (barPaths.has(path)) return false;

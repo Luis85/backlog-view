@@ -218,6 +218,19 @@ describe('runReleaseInit', () => {
 		await runReleaseInit(view);
 		expect(view.settings.releasedDateKey).toBe('released');
 	});
+
+	it('binds the readiness keys too, so a press leaves no criterion unconfigured', async () => {
+		const { view, config } = makeReleaseView(new FakeVault(), {});
+		await runReleaseInit(view);
+		expect(config.get('estimateProperty')).toBe('note.effort');
+		expect(config.get('dependsOnProperty')).toBe('note.dependsOn');
+		expect(config.get('riskProperty')).toBe('note.risk');
+		// The VOCABULARIES are not candidates and could not be: there is no key to hand out —
+		// what a vault calls its own risk values is its own to write, the same reason
+		// `releaseStatusValues` is absent from this list.
+		expect(config.get('criticalRiskValues')).toBeUndefined();
+		expect(config.get('addressedRiskValues')).toBeUndefined();
+	});
 });
 
 describe('the press binds the options that are not properties', () => {

@@ -1,33 +1,75 @@
 {
 	"$schema": "./node_modules/fallow/schema.json",
-	"entry": ["src/main.ts", "test/harness/page.ts", "test/harness/estimation.ts", "test/harness/release.ts", "test/harness/mywork.ts"],
-	"dynamicallyLoaded": ["styles/**/*.css", "test/harness/theme.css", "test/harness/obsidian.css"],
+	"entry": [
+		"src/main.ts",
+		"test/harness/page.ts",
+		"test/harness/estimation.ts",
+		"test/harness/release.ts",
+		"test/harness/mywork.ts",
+		"scripts/vitest.clock.mts",
+		"test/helpers/shiftClock.ts"
+	],
+	"dynamicallyLoaded": [
+		"styles/**/*.css",
+		"test/harness/theme.css",
+		"test/harness/obsidian.css"
+	],
 	"duplicates": {
-		"ignore": ["test/harness/obsidian.css"]
+		"ignore": [
+			"test/harness/obsidian.css"
+		]
 	},
 	"usedClassMembers": [
-		{ "extends": "ViewStateSurface", "members": ["type"] },
-		{ "extends": "BasesView", "members": ["type"] },
+		{
+			"extends": "ViewStateSurface",
+			"members": [
+				"type"
+			]
+		},
+		{
+			"extends": "BasesView",
+			"members": [
+				"type"
+			]
+		},
 		{
 			"extends": "AbstractInputSuggest",
-			"members": ["getSuggestions", "renderSuggestion", "selectSuggestion"]
+			"members": [
+				"getSuggestions",
+				"renderSuggestion",
+				"selectSuggestion"
+			]
 		},
 		{
 			"extends": "ValueSuggest",
-			"members": ["getSuggestions", "renderSuggestion", "selectSuggestion", "valueOf"]
+			"members": [
+				"getSuggestions",
+				"renderSuggestion",
+				"selectSuggestion",
+				"valueOf"
+			]
 		},
 		{
 			"extends": "FuzzySuggestModal",
-			"members": ["getItems", "getItemText", "renderSuggestion", "onChooseItem"]
+			"members": [
+				"getItems",
+				"getItemText",
+				"renderSuggestion",
+				"onChooseItem"
+			]
 		},
 		{
 			"extends": "PromptModal",
-			"members": ["onOpen"]
+			"members": [
+				"onOpen"
+			]
 		}
 	],
 	"health": {
 		"coverage": "coverage/coverage-final.json",
-		"ignore": ["test/**"]
+		"ignore": [
+			"test/**"
+		]
 	},
 	"rules": {
 		"unused-dev-dependencies": "error",
@@ -37,8 +79,12 @@
 	},
 	"overrides": [
 		{
-			"files": ["test/**"],
-			"rules": { "unused-class-members": "off" }
+			"files": [
+				"test/**"
+			],
+			"rules": {
+				"unused-class-members": "off"
+			}
 		}
 	]
 }

@@ -2,11 +2,11 @@
 type: PBI
 parent: "[[Multilang]]"
 order: 120
-status: Open
-started: ""
+status: Active
+started: 2026-09-01
 finished: ""
 horizon: ""
-start: ""
+start: 2026-09-01
 due: ""
 risk: ""
 assignee: ""
@@ -51,6 +51,61 @@ hidden by tests that only ever ran in English.
 
 ## What is there now
 
+**Two of the six criteria landed on 2026-09-01 and the largest one did not**, so this note
+stays Active rather than being closed on the half that was cheap.
+
+What landed is the plumbing and the second pass. `test/helpers/locale.ts` resolves
+`PBL_TEST_LOCALE` once per run and is vitest's own `setupFiles` entry, so every file gets
+the run's locale rather than whatever the last test left behind; `useViewHarness()` puts it
+back per test beside the rest of its reset, and every `afterEach` in `test/i18n/` that
+restored a hard-coded `'en'` now restores the RUN's locale — restoring English is exactly
+what would make the second pass green by accident. CI runs the suite a second time under
+`de-DE` as its own job.
+
+**That second pass is narrower than this note's third criterion and the difference is
+stated rather than glossed.** `de-DE` has no catalog, so it exercises the FALLBACK across
+every surface — a code resolving to English, with English's plural rules carried along by
+`grammarOf` — and `Intl.NumberFormat` in a locale that groups unlike English. It does not
+run the suite in a second CATALOG, which is what the criterion asks for, because the
+assertions below make that impossible today: under `en-x-pseudo` the suite fails on wording
+at several hundred sites, which measures the assertions rather than the layer.
+
+**The reset is per TEST, and the first version was per file — which is the difference
+between running the suite in another locale and reporting that you had.** A setup file's
+top-level statement runs once per file, so a file driving `setLocale` in one test left it
+there for every test after it: three files outside `test/i18n/` restored a hard-coded
+`'en'` mid-file (`settings.test.ts`, `estimationOptions.test.ts`, `viewOptions.test.ts`),
+and the sweep that rewrote those restores had only covered `test/i18n/`. `beforeEach` is
+registered in the setup file now, so nothing inherits a locale and no file has to remember
+— the check is at the thing rather than at the files somebody listed. A file-local
+`beforeEach` still wins, being registered later, which is how the fixture catalogs still
+take effect. The whole suite passes under `de-DE` with the stricter reset. Found by review
+(Codex, PR #240).
+
+**The second pass found six assertions on its first run, which is the evidence that it is
+a check rather than a ceremony.** All six asserted ENGLISH number formatting while being
+about something else: `scoringModel.test.ts` spelled `99.999` and `0.001` into a weights
+message, `panel.test.ts` spelled `counted as 2.5`, and `releaseIndex.test.ts`'s
+`drawnParts` stripped a day count with `/^[\d,]+ days? /` — a pattern that reads a comma
+as the group separator and so left `26.420 days left` where the table expected the count
+gone. The two that SPELL a number go through `num()` in `test/helpers/locale.ts`, the
+same `Intl.NumberFormat` `t()` builds on the same resolved code; the three that DROP one
+take a pattern that reads any punctuation between digits, since which mark separates a
+group is the locale's. The sixth is the exception the
+fourth criterion allows and keeps: `locale.test.ts`'s "formats a number inside a message"
+IS about the formatting, so it drives `setLocale` itself and now asserts both locales, with
+a comment saying the wording is the subject.
+
+So the work still owed is the first criterion, and it is bigger than this note said. It
+counted "roughly 33 assertions"; a re-count on 2026-09-01 over `test/view/`,
+`test/ui/`, `test/commands/` and `test/storage/` found **117 `Notice.messages` assertions
+alone**, before the `toContain('…')` matches on visible labels, which are several hundred
+more. Some of those strings are user DATA (a note title, a type name, a folder path) and
+must stay literal, so it is not a sweep a pattern can do — which is the finding that turns
+this from a plumbing task into its own slice.
+
+The original statement of the problem, unchanged:
+
 Roughly 33 assertions in `test/**` match on user-facing prose. They read like:
 
 ```ts
@@ -85,9 +140,13 @@ not been reworded. The first is the test's purpose. The second is a hostage.
 
 ## Where it lives
 
-**Nothing yet — this note is design.** `test/helpers/view.ts` owns `useViewHarness()` and
-the per-test reset, so the resolved
-locale belongs beside it · `test/helpers/obsidian-mock.ts` is where `getLanguage` gets a
-stand-in · `test/view/state.test.ts` holds an assertion matching a notice by its English
-text today, which is the shape that changes.
-Config: `vitest.config.mts` carries the coverage thresholds that must not drop.
+`test/helpers/locale.ts` resolves the run's locale and is the `setupFiles` entry, so a file
+that never mentions a locale still runs in the one the run asked for ·
+`test/helpers/view.ts` puts it back per test inside `useViewHarness()` ·
+`test/helpers/obsidian-mock.ts` is where `getLanguage` gets a stand-in, and it still
+answers `'en'` — a test that cares drives `setLocale` rather than reaching through it ·
+`test/view/state.test.ts` holds an assertion matching a notice by its English text today,
+which is the shape the remaining work changes.
+Config: `vitest.config.mts` carries the `setupFiles` entry and the coverage thresholds that
+must not drop · `.github/workflows/ci.yml` runs the second pass as its own `locale` job,
+one platform, `PBL_TEST_LOCALE: de-DE`.

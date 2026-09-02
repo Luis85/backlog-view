@@ -15,6 +15,7 @@ import { configured, configuredValues } from '../../helpers/estimationModel';
 import { FakeVault } from '../../helpers/vault';
 import { flush } from '../../helpers/view';
 import { computeTotal, round2, stampValue, TotalResult } from '../../../src/domain/weightedScore';
+import { num } from '../../helpers/locale';
 
 /**
  * What the per-item panel DRAWS for a value already on the note, and where focus lands
@@ -164,7 +165,8 @@ describe('a stored value the scale cannot name', () => {
 		const { containerEl } = makeEstimationView(vault, configuredValues());
 		selectItem(containerEl, 'Item.md');
 
-		expect(rowNote(containerEl, 'Strategic alignment')).toBe('Between points — counted as 2.5');
+		// The VALUE is formatted for the reader's locale, so the expectation formats it too.
+		expect(rowNote(containerEl, 'Strategic alignment')).toBe(`Between points — counted as ${num(2.5)}`);
 	});
 
 	it('says nothing at all for a dimension with no answer', () => {

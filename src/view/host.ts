@@ -521,6 +521,14 @@ export interface BacklogViewHost {
 	isLaneCollapsed(identity: string): boolean;
 	setLaneCollapsed(identity: string, collapsed: boolean): void;
 	/**
+	 * The same bit for a whole roster at once — what the toolbar's bulk collapse controls
+	 * write. Unlike {@link setLaneCollapsed} it renders NOTHING, exactly as
+	 * {@link setCollapsed} renders nothing: a bulk action settles every band in one loop and
+	 * its caller renders once at the end, where the single-band toggle is its own last word
+	 * and has to redraw the projection itself.
+	 */
+	setLanesCollapsed(identities: string[], collapsed: boolean): void;
+	/**
 	 * Whether one board column or horizon bucket is folded to its strip, asked of the
 	 * screen it is drawn on and its own value.
 	 *

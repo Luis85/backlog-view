@@ -19,6 +19,7 @@
  *
  * No existing suite is rewritten onto it. It is a fourth fixture, not a replacement.
  */
+import { clampingSpan } from './window';
 import { FakeVault, FakeViewConfig } from './vault';
 import { resolveEstimationSettings } from '../../src/domain/estimationSettings';
 import { computeTotal, stampValue } from '../../src/domain/weightedScore';
@@ -477,9 +478,17 @@ export function edgeCaseVault(): FakeVault {
 	const vault = new FakeVault();
 	const add = adder(vault, 'flat');
 	add('Platform', { type: 'Epic', order: 10, status: 'Active' });
-	// Clipped at BOTH edges regardless of what today is, so this fixture does not rot
-	// with the calendar: an eight-year span always exceeds the 1830-day budget.
-	add('The long migration', { type: 'PBI', order: 10, status: 'Active', start: '2022-01-01', due: '2030-12-31' }, 'Platform');
+	// Clipped at BOTH edges whatever today is — and DERIVED, because the fixed eight-year
+	// span this used to carry could not promise that. Exceeding the 1830-day budget is what
+	// makes the window CLAMP; being clipped needs the span to outreach the clamped window on
+	// each side, and the clamp is `today ± 915`. So a span fixed in the calendar drifts
+	// through it: 2022-01-01 → 2030-12-31 was clipped at both ends in 2026 and open-start
+	// only by 2029, which a shifted-`Date` probe caught with this fixture's own test.
+	add(
+		'The long migration',
+		{ type: 'PBI', order: 10, status: 'Active', ...clampingSpan() },
+		'Platform',
+	);
 	// Ordinary, inside the clamped window, so the clipped bar has something to be
 	// compared against and something legal to be dragged onto.
 	add('Nearby work', { type: 'PBI', order: 20, status: 'New', start: '2026-08-04', due: '2026-08-28' }, 'Platform');

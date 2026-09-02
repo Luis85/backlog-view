@@ -26,6 +26,8 @@ See [RELEASING.md](RELEASING.md) for how this file is kept in step with a releas
 
 ### Added
 
+- The toolbar's **Expand all** and **Collapse all** now fold and open the resource bands on
+  the roadmap's resources axis, so a long roster is one press rather than one chevron each.
 - `npm run check` has a sixth step, `lint:md`, gating the Markdown in `docs/` and the
   root documents.
 - **My work**, a fourth Bases view (`product-my-work`): one person's work as a backlog tree,
@@ -39,6 +41,16 @@ See [RELEASING.md](RELEASING.md) for how this file is kept in step with a releas
   menu's `Move` entries write the dragged row's `order` and nothing else.
 - Two palette commands rewrite every rank at once — `Seed ranks from the hierarchy` in the
   order the tree draws it, and `Respace ranks` keeping the order already on screen.
+- Every shipped catalog is checked against English — the same keys, the same parameters,
+  and the plural categories its own language has — so a half-finished translation fails
+  the build instead of rendering half in English.
+- A pseudo-locale for development builds (`en-x-pseudo`): English accented, a third longer
+  and bracketed, so a layout can be looked at in something that is not English. It ships in
+  no release; set `localStorage['product-backlog-locale']` and reload to see it.
+- CI runs the whole test suite a second time in a non-English locale.
+- Release readiness on a release's own screen: three criteria — everything estimated,
+  dependencies resolved, critical risks addressed — beside the effort totals, the estimate
+  progress and how much of the scope carries no estimate at all.
 
 ### Changed
 
@@ -57,6 +69,12 @@ See [RELEASING.md](RELEASING.md) for how this file is kept in step with a releas
 - The ✨ set-up button gives a blank `order` a rank that keeps the row where it is drawn
   rather than appending it after its siblings, and reports a rank it could not place as
   skipped instead of counting it as nothing to do.
+- The sentences that tell you to set a view option now quote that option's own label, so a
+  renamed option cannot leave the guidance pointing at a control you cannot find.
+- `main.js` ships about 483 KB, up from the 480 KB ceiling the previous release fitted
+  under. Its budget is raised to 512 KB as a decision, not a measurement: this release adds
+  the two rank commands, release readiness, the catalog-completeness checks and a catalog
+  grown from 763 keys to 816. No new dependency reached the bundle.
 
 ### Fixed
 
@@ -81,6 +99,14 @@ See [RELEASING.md](RELEASING.md) for how this file is kept in step with a releas
 - `Respace ranks` run again over a backlog it has already spaced now says every rank
   already holds the number it would write, instead of reporting a rewrite of notes it left
   untouched and an undo it never armed.
+- Two timeline tests measured against the calendar rather than a fixed day, so they began
+  failing a fortnight after they were written.
+- My work: the Next marker stays inside the pane at every width, the state chip shows its
+  value in full where there is room and its icon where there is not, a title can be
+  selected and copied, and a narrow pane keeps the state instead of dropping it.
+- A release's scope: a member's state chip shows its value in full rather than truncating
+  it at a fixed column width, and carries the value as a tooltip where the row is too
+  narrow to show it.
 
 ## [0.10.0] - 2026-08-30
 

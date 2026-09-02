@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { Catalog, setLocale } from '../../src/i18n/t';
+import { describe, expect, it, vi } from 'vitest';
+import { Catalog } from '../../src/i18n/t';
 import { BOARD_WORKFLOW, boardVault, expandColumns, makeBoard } from '../helpers/board';
 import { installObsidianDom } from '../helpers/dom';
 import { setScopeFlag } from '../../src/view/scopeFolds';
@@ -8,9 +8,10 @@ import { makeMyWorkView, myWorkVault } from '../helpers/mywork';
 import { horizonVault, laneRoadmap, makeRoadmap, roadmapView } from '../helpers/roadmap';
 import { makeReleaseView, RELEASE_CONFIG, releaseVault, scopeVault } from '../helpers/release';
 import { countingVault, resourceVault } from '../helpers/resources';
+import { beyondPlan } from '../helpers/window';
 import { FakeVault } from '../helpers/vault';
 import { clickExpandAll, fixture, makeView, treeOf } from '../helpers/view';
-import { MARK, markedCatalog } from './fixtures';
+import { MARK, markedCatalog, useMarkedLocale } from './fixtures';
 
 installObsidianDom();
 
@@ -55,9 +56,7 @@ installObsidianDom();
  */
 const xx: Catalog = markedCatalog();
 
-beforeEach(() => setLocale('xx', { xx }));
-// Resolution is module state by design (once, at load), so each test puts it back.
-afterEach(() => setLocale('en'));
+useMarkedLocale(xx);
 
 /**
  * Every string a projection put where a person could read it — the leaves' text, and the
@@ -234,9 +233,20 @@ describe('a lane with absences reads its own words from the catalog', () => {
 	it('leaves nothing but dates, names and titles unmarked when a bar crosses an absence', () => {
 		// One absence inside the bar's span, one ahead of today: the first draws the
 		// days-lost pair on the bar, the second the away pill on the lane's lead.
+		//
+		// PINNED rather than derived, and the first attempt here got that wrong. `Work` is
+		// fixed at 2026-08-01 → 2026-08-10 inside `countingVault`, so an absence derived from
+		// today stops INTERSECTING it — `fromToday(3)` drew no days-lost pair and no away
+		// flag at all, and the remainder assertion still passed, because a string that is
+		// never rendered contributes no unmarked text. The test went quiet instead of red.
+		// (Codex, PR #243.) Deriving the absence needs `Work` derived too, which is a shared
+		// fixture other suites assert exact dates against; pinning is the smaller answer, and
+		// this test's subject is catalogue coverage rather than the calendar.
+		vi.useFakeTimers({ toFake: ['Date'] });
+		vi.setSystemTime(new Date('2026-08-05T12:00:00Z'));
 		const vault = countingVault([
 			{ title: 'Away', start: '2026-08-04', target: '2026-08-06' },
-			{ title: 'Later', start: '2099-01-05', target: '2099-01-09' },
+			{ title: 'Later', start: beyondPlan(), target: beyondPlan(4) },
 		]);
 		// A MARKER too: its diamond carries the only copy of the span sentence, since it
 		// has no row to put one in, and no other fixture on this axis draws one.

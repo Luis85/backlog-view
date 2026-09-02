@@ -1,7 +1,7 @@
 ---
 type: Bug
 parent: "[[Invariants as checks, not conventions]]"
-order: 280
+order: 320
 status: Done
 area: verification
 priority: P1

@@ -31,7 +31,11 @@ describe('the release view names its own keys', () => {
 			[
 				'deliverableDoneValues',
 				'deliverableStateProperty',
+				'addressedRiskValues',
 				'descriptionProperty',
+				'criticalRiskValues',
+				'dependsOnProperty',
+				'estimateProperty',
 				'doneValues',
 				'membershipProperty',
 				'openIn',
@@ -44,6 +48,7 @@ describe('the release view names its own keys', () => {
 				'releaseNotesFolder',
 				'releaseStatusProperty',
 				'releaseStatusValues',
+				'riskProperty',
 				'stateProperty',
 				'targetDateProperty',
 				'typeProperty',
@@ -239,5 +244,31 @@ describe('the release view names its own keys', () => {
 		expect(
 			membershipCollision(releaseSettingsWith({ membershipKey: 'nothing-names-this' }), plan),
 		).toBeNull();
+	});
+
+	it('resolves the readiness keys, and leaves an unconfigured one empty', () => {
+		const bound = resolveReleaseSettings(
+			new FakeViewConfig({
+				estimateProperty: 'note.effort',
+				dependsOnProperty: 'note.dependsOn',
+				riskProperty: 'note.risk',
+				criticalRiskValues: 'High, Critical',
+				addressedRiskValues: 'Mitigated',
+			}),
+		);
+		expect(bound.estimateKey).toBe('effort');
+		expect(bound.dependsOnKey).toBe('dependsOn');
+		expect(bound.riskKey).toBe('risk');
+		expect(bound.criticalRiskValues).toEqual(['High', 'Critical']);
+		expect(bound.addressedRiskValues).toEqual(['Mitigated']);
+
+		// Absence is a value: an unbound key is '' and an untouched list is empty, never a
+		// guessed default. A criterion reading these must be able to say "not configured".
+		const bare = resolveReleaseSettings(new FakeViewConfig({}));
+		expect(bare.estimateKey).toBe('');
+		expect(bare.dependsOnKey).toBe('');
+		expect(bare.riskKey).toBe('');
+		expect(bare.criticalRiskValues).toEqual([]);
+		expect(bare.addressedRiskValues).toEqual([]);
 	});
 });
