@@ -184,6 +184,29 @@ marker, and an `outsideFilter` ancestor re-rooting its member one level up:**
 
 ### The polish pass of 2026-09-01
 
+**And a second round, from review: the indent needed a CAP, not a smaller step.** Halving
+the indent below the cutoff bought a fixed amount per level, which the next level spends
+again — so the row that runs out of pane was always just one deeper, and the failure was
+postponed rather than closed. Measured in the harness at a 200px pane before the cap: a
+depth-3 row carrying the Next marker sat **11px past the tree's edge**, and an unmarked
+depth-5 row was within 5px of it. `.pbl-tree` hides its own horizontal overflow, so both
+would have lost the trailing state icon rather than showing it cut — the partial-chip
+failure this pass exists to end.
+
+**The row that fails first is the deepest one CARRYING THE MARKER, not the deepest one**,
+and that is why this went unseen. The marker is ~36px that never shrinks, so a deep row
+without it has room to spare: the harness fixture was three levels deep with the marker
+higher up and drew clean at every width. The review reported the depth and inferred the
+clipping; the measurement confirmed the conclusion and corrected the mechanism. The
+harness fixture now finishes that row's parent so `nextAssigned` lands on the deepest row,
+which is the arrangement the width question is actually about.
+
+The cap is `2 * var(--pbl-indent)`, stated in LEVELS rather than pixels so it cannot drift
+from the step declared above it and so it carries no second number tuned to one fixture's
+depth — the mistake the 260px cutoff already records. Re-measured at 200px, 240px and
+260px across depths 0 to 5: nothing is clipped at any of them, with 5px of clearance on
+the worst row and 12px on the rest.
+
 **The band this section reported rather than fixed is closed, and closing it moved the
 marker rather than tuning the cutoff.** Task 10 measured the Next marker clipped at 280px
 and pushed off screen at 320px and declined to widen 260px on one fixture's evidence,

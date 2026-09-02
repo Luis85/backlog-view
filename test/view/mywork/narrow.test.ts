@@ -69,6 +69,26 @@ describe('the narrow-pane rule, read from the stylesheet source', () => {
 		expect(body).not.toMatch(/\.pbl-mw-statecol\s*\{[^}]*display:\s*none/);
 	});
 
+	/**
+	 * Indent is the only term on the row that grows with depth, so halving it moves the
+	 * width at which a row runs out of pane rather than closing it — measured at 200px
+	 * before the cap: a depth-3 row carrying the Next marker sat 11px past the tree's
+	 * edge, and an unmarked depth-5 row within 5px of it.
+	 *
+	 * Asserted as a CAP RELATIVE TO THE STEP, never as a pixel value: the point of
+	 * `2 * var(--pbl-indent)` is that it cannot drift from the step declared above it, and
+	 * a test naming a number here would have to be edited every time the step is, which is
+	 * how the two would come apart.
+	 */
+	it('caps the indent so depth cannot push a row out of the pane', () => {
+		const containerBlock = /@container\s*\(max-width:\s*260px\)\s*\{([\s\S]*?)\n\}/.exec(css);
+		const body = containerBlock?.[1] ?? '';
+		expect(body).toMatch(/--pbl-indent:\s*\d+px/);
+		expect(body).toMatch(
+			/\.pbl-mw-view \.pbl-row\s*\{[^}]*min\([\s\S]*?--pbl-depth[\s\S]*?2 \* var\(--pbl-indent/,
+		);
+	});
+
 	it('wraps the toolbar rather than clipping it once the column gives way', () => {
 		const containerBlock = /@container\s*\(max-width:\s*260px\)\s*\{([\s\S]*?)\n\}/.exec(css);
 		const body = containerBlock?.[1] ?? '';

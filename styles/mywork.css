@@ -204,6 +204,32 @@ button.pbl-mw-toggle-on {
 	   harness, which is what caught it). `.pbl-row` reads `var(--pbl-indent, 24px)` and
 	   nothing in this view publishes one of its own, so the tree is where it inherits from. */
 	.pbl-mw-view .pbl-mw-tree {
-		--pbl-indent: 12px;
+		--pbl-indent: 10px;
+	}
+
+	/* **And CAPPED at two levels, because a smaller step only moves the width it fails
+	   at.** Indent is the one term on the row that grows without bound: halving it buys a
+	   fixed 12px per level and the next level spends it again, so the row that runs out of
+	   pane is always just one deeper. Measured in the harness at 200px before this cap: a
+	   depth-3 row carrying the Next marker sat 11px past the tree's edge, and an unmarked
+	   depth-5 row was within 5px of it — `.pbl-tree` hides its own horizontal overflow, so
+	   both would have lost the trailing state icon rather than showing it cut.
+
+	   **The marked row is the one that fails first, not the deepest one** (review, PR #239,
+	   which reported the depth and inferred the rest): the marker is ~36px that never
+	   shrinks, so a deep row without it has room to spare. A fixture three levels deep with
+	   the marker higher up draws clean, which is why this went unseen.
+
+	   The cap is stated in LEVELS rather than pixels — `2 * var(--pbl-indent)` — so it
+	   cannot drift from the step above it, and so this carries no second number tuned to
+	   one fixture's depth, which is the mistake the 260px cutoff already records. Two
+	   levels is what a 200px pane can afford: the first two still read as nesting, and
+	   below that the badge and the fold state say where a row sits. The formula restates
+	   `tree.css`'s own, which is the cost of scoping the override to this pane rather than
+	   changing the step every projection shares. */
+	.pbl-mw-view .pbl-row {
+		padding-inline-start: calc(
+			var(--size-4-1) + min(var(--pbl-depth, 0) * var(--pbl-indent, 24px), 2 * var(--pbl-indent, 24px))
+		);
 	}
 }
