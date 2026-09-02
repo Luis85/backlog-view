@@ -105,6 +105,45 @@ describe('the backfill and the focused order', () => {
 		expect(titlesOf(containerEl)).toEqual(before);
 	});
 
+	it('poisons the whole sibling group too, not only the refused focus key', async () => {
+		// The same shape as the test above, but the row that moves shares no FOCUS KEY with
+		// the one that was refused — only a PARENT. `Feature1` (key = Feature's levelIndex)
+		// and `Bug1` (key = EXTRA_TYPE_RANK, an extra type) are both children of `A` and both
+		// blank, so they are drawn adjacent under `compareSiblings`' tie-break. `Feature1` is
+		// refused for the same reason `A` was above — its own nested `Feature2` ranks BELOW
+		// the floor `A`'s own backfilled rank has already raised — and a refusal that only
+		// poisons the FOCUS KEY leaves `Bug1` free to take a number, which sorts it ahead of
+		// the blank `Feature1` and moves it. Poisoning the SIBLING GROUP as well is what
+		// keeps them together.
+		const vault = new FakeVault();
+		vault.addFile('X.md', { frontmatter: { type: 'Epic', order: 100 } });
+		vault.addFile('A.md', { frontmatter: { type: 'Epic' } });
+		vault.addFile('Feature1.md', { frontmatter: { type: 'Feature' }, parentLink: 'A' });
+		vault.addFile('Feature2.md', { frontmatter: { type: 'Feature', order: 50 }, parentLink: 'Feature1' });
+		vault.addFile('Bug1.md', { frontmatter: { type: 'Bug' }, parentLink: 'A' });
+		const { view, containerEl } = makeView(vault, noOptionalProperties());
+		const before = titlesOf(containerEl);
+		expect(before).toEqual(['X', 'A', 'Feature1', 'Feature2', 'Bug1']);
+
+		initButton(containerEl)?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+		await flush();
+
+		// `A` is the one real write (its own blank rank fits above `X` and below nothing) —
+		// both blank rows are counted, not only the one whose key was refused directly.
+		expect(Notice.messages).toEqual([
+			'Product Backlog: updated 1 item.',
+			'2 items were left without a rank, because no number fits where they are drawn. Run "Seed ranks from the hierarchy" from the command palette to renumber the whole backlog.',
+		]);
+
+		refresh(view, vault);
+
+		// Left BLANK, both of them — never ranked past each other — which is the only state
+		// that keeps the drawn order intact.
+		expect(vault.fm('Feature1.md')['order']).toBeUndefined();
+		expect(vault.fm('Bug1.md')['order']).toBeUndefined();
+		expect(titlesOf(containerEl)).toEqual(before);
+	});
+
 	it('says the rank was skipped rather than claiming there was nothing to do', async () => {
 		// The same vault as above, asked what the user is TOLD. A refused rank used to be
 		// reduced to `null` inside the plan, so the action reported the one outcome that

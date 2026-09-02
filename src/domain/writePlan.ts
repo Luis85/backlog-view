@@ -1250,21 +1250,22 @@ export function computeInitWrites(model: BacklogModel, settings: BacklogSettings
 	// existing rank occupies: above every rank drawn earlier, below the next one above it.
 	let floor: number | null = null;
 	let ceiling: number | null = null;
-	// **A refusal poisons its focus key for the rest of the walk.** A blank left blank sorts
-	// LAST, so a later blank that takes a number ranks itself ahead of the row just refused
-	// and MOVES it: `X(100), A, B` with an Epic `A1(50)` inside `A` drew `X, B, A`. Per KEY,
-	// since that is the only population the two are ever compared in.
-	const refusedKeys = new Set<number>();
-	const nextOrder = (key: number): number | null => {
+	// **A refusal poisons the rest of the walk in both populations two blanks can share.**
+	// A blank left blank sorts LAST, so a later blank that takes a number ranks itself
+	// ahead of the row just refused and MOVES it — and "later blank" means one compared
+	// against it by EITHER `inRankOrder` (same focus key) or `compareSiblings` (same
+	// parent): `X(100), A, B` with an Epic `A1(50)` inside `A` drew `X, B, A` is the
+	// focus-key shape; a `Feature` and a `Bug` under one Epic, sharing a parent but not a
+	// key, is the sibling-group shape. Both are tracked, in one set: a focus key is a
+	// small integer and a sibling group is a `BacklogItem` reference (or `null` for the
+	// root group), and the two are never `SameValueZero`-equal to each other, so `.has`
+	// on either shape answers only its own question.
+	const poisoned = new Set<number | BacklogItem | null>();
+	const nextOrder = (item: BacklogItem): number | null => {
 		while (above < occupied.length && occupied[above] <= (floor ?? -Infinity)) above++;
 		const placed = rankBetween(floor, lowerOf(ceiling, occupied[above] ?? null));
-		if ('refusal' in placed) {
-			unplaceable++;
-			refusedKeys.add(key);
-			return null;
-		}
-		floor = placed.order;
-		return placed.order;
+		if ('refusal' in placed) return (unplaceable++, poisoned.add(focusKey(item)).add(item.parent), null);
+		return (floor = placed.order);
 	};
 	for (let i = 0; i < drawn.length; i++) {
 		const item = drawn[i];
@@ -1274,13 +1275,14 @@ export function computeInitWrites(model: BacklogModel, settings: BacklogSettings
 		// Ancestors pulled in from outside the filter are context, not results — the
 		// backfill must not write properties into notes the base excluded.
 		if (item.outsideFilter) continue;
-		// A poisoned key is spelled as a ceiling BELOW everything, which is the truth of it:
-		// there is no room above a row that was left with no number at all. Both arms of
+		// A poisoned key OR a poisoned sibling group is spelled as a ceiling BELOW
+		// everything, which is the truth of it: there is no room above a row that was left
+		// with no number at all, in either population it could be compared in. Both arms of
 		// `rankBetween` refuse it — `midpoint` is not strictly between, and `edgeRank`
 		// cannot get under `-Infinity` — so the row is counted and left blank like the one
-		// that poisoned the key.
-		ceiling = refusedKeys.has(focusKey(item)) ? -Infinity : ceilings[i];
-		const write = initWriteFor(item, settings, () => nextOrder(focusKey(item)));
+		// that poisoned it.
+		ceiling = isPoisoned(poisoned, item) ? -Infinity : ceilings[i];
+		const write = initWriteFor(item, settings, () => nextOrder(item));
 		if (write) writes.push(write);
 	}
 	return { writes, unplaceable };
@@ -1290,6 +1292,17 @@ export function computeInitWrites(model: BacklogModel, settings: BacklogSettings
 function lowerOf(a: number | null, b: number | null): number | null {
 	if (a === null) return b;
 	return b === null ? a : Math.min(a, b);
+}
+
+/**
+ * Whether a blank is disqualified from the placement it is about to be asked for — its
+ * own focus key already refused (the `inRankOrder` population), or its sibling group
+ * already refused (the `compareSiblings` population). A separate function rather than
+ * the condition spelled inline in `computeInitWrites`, so the OR is scored on its own
+ * rather than adding to that walk's own complexity budget.
+ */
+function isPoisoned(poisoned: Set<number | BacklogItem | null>, item: BacklogItem): boolean {
+	return poisoned.has(focusKey(item)) || poisoned.has(item.parent);
 }
 
 
