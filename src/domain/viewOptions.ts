@@ -12,11 +12,10 @@ import {
 import { notePropsOnly, OptionalField, optionalProperty } from './optionalProperties';
 import { resolveSettings } from './settingsResolve';
 import {
-	ABSENCE_TYPE,
 	DEFAULT_HOME_FOLDER,
 	defaultResourceFolder,
 	defaultTypeFolder,
-	FILED_TYPES,
+	FOLDER_OPTION_TYPES,
 	typeFolderKey,
 } from './typeVocabulary';
 import { defaultItemHandling, openTargetOptions } from './itemHandling';
@@ -534,12 +533,12 @@ function newItemsGroup(homeFolder: string): BasesAllOptions {
 			// absence, so its box shows the home folder as a placeholder and an unset
 			// option files it there.
 			//
-			// The list is `FILED_TYPES` and not `ALL_TYPES`, which subtracts `Release` and
-			// nothing else — stated once there, with the schema, the defaults and the
-			// resolver all built from it, so this box cannot exist without a value behind
-			// it or a value be resolved without a box. `Resource`'s exclusion below is NOT
-			// that shape: that name is simply never in the vocabulary at all.
-			...[...FILED_TYPES, ABSENCE_TYPE].map(
+			// `FOLDER_OPTION_TYPES` is `FILED_TYPES` — `ALL_TYPES` minus `Release` and nothing
+			// else — plus the absence, and it is spelled ONCE there rather than here and in
+			// the resolver, so this box cannot exist without a value behind it or a value be
+			// resolved without a box. `Resource`'s exclusion below is NOT that shape: that
+			// name is simply never in the vocabulary at all.
+			...FOLDER_OPTION_TYPES.map(
 				(type): BasesOptions => ({
 					type: 'folder',
 					key: typeFolderKey(type),

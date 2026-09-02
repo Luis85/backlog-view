@@ -9,6 +9,9 @@ created: 2026-09-02
 closed: 2026-09-02
 source: "[[Read the vocabulary instead of reciting it]], the two remaining recited copies"
 files:
+  - src/domain/typeVocabulary.ts
+  - src/domain/viewOptions.ts
+  - src/domain/settingsResolve.ts
   - test/helpers/view.ts
   - test/helpers/viewOptionFixtures.test.ts
   - test/view/creation.test.ts
@@ -84,9 +87,10 @@ So: 2 defects out of 25 candidates, 21 correct by design, 2 left with the reason
 ## What changed
 
 `noTypeFolders()` in `test/helpers/view.ts`, beside the `noOptionalProperties()` it copies
-the shape of — one loop over `FILED_TYPES` through `typeFolderKey`, the same helper the
-schema spells its keys with. `FILED_TYPES` and not `ALL_TYPES`: `Release` carries no
-`typeFolder` box at all, so naming one would set an option the schema never declares.
+the shape of — one loop over `FOLDER_OPTION_TYPES` through `typeFolderKey`, the same helper
+the schema spells its keys with. Not `ALL_TYPES`: `Release` carries no `typeFolder` box at
+all, so naming one would set an option the schema never declares. It read `FILED_TYPES`
+until review found that one short too — see below.
 
 The check is in `test/helpers/viewOptionFixtures.test.ts`, and it is **on the forbidden
 thing** — a type whose folder still resolves to something after the fixture ran. It asks
@@ -102,6 +106,36 @@ truly and said nothing about which of thirteen.
 — "seven", then "eighth", then "twelfth" — and by 2026-09-02 the vocabulary was fourteen,
 so the amendments had themselves become the staleness. The new one states the SOURCE
 (`ALL_TYPES`) and says plainly that it is the last count that record will state.
+
+## And review found the fix reciting one type down (PR #254)
+
+`noTypeFolders()` was derived from `FILED_TYPES`, and the check beside it asked the same
+list. **Both are one short of the folder-option set.** The schema and the resolver each
+spell `[...FILED_TYPES, ABSENCE_TYPE]`: an absence is filed like any other note the plugin
+writes, so it carries a `typeFolder.absence` box while being a type in no other sense.
+
+It passed anyway, and the reason is the finding: `defaultTypeFolder` answers `''` for the
+absence, so the folder resolved to nothing whether or not the fixture cleared it. **The
+guard was hostage to a shipped default** — give the absence a folder later and every
+inference test would silently hold it with this check still green. A subset asserted as
+the whole, inside the change that was fixing exactly that.
+
+Fixed at the root rather than by adding a third copy of the list. `FOLDER_OPTION_TYPES` is
+now named once in `typeVocabulary.ts` and used by the schema, the resolver and the fixture,
+which deletes two inline spellings — and it retires a comment in `settingsResolve.ts` that
+asserted *"It is the SAME list the options are declared from"* with nothing checking it.
+The list is now the same BINDING, so the claim holds by construction.
+
+A second assertion carries what the first could not: the keys `noTypeFolders()` writes
+must equal the `typeFolder.*` keys the real schema generates. That one is not hostage to
+any default, and it fails in both directions — a key missed leaves a folder configured, a
+key invented sets an option no box declares. **Watched failing** on the `FILED_TYPES`
+spelling, naming `typeFolder.absence`.
+
+`test/docs/surfaces.test.ts` had the identical blind spot one level up: it derives its
+per-type loop from `ALL_TYPES` minus `Release`, which cannot reach a name in no vocabulary
+list, so the absence box was unasserted there too. One line covers it, watched failing by
+dropping the absence from the schema.
 
 ## What was refused
 

@@ -6,7 +6,7 @@ import { ProductBacklogView } from '../../src/view/backlogView';
 import { BacklogItem } from '../../src/domain/model';
 import { WriteLock } from '../../src/view/writeLock';
 import { OPTIONAL_PROPERTIES } from '../../src/domain/optionalProperties';
-import { FILED_TYPES, typeFolderKey } from '../../src/domain/typeVocabulary';
+import { FOLDER_OPTION_TYPES, typeFolderKey } from '../../src/domain/typeVocabulary';
 import { installObsidianDom } from './dom';
 import { FakeVault, FakeViewConfig, mountLeaf, mountView, setResults } from './vault';
 import { Menu, Modal, Notice } from './obsidian-mock';
@@ -164,18 +164,22 @@ export function noOptionalProperties(values: Record<string, unknown> = {}): Reco
  * INFERENCE is what runs. Both layers have to go: a type's own folder answers first,
  * and the home folder answers next.
  *
- * Derived from `FILED_TYPES` — the same list the schema generates the boxes from — for
- * the reason [[Read the vocabulary instead of reciting it]] gives: two copies of this
- * recited six names, and by 2026-09-02 the vocabulary held fourteen. Eight types were
- * therefore left at their SHIPPED folder in a fixture whose comment said every one was
- * cleared, and a creation test for any of them measured the type folder while reading
- * as a test of inference. `Release` is excluded because it carries no `typeFolder` box
- * at all (`FILED_TYPES`), so naming one here would set an option the schema never
- * declares.
+ * Derived from `FOLDER_OPTION_TYPES` — the one binding the schema generates the boxes
+ * from — for the reason [[Read the vocabulary instead of reciting it]] gives: two copies
+ * of this recited six names, and by 2026-09-02 the vocabulary held fourteen. Eight types
+ * were therefore left at their SHIPPED folder in a fixture whose comment said every one
+ * was cleared, and a creation test for any of them measured the type folder while reading
+ * as a test of inference.
+ *
+ * `FOLDER_OPTION_TYPES` and not `FILED_TYPES`, which review caught this helper reciting
+ * one type down: `Absence` carries a `typeFolder.absence` box like any other note the
+ * plugin files, and it resolved to nothing here only because its shipped default happens
+ * to be empty. `Release` is the one name with no box at all, and it is excluded by that
+ * list rather than by anything spelled here.
  */
 export function noTypeFolders(values: Record<string, unknown> = {}): Record<string, unknown> {
 	const cleared: Record<string, unknown> = { homeFolder: '' };
-	for (const type of FILED_TYPES) cleared[typeFolderKey(type)] = '';
+	for (const type of FOLDER_OPTION_TYPES) cleared[typeFolderKey(type)] = '';
 	return { ...cleared, ...values };
 }
 

@@ -4,7 +4,7 @@ import type { BasesViewConfig, PluginManifest } from 'obsidian';
 import { describe, expect, it } from 'vitest';
 import ProductBacklogPlugin from '../../src/main';
 import { getViewOptions } from '../../src/domain/viewOptions';
-import { ALL_TYPES, RELEASE_TYPE, typeFolderKey } from '../../src/domain/typeVocabulary';
+import { ABSENCE_TYPE, ALL_TYPES, RELEASE_TYPE, typeFolderKey } from '../../src/domain/typeVocabulary';
 import { FakeVault, FakeViewConfig } from '../helpers/vault';
 import { manualSections } from '../../src/view/manual/sections';
 
@@ -146,6 +146,11 @@ describe('every user-facing surface is specified', () => {
 			expect(keys).toContain(typeFolderKey(type));
 		}
 		expect(keys).not.toContain(typeFolderKey(RELEASE_TYPE));
+		// And the one box whose name is in NO vocabulary list, so the loop above cannot
+		// reach it: an absence is filed like any other note this plugin writes, and its
+		// box was unasserted here until review found the same omission in a fixture
+		// downstream (PR #254). `FOLDER_OPTION_TYPES` is what both ends are built from.
+		expect(keys).toContain(typeFolderKey(ABSENCE_TYPE));
 	});
 
 	it('includes the keys generated per configured state, and names their families', () => {
