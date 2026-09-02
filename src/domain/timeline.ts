@@ -1,3 +1,4 @@
+import { formatDate } from '../i18n/t';
 import { CivilDate, daysInMonth } from './noteFields';
 
 /**
@@ -176,8 +177,6 @@ export function formatCivil(date: CivilDate): string {
 	const pad = (n: number, width: number) => String(n).padStart(width, '0');
 	return `${pad(date.year, 4)}-${pad(date.month, 2)}-${pad(date.day, 2)}`;
 }
-
-const MONTH_LABELS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
 /** Year and month only — the unit the window is aligned to. */
 interface MonthPoint {
@@ -399,15 +398,35 @@ function quarterFirstMonth(month: number): number {
  * Year-free below the top tier: the super tier carries the year, and repeating it
  * per cell is the noise the tier exists to remove. The week cell keeps its month —
  * a week can straddle two, so its label stays self-sufficient.
+ *
+ * The two that name a MONTH are formatted in the reader's own locale (`formatDate`),
+ * because a month name is data presentation and not a translation — the whole point of
+ * [[Locale-aware sorting and formatting]]. The week label hands `Intl` the day and the
+ * month together rather than pasting them, since their order is the locale's to choose.
+ *
+ * **`Q3` is NOTATION and stays spelled here, which is a decision rather than an
+ * oversight.** `Intl.DateTimeFormat` has no quarter field to ask — CLDR carries quarter
+ * names, ECMA-402 exposes none — so the choice is this or twelve months' worth of the
+ * mistake the month labels just stopped making: a catalog key would make a quarter
+ * GRAMMAR and freeze it at the languages this plugin happens to ship, where `Q3` at least
+ * reads the same everywhere. It is the same kind of stable notation as `formatCivil`'s
+ * `2026-08-01`, and it moves the day `Intl` grows a field for it.
  */
 function cellLabel(unit: ScaleId, unitStart: CivilDate): string {
-	if (unit === 'week') return `${unitStart.day} ${MONTH_LABELS[unitStart.month - 1]}`;
-	if (unit === 'month') return MONTH_LABELS[unitStart.month - 1];
+	if (unit === 'week') return formatDate('dayMonth', unitStart.year, unitStart.month, unitStart.day);
+	if (unit === 'month') return formatDate('month', unitStart.year, unitStart.month);
 	return `Q${Math.floor((unitStart.month - 1) / 3) + 1}`;
 }
 
-/** The super tier's name for its unit — the tier that owns the year spells it out. */
+/**
+ * The super tier's name for its unit — the tier that owns the year spells it out.
+ *
+ * The bare year goes through the calendar formatter too, never `formatNumber`, which
+ * would group it as `2,026`. `String(year)` was the third option and is what this drew
+ * until the cells beside it became locale-aware: it writes ASCII digits under a header
+ * whose months are the reader's, so a Persian roadmap read `2026` over `۲۰۲۶`.
+ */
 function superLabel(unit: HeaderUnit, unitStart: CivilDate): string {
-	if (unit === 'month') return `${MONTH_LABELS[unitStart.month - 1]} ${unitStart.year}`;
-	return String(unitStart.year);
+	if (unit === 'month') return formatDate('monthYear', unitStart.year, unitStart.month);
+	return formatDate('year', unitStart.year, 1);
 }
