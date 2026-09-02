@@ -152,14 +152,30 @@ exactly two hits, at the two columns of the projection comparisons, and nothing 
 ### What was added
 
 `PROJECTION_TREE` in `eslint.config.mjs`: two `no-restricted-syntax` selectors, one per
-operand order, matching an `===`/`!==` whose other side is `projection` or
-`<x>.projection` and whose literal is `'tree'`. It is spread into every
+operand order, matching an `===`/`!==` whose other side is `projection`, `<x>.projection`
+or `<x>?.projection` and whose literal is `'tree'`. It is spread into every
 `no-restricted-syntax` block in the file except `src/view/projection.ts`'s own.
+
+**The optional-chain term is a correction, not a completeness flourish.** The rule shipped
+in review with two terms per selector and `host?.projection === 'tree'` linted CLEAN —
+typescript-eslint wraps an optional member access in a `ChainExpression`, so
+`left.property.name` reads nothing through it, and an ordinary property-access spelling
+bypassed the whole invariant. Found by Codex on PR #252, verified by planting that exact
+line and watching lint pass, then watching it fail once `[left.expression.property.name]`
+was added. This is the register's own lesson in its narrowest form: a selector is an
+instrument, and an instrument that was only ever pointed at the spelling its author had in
+mind reports clean about the one they did not. The probe file now carries five spellings
+(bare, `.`, `?.`, a deeper `a?.b.projection`, the reversed literal) and two negatives
+(`sort === 'tree'`, `host?.projection === 'board'`); the run reports 5 and 0.
 
 ### What it does not reach, stated at the width of the check
 
 - **A `switch (projection)` with a `case 'tree'`**, and **a projection copied into a
-  differently named local first.** Neither exists today; neither would be caught. The
+  differently named local first.** Neither exists today; neither would be caught. Both are
+  named here rather than fixed, and after the `ChainExpression` miss above that is a
+  deliberate line rather than an oversight: a `switch` is a different node type worth a
+  term the day one appears, and a renamed local is not reachable by a syntactic selector at
+  all. The
   sentence in `src/view/CLAUDE.md` and in `docs/requirements/A projection for the tests.md`
   is now "no bare `projection === 'tree'`", not "nothing compares to `'tree'`".
 - **A new config block.** Two flat-config blocks matching one file OVERRIDE

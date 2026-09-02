@@ -90,8 +90,12 @@ const WRITE_BOUNDARY = [
  * to grandfather: the same rule reported zero violations across `src/` before it was
  * turned on.
  *
- * What it SEES is an equality comparison with `projection` or `<x>.projection` on one side
- * and the literal `'tree'` on the other. It does not see `switch (projection)` with a
+ * What it SEES is an equality comparison with `projection`, `<x>.projection` or
+ * `<x>?.projection` on one side and the literal `'tree'` on the other. The optional-chain
+ * spelling needed its own term and did not have one for a day: typescript-eslint wraps an
+ * optional member access in a `ChainExpression`, so `left.property.name` reads nothing
+ * through it and `host?.projection === 'tree'` linted clean (Codex, PR #252) — verified by
+ * planting it, watching lint pass, and watching it fail once the term was added. It does not see `switch (projection)` with a
  * `case 'tree'`, nor a projection first copied into a differently named local. The claim
  * is therefore "no bare `projection === 'tree'`", not "nothing compares to `'tree'`", and
  * `src/view/CLAUDE.md` states it that narrowly.
@@ -99,13 +103,13 @@ const WRITE_BOUNDARY = [
 const PROJECTION_TREE = [
 	{
 		selector:
-			"BinaryExpression[operator=/^[!=]==$/]:matches([left.name='projection'], [left.property.name='projection'])[right.value='tree']",
+			"BinaryExpression[operator=/^[!=]==$/]:matches([left.name='projection'], [left.property.name='projection'], [left.expression.property.name='projection'])[right.value='tree']",
 		message:
 			"A bare projection === 'tree' misses the catalog, which is tree-shaped too. Ask src/view/projection.ts — treeShaped(), hidesCompleted(), hasRollup(), projectionPopulation() and the rest.",
 	},
 	{
 		selector:
-			"BinaryExpression[operator=/^[!=]==$/][left.value='tree']:matches([right.name='projection'], [right.property.name='projection'])",
+			"BinaryExpression[operator=/^[!=]==$/][left.value='tree']:matches([right.name='projection'], [right.property.name='projection'], [right.expression.property.name='projection'])",
 		message:
 			"A bare 'tree' === projection misses the catalog, which is tree-shaped too. Ask src/view/projection.ts — treeShaped(), hidesCompleted(), hasRollup(), projectionPopulation() and the rest.",
 	},

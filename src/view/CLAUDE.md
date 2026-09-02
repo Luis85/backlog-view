@@ -612,8 +612,8 @@ free of runtime code so imports stay cycle-free.
   belongs in it is the rule above.
   **One spelling of that is enforced mechanically, and only one.** `PROJECTION_TREE` in
   `eslint.config.mjs` is a `no-restricted-syntax` ban on a bare `projection === 'tree'`
-  (either operand order, `projection` or `<x>.projection`) everywhere in `src/` except
-  this module — added 2026-09-02, when two guides were found claiming it already existed.
+  (either operand order; `projection`, `<x>.projection` or `<x>?.projection`) everywhere in
+  `src/` except this module — added 2026-09-02, when two guides were found claiming it already existed.
   It bans `'tree'` and nothing else because `treeShaped` is `'tree' || 'catalog'`, so a
   comparison to `'tree'` alone is exactly the shape that silently drops the catalog out of
   a gate it belongs in. **Every other comparison is dispatch and is deliberately allowed**:
