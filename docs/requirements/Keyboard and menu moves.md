@@ -79,6 +79,16 @@ usable rather than merely viewable when dragging is not an option.
   doing nothing.
 - **3b — finished work is hidden and the neighbour is a hidden row.** The move targets the
   nearest *visible* neighbour instead. A command whose effect is invisible reads as broken.
+  **The rule binds the CLICK, not only the offer**, and that is the correction of
+  2026-09-02: the menu withholds each edge entry on `&& next`, which is a visible
+  neighbour, but the toggle can hide that peer between the offer and the pick — a menu is
+  built from the model of its moment. `moveToEdge` re-resolves the subject for exactly
+  that reason and then asked `edgeTarget`, which compared a raw index into a sibling list
+  the hidden row is still IN (hiding is a render decision, and the row stays a ranking
+  neighbour — [[Rollups and hiding finished work]]). So the last visible row read as "not
+  yet at the bottom", was ranked past a row nobody can see, and redrew unchanged with an
+  undo slot spent. `edgeTarget` reads `visibleNeighbor` now, the same walk the adjacent
+  swap always used, so both commands hold one idea of a neighbour at both moments.
 - **3c — the row came from outside the Base's filter.** The move commands are withheld
   from its menu entirely.
 - **3d — an outdent would land right after a PARENT that carries no rank of its own**

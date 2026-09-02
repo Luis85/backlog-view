@@ -139,7 +139,15 @@ function withinSiblingsTarget(host: BacklogViewHost, item: BacklogItem, delta: -
  */
 function edgeTarget(host: BacklogViewHost, item: BacklogItem, edge: 'top' | 'bottom'): DropTarget | null {
 	const ctx = siblingContext(host, item);
-	if (!ctx || ctx.idx === (edge === 'top' ? 0 : ctx.fullList.length - 1)) return null;
+	// **"Already there" is a question about the SCREEN, and a raw index cannot answer it.**
+	// The completed toggle hides a row without removing it from the sibling list — that is
+	// `Rollups and hiding finished work`'s own rule, and it is what keeps the hidden row a
+	// ranking neighbour. So a subject one slot from the end of `fullList`, with a hidden
+	// row after it, is at the bottom of what the user can SEE: an edge move there ranks it
+	// past a row nobody is looking at, writes frontmatter, spends the undo slot and redraws
+	// the identical screen. `visibleNeighbor` is the same skip-the-hidden walk
+	// `withinSiblingsTarget` already uses, so both commands read one idea of a neighbour.
+	if (!ctx || visibleNeighbor(host, item, edge === 'top' ? -1 : 1) === null) return null;
 	const peers = ctx.fullList.filter((s) => s !== item);
 	// Same `parentUnchanged` reasoning as `withinSiblingsTarget`, and it has to be the
 	// same: the two commands differ in where they land, never in whether a landing is a
