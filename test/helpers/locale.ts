@@ -67,3 +67,21 @@ export function num(value: number): string {
 export function numPrecise(value: number): string {
 	return new Intl.NumberFormat(intlLocale(TEST_LOCALE), { maximumFractionDigits: 20 }).format(value);
 }
+
+/**
+ * Run `body` with the plugin resolved to `code`, and put the locale back afterwards —
+ * for a test that asks the same question in two locales and compares the answers.
+ *
+ * Here rather than in each file that wants it: the `beforeEach` above covers a test that
+ * never touches the locale, and `resetLocale` covers a body that throws, but neither
+ * covers a test resolving TWICE inside one `it`. Two files needed exactly that and each
+ * had its own copy.
+ */
+export function withLocale<T>(code: string, body: () => T): T {
+	setLocale(code);
+	try {
+		return body();
+	} finally {
+		resetLocale();
+	}
+}

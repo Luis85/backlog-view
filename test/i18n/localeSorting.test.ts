@@ -3,8 +3,7 @@ import { buildModel } from '../../src/domain/model';
 import { buildRoadmap } from '../../src/domain/roadmap';
 import { organizeShelf } from '../../src/domain/shelf';
 import { computeDropWrites, computeStateWrites } from '../../src/domain/writePlan';
-import { setLocale } from '../../src/i18n/t';
-import { resetLocale } from '../helpers/locale';
+import { withLocale } from '../helpers/locale';
 import { settingsWith } from '../helpers/settings';
 import { FakeVault } from '../helpers/vault';
 
@@ -28,16 +27,6 @@ import { FakeVault } from '../helpers/vault';
 
 const SWEDISH = 'sv';
 const ENGLISH = 'en';
-
-/** Run `body` with the plugin resolved to `code`, and put the locale back. */
-function withLocale<T>(code: string, body: () => T): T {
-	setLocale(code);
-	try {
-		return body();
-	} finally {
-		resetLocale();
-	}
-}
 
 /** The same answer asked for in both locales — `[Swedish, English]`. */
 function inBothLocales<T>(body: () => T): [T, T] {

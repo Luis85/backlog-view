@@ -39,11 +39,13 @@ compiler API, on 2026-09-02, counting CALL EXPRESSIONS rather than lines or matc
 | AST walk | **105** in 25 files | **0** | **1** | **7** in 5 files |
 
 Every difference between the two rows is a comment, and that is the whole reason both rows
-are here: three of the figures this PBI's note has carried over its life — 41, 47, 118 —
-were an instrument reading something other than what its sentence claimed. 41 counted
-LINES and lost every line that folds twice. 118 was a call count taken before a year of
-features. The three `localeCompare` grep hits are prose in `src/i18n/t.ts` explaining why
-the method is banned, which is a comment vouching for its own absence.
+are here: all four figures this PBI's note has carried over its life — 41, 47, 118 and
+119 — were an instrument reading something other than what its sentence claimed. 41 counted
+LINES and lost every line that folds twice. **47** was the call count a year of features
+ago; **118** was the call count when the note's own paragraph was written; 119 was 118 with
+`src/domain/CLAUDE.md` swept in alongside the code. The three `localeCompare` grep hits are
+prose in `src/i18n/t.ts` explaining why the method is banned, which is a comment vouching
+for its own absence.
 
 **What the Turkish run found.** `PBL_TEST_LOCALE=tr-TR npx vitest run` was run against the
 whole suite. It found one real defect in existing code, in the round that wired the

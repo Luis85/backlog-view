@@ -70,12 +70,19 @@ language on a system set to another got a collation neither of them chose — th
 note was written about, and the reason the ban is on the METHOD rather than on its
 argument count.
 
-Formatting was the other half and landed in the same round: 14 counts and ratios — the
-toolbar's advisories and busy count, the tree's rollups and descendant counts, the board's
-column counts and WIP limits, the roadmap's bucket, shelf and group counts, and the
-estimation table's own cells — go through `formatNumber`, which is the SAME
-`Intl.NumberFormat` `t()` gives a `{count}` parameter. A count outside a sentence and one
-inside it can no longer disagree.
+Formatting was the other half and landed in the same round. Everything on screen that is a
+number goes through `formatNumber`, which is the SAME `Intl.NumberFormat` `t()` gives a
+`{count}` parameter, so a count outside a sentence and one inside it can no longer disagree.
+
+**Two figures, and only one of them has an instrument — said plainly, because this note's
+whole thesis is naming the instrument.** The machine count: an AST walk over `src/**/*.ts`
+outside `src/i18n/`, matching call expressions on the identifier `formatNumber`, returns
+**21 calls in 9 files on 18 lines** (2026-09-02). The other figure is **14 SITES**, which is
+a judgement rather than a measurement — it is what the round that made the change counted as
+distinct numbers a reader SEES, and the two differ because one on-screen number can cost
+several calls: a face text and the accessible name beside it, or a width reservation
+computed from the same formatted string. Neither number is wrong; they answer different
+questions, and only the first is reproducible from the tree.
 
 **One of those bare counts disagreed with a formatted one beside it, and that was this
 PBI's boundary made visible rather than a new defect.** The shelf's disclosure renders its
@@ -103,14 +110,16 @@ figures were an instrument reading something other than what its sentence claime
 
 - **113 is the grep, not the code.** A TypeScript-compiler walk over the same tree finds
   **105** `toLowerCase` CALL EXPRESSIONS in 25 files; the eight extras are all inside
-  comments, and a comment is not a call. Every number this note has carried — 41 (lines,
-  undercounting every line that folds twice), 47 (calls, a year of features ago), 118, 119
-  (which swept `src/domain/CLAUDE.md` in with the code) — came from an instrument someone
-  trusted without calibrating it first. **Recount before planning against any of them.**
+  comments, and a comment is not a call. **All four** numbers this note has carried came
+  from an instrument someone trusted without calibrating it first: 41 counted LINES and
+  undercounted every line that folds twice; 47 was the call count a year of features ago;
+  118 was the call count when this paragraph was written; 119 was 118 with
+  `src/domain/CLAUDE.md` swept in alongside the code. **Recount before planning against any
+  of them.**
 - **0 is a walk too, and a lint rule behind it.** `grep localeCompare` returns three hits
   in `src/`, all of them prose in `src/i18n/t.ts` explaining why the method is banned.
-- **1 is `domain/estimationSettings.ts:40`** — see the `toUpperCase` paragraph below. Grep
-  returns three there as well, the other two being comments.
+- **1 is `capitalize` in `domain/estimationSettings.ts`** — see the `toUpperCase` paragraph
+  below. Grep returns three there as well, the other two being comments.
 
 The whole classification — every fold in `src/`, with what each one decides — is
 `test/i18n/foldSites.ts`, and that is where the next contributor should read it rather than
@@ -123,13 +132,12 @@ each folding a needle and a haystack — plus the one `toLocaleLowerCase` that i
 
 **Checked by** `test/i18n/foldSites.test.ts` — "spells identity folds toLowerCase and matching folds toLocaleLowerCase or foldForMatch"
 
-**Four sites are user-facing matching, and were wrong when this note was written.** Two of
-them are the ones it could name at the time:
-
-| Site | Matches |
-| --- | --- |
-| `prompts.ts` (`folderQuery`) | Folder suggest |
-| `prompts.ts` (`tagQuery`) | Tag suggest |
+**Four sites are user-facing matching, and were wrong when this note was written.** They are
+the four the paragraph above enumerates — the shelf's title search, the folder suggest, the
+known-value suggest and the duplicate warning. A table naming two of them stood here until
+2026-09-02, spelling them `folderQuery` and `tagQuery`, and neither symbol has existed in
+`src/` for some time; it duplicated the enumeration above and rotted where the enumeration
+could not, so it is gone rather than corrected.
 
 **It was eight until 2026-08-17**, and the other four went with the quick filter
 ([[Remove the quick filter, now that Bases has its own search]]) rather than being fixed:
@@ -204,8 +212,11 @@ they can see; fold without it when deciding what something *is*.** A blanket swe
 `toLocaleLowerCase` is not a partial fix, it is a data-corruption bug — which makes this
 the one item in this feature where doing nothing is safer than doing it carelessly.
 
-One is neither: `keyboard.ts:32` folds `evt.key` to compare against `'z'`, and a
-`KeyboardEvent.key` is a protocol value rather than text.
+Two are neither: `handleTreeKeydown` and `handleBoardChromeKey`
+(`src/view/interactions/keyboard.ts`) each fold `evt.key` to compare against `'z'` for undo,
+and a `KeyboardEvent.key` is a protocol value rather than text. This note said "one" and
+gave a line number for it; there are two, the second arrived with the board, and a line
+number is correct until the next insertion above it.
 
 **`8 + 38 + 1 = 47` was the arithmetic this note asked the check to reproduce, and the
 check reproduces something better than an equation.** `test/i18n/foldSites.ts` is a row per
@@ -223,8 +234,9 @@ catalog-locale fold exists; `foldForMatch` takes the requested one. Both sit as 
 with that reason written on the row, which is the honest place for a call nobody has made.
 Building the catalog-locale fold needs its own note before it needs any code.
 
-Separately there is a single `toUpperCase()` — `domain/estimationSettings.ts:40`,
-upper-casing the first character of a field name for display, which stops being right the
+Separately there is a single `toUpperCase()` — `capitalize` in
+`src/domain/estimationSettings.ts`, upper-casing the first character of a field name for
+display, which stops being right the
 moment that name comes from a catalog. The capitalized form belongs *in* the message, and
 not every script has case at all. That one belongs to `Every surface translated`, which
 also owns the one untranslated sentence fragment this round found and left alone:
@@ -360,8 +372,17 @@ or the guard has to be remembered eleven times.
   depends on a locale-sorted list. The state and tag vocabularies are sorted for the menu —
   what gets *written* is the value the user picked. Asserted rather than asserted-about:
   four lists are asked for in Swedish and in English, which disagree about where `Ö` sorts
-  and about nothing else, and the two answers must DIFFER — while the ranks, the result
-  positions and the planned writes beside them must be the same bytes.
+  and about nothing else, and the two answers must DIFFER — while the ranks and the result
+  positions beside them stay the same bytes.
+
+  **The write half is narrower than "every planned write", and the sentence says so rather
+  than the check being widened to meet it.** Two plans are driven: a state write
+  (`computeStateWrites`, the vocabulary the menu sorts) and a drop
+  (`computeDropWrites`, the one plan that computes a RANK). Nothing drives the horizon or
+  board moves, the tag deltas or the label writers. The guarantee those rest on is
+  structural rather than driven — none of them takes a sorted list as an argument, and
+  `compareText` is imported by five files, none of which is `writePlan.ts` — which is a
+  weaker statement than a test and is written as one.
 
   **Checked by** `test/i18n/localeSorting.test.ts` — "leaves every rank and every Bases result position byte-identical"
 - **Met, vacuously, and deliberately left that way.** Dates, if any are ever rendered, use
@@ -397,8 +418,11 @@ columns. The matching sites are `src/domain/shelf.ts`'s title search and `src/ui
 two suggests and duplicate warning. `src/view/render/columns.ts` is one of the count
 renderers. The identity folds that must not change are everywhere — `src/domain/settings.ts`,
 `src/domain/itemTypes.ts`, `src/domain/typeVocabulary.ts`, `src/domain/stateColors.ts`,
-`src/domain/noteFields.ts`, `src/domain/writePlan.ts` and `src/view/viewState.ts` among
-them — and `test/i18n/foldSites.ts` is the list rather than this paragraph.
+`src/domain/noteFields.ts` and `src/view/viewState.ts` among them — and
+`test/i18n/foldSites.ts` is the list rather than this paragraph. `src/domain/writePlan.ts`
+was on that list for as long as this note has existed and folds nowhere today, which is
+what the enumeration is for: it has no row, so naming it here was a claim the table
+refuses.
 `src/domain/timeline.ts` holds the month names this note still owes.
 
 Tests: `test/i18n/foldSites.test.ts` (the classification against the tree),

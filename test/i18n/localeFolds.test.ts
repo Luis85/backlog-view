@@ -8,9 +8,8 @@ import { columnPolicyKey, wipLimitKey } from '../../src/domain/settings';
 import { stateColorKey } from '../../src/domain/stateColors';
 import { typeFolderKey } from '../../src/domain/typeVocabulary';
 import { isIterationType } from '../../src/domain/itemTypes';
-import { setLocale } from '../../src/i18n/t';
 import { installObsidianDom } from '../helpers/dom';
-import { resetLocale } from '../helpers/locale';
+import { resetLocale, withLocale } from '../helpers/locale';
 import { settingsWith } from '../helpers/settings';
 import { FakeVault } from '../helpers/vault';
 import { TFolder } from '../helpers/obsidian-mock';
@@ -37,20 +36,6 @@ installObsidianDom();
  */
 
 afterEach(resetLocale);
-
-/**
- * Run `body` with the plugin resolved to `code`, and put the locale back — `afterEach`
- * above covers a body that throws, this covers the two-locale pairs below, which resolve
- * twice inside one test.
- */
-function withLocale<T>(code: string, body: () => T): T {
-	setLocale(code);
-	try {
-		return body();
-	} finally {
-		resetLocale();
-	}
-}
 
 describe('a matching fold follows the reader\'s locale', () => {
 	function shelfOf() {
