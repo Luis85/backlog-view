@@ -60,7 +60,11 @@ ITEM's own two date keys from a value read through it.
    that end and taking it would not reverse the span against the end that does stand.
 5. `applySafely` applies the one batch, and one undo takes the whole commitment back
    ([[Undo and redo]]).
-6. The item now draws on the dated axis ([[Bars from two dates]]).
+6. **Where an end actually landed**, the item now draws on the dated axis
+   ([[Bars from two dates]]) — a bar from a pair, or an endpoint from one. Where neither did,
+   the membership is the whole of what changed, which is 4d's own outcome rather than a
+   degraded version of this one: the date properties are not preconditions, so a vault that
+   binds neither gets release membership and no scheduling.
 
    It is **not** claimed to appear in the release's own summary. That screen resolves its own
    membership key, which [[Setting an item's release]] allows to be bound at a different
