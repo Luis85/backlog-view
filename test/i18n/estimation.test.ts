@@ -1,12 +1,11 @@
 // @vitest-environment jsdom
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import { en } from '../../src/i18n/en';
-import { Catalog, MessageKey, setLocale } from '../../src/i18n/t';
-import { resetLocale } from '../helpers/locale';
+import { Catalog, MessageKey } from '../../src/i18n/t';
 import { makeEstimationView, selectItem } from '../helpers/estimation';
 import { configured, configuredValues } from '../helpers/estimationModel';
 import { FakeVault } from '../helpers/vault';
-import { MARK, markedCatalog } from './fixtures';
+import { MARK, drawnText, marked, markedCatalog, unmarked, useMarkedLocale } from './fixtures';
 
 /**
  * The Estimation view, driven under a catalog that is not English — `src/view/estimation/`,
@@ -54,35 +53,7 @@ const SWEPT: MessageKey[] = [...OWN, ...REUSED];
 
 const xx: Catalog = markedCatalog(SWEPT);
 
-const marked = (key: MessageKey): string => {
-	const entry = en[key];
-	if (typeof entry !== 'string') throw new Error(`${key} is a plural entry; assert its form directly`);
-	return MARK + entry;
-};
-
-beforeEach(() => setLocale('xx', { xx }));
-// Resolution is module state by design (once, at load), so each test puts it back.
-afterEach(() => resetLocale());
-
-/**
- * Every string this view puts in front of a reader, sighted or not: the visible words of
- * each leaf element, plus every `aria-label` and every tooltip. All three, because the
- * acceptance criterion is that screen-reader text moves WITH the visible text — a view
- * translated for sighted users only passes any check that reads `textContent` alone.
- */
-function drawnText(root: HTMLElement): string[] {
-	const out: string[] = [];
-	for (const el of root.querySelectorAll<HTMLElement>('*')) {
-		const label = el.getAttribute('aria-label');
-		if (label) out.push(label);
-		if (el.dataset.tooltip) out.push(el.dataset.tooltip);
-		if (el.title) out.push(el.title);
-		if (el.childElementCount === 0 && el.textContent) out.push(el.textContent);
-	}
-	return out;
-}
-
-const unmarked = (strings: readonly string[]): string[] => [...new Set(strings.filter((text) => !text.startsWith(MARK)))];
+useMarkedLocale(xx);
 
 const partOf = (containerEl: HTMLElement, selector: string): HTMLElement => {
 	const el = containerEl.querySelector<HTMLElement>(selector);

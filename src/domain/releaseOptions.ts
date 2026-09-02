@@ -45,6 +45,25 @@ export interface ReleaseSettings {
 	 */
 	descriptionKey: string;
 	/**
+	 * The member's own effort estimate, read as a NUMBER. Three readers share it — the
+	 * estimated-effort sum, the completed-effort sum and the unestimated count — which is
+	 * why it is one key and not three: they are one predicate asked three ways.
+	 *
+	 * Suggested `effort`, which is `estimationOptions.ts`'s own key for the same concept,
+	 * so a vault pressing ✨ in both views lands on one property rather than two.
+	 */
+	estimateKey: string;
+	/** The member's prerequisites. What CLEARS one is this view's own `stateKey` and its
+	 *  done values — see `releaseReadiness.ts` for why that is not a sixth option. */
+	dependsOnKey: string;
+	riskKey: string;
+	/** Which risk values are critical. A vocabulary is the vault's own, so there is no
+	 *  default: an empty list means the criterion is unconfigured, not that nothing is
+	 *  critical. */
+	criticalRiskValues: string[];
+	/** Which values count as addressed. Same rule, same absence of a default. */
+	addressedRiskValues: string[];
+	/**
 	 * The statuses this vault declares for a release, in the order they were written —
 	 * `BacklogSettings.states`' own shape for the plan's workflow, and empty when nobody
 	 * has declared any, which is not the same as "no statuses exist": `Set status` unions
@@ -224,6 +243,7 @@ function releaseGroup(config: BasesViewConfig): BasesAllOptions {
 				placeholder: 'description',
 				filter: notePropsOnly,
 			},
+			...readinessOptionItems(),
 			{
 				type: 'folder',
 				key: 'releaseFolder',
@@ -250,6 +270,50 @@ function releaseGroup(config: BasesViewConfig): BasesAllOptions {
 export function releasedValuesOf(config: BasesViewConfig): string[] {
 	const raw = config.get('releasedStatusValues');
 	return typeof raw === 'string' ? raw.split(',').map((v) => v.trim()).filter((v) => v !== '') : [];
+}
+
+/** The five readiness options — split out of {@link releaseGroup} for the line-count lint
+ *  budget, the same reason {@link closingOptionItems} is its own function. */
+function readinessOptionItems(): BasesOptions[] {
+	return [
+		{
+			type: 'property',
+			key: 'estimateProperty',
+			displayName: t('release.option.estimate'),
+			placeholder: 'effort',
+			filter: notePropsOnly,
+		},
+		{
+			type: 'property',
+			key: 'dependsOnProperty',
+			displayName: t('release.option.dependsOn'),
+			placeholder: 'dependsOn',
+			filter: notePropsOnly,
+		},
+		{
+			type: 'property',
+			key: 'riskProperty',
+			displayName: t('release.option.risk'),
+			placeholder: 'risk',
+			filter: notePropsOnly,
+		},
+		// No `default:` on either list, for `releaseStatusValues`' own reason: these are
+		// the reader's words for their own process, and shipping a guess would put it in
+		// every vault's `.base` the first time the options panel was opened. Empty means
+		// unconfigured, which is what the criterion reports.
+		{
+			type: 'text',
+			key: 'criticalRiskValues',
+			displayName: t('release.option.criticalRiskValues'),
+			placeholder: t('release.option.criticalRiskValuesHint'),
+		},
+		{
+			type: 'text',
+			key: 'addressedRiskValues',
+			displayName: t('release.option.addressedRiskValues'),
+			placeholder: t('release.option.addressedRiskValuesHint'),
+		},
+	];
 }
 
 /** The three closing options — split out of {@link releaseGroup} to keep that function
@@ -382,6 +446,15 @@ export function resolveReleaseSettings(config: BasesViewConfig): ReleaseSettings
 		// exactly what an untouched box means — there is no real default for either to be
 		// cleared BACK to, which is what `clearable` exists for.
 		descriptionKey: propKey('descriptionProperty', ''),
+		// `propKey`, not `clearablePropKey`: their default is `''`, so the two resolve the
+		// same value for every input — the reason already stated above for `versionKey`.
+		estimateKey: propKey('estimateProperty', ''),
+		dependsOnKey: propKey('dependsOnProperty', ''),
+		riskKey: propKey('riskProperty', ''),
+		// `dedupe` for both: a vault listing `High, high` means one value, and a criterion
+		// counting it twice would report a denominator nobody can reconcile.
+		criticalRiskValues: dedupe(list('criticalRiskValues')),
+		addressedRiskValues: dedupe(list('addressedRiskValues')),
 		statusValues: dedupe(list('releaseStatusValues')),
 		releasedValues: list('releasedStatusValues'),
 		// TRIMMED, and not for tidiness: every reader of this value compares it against

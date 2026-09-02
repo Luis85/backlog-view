@@ -16,6 +16,7 @@ files:
   - src/view/render/timeline.ts
   - src/view/render/toolbarControls.ts
   - src/view/viewStateController.ts
+  - src/view/viewStateSurface.ts
 started: ""
 finished: ""
 horizon: ""
@@ -75,6 +76,13 @@ computed per band.
   with no work is exactly the row a roster exists to put on screen, and a control that
   appeared only once work arrived would move under the reader — folding an empty band is
   still how a long roster is got out of the way.
+- **1e — the user presses the toolbar's Expand all or Collapse all instead (2026-09-02).**
+  Every band on screen follows, the milestones' row excepted — it has no fold and no
+  disclosure to undo one with. A roster is exactly the list a per-row control is too slow
+  for, which is the same argument these two buttons already answer for the tree. They are
+  live on this axis whenever it draws a band, which a bar chevron alone could not report:
+  a roster whose bars all sit at the top level draws no chevron at all and still has
+  every band to fold.
 - **2a — a band that is shut while a quick filter runs.** The filter overrides it, as it
   overrides every other fold: everything on a path to a match renders open, and the
   disclosure is disabled rather than merely inert.
@@ -113,6 +121,8 @@ computed per band.
   there; it stays absent on the horizon axis, where the cards have no rows to fold.
 - A running quick filter overrides both folds and disables both disclosures.
 - An empty declared band still draws a disclosure.
+- The toolbar's Expand all and Collapse all are live on the resources axis whenever it
+  draws a band, and one press folds or opens every band but the milestones' row.
 
 ## Where it lives
 
@@ -179,6 +189,16 @@ The default would have shown a chevron pointing right and cost a first load afte
 where every empty lane folded itself once, which reads as data loss. The check that keeps
 this honest is in `test/view/resourceLanes.test.ts`: a lane with no work renders the same
 rows folded and open.
+
+**The bulk controls reach the bands through the same two actions the tree uses**, since
+2026-09-02: `foldableLanes` in `src/view/render/toolbarControls.ts` reads the RENDERED
+roadmap's lanes — empty by construction on an axis that draws none, so no axis test is
+needed — drops the milestones' row, and hands the identities to `setLanesCollapsed`. That
+host method is the bulk sibling of `setLaneCollapsed` and, unlike it, renders nothing:
+`expandAll`/`collapseAll` settle every band in one loop and their caller renders once,
+which is `setCollapsed`'s own contract and what keeps a press at one render rather than
+one per resource. `collapseCtlsDisabled` asks the same function whether the buttons are
+live, so the enable rule and the write reach exactly the same set.
 
 What a live vault still owes: whether a folded band reads as a row to reopen rather than a
 row that went, and how a band's disclosure sits beside a bar row's one line below it.

@@ -53,8 +53,19 @@ function myWorkHarnessVault(): { vault: FakeVault; hiddenPaths: string[] } {
 		parentLink: 'Customer onboarding',
 	});
 	vault.addFile('Send the magic link.md', {
-		frontmatter: { type: 'PBI', order: 1, assignee: 'Ada', status: 'In progress' },
+		frontmatter: { type: 'PBI', order: 1, assignee: 'Ada', status: 'Done' },
 		parentLink: 'Passwordless sign-in and account recovery',
+	});
+	// **A Task under a PBI, and the reason it is here** (review, PR #239): the row that
+	// runs out of pane first is the DEEPEST one CARRYING THE NEXT MARKER, not the deepest
+	// one. The marker is ~36px that never shrinks, so a deep row without it has room to
+	// spare while a deep row with it does not — which is why a fixture two levels deep,
+	// or three levels deep with the marker higher up, both drew clean and the clipping was
+	// reported from arithmetic rather than seen. Its parent above is finished so that
+	// `nextAssigned` — the first unfinished member in plan order — lands here.
+	vault.addFile('Rotate the token signing key on a schedule.md', {
+		frontmatter: { type: 'Task', order: 1, assignee: 'Ada', status: 'In progress' },
+		parentLink: 'Send the magic link',
 	});
 	vault.addFile('Expire the link after first use.md', {
 		frontmatter: { type: 'PBI', order: 2, assignee: 'Ada', status: 'Done' },

@@ -151,8 +151,11 @@ one is `timelineRowEls` now.
    lands on an implicit `any`, so `typecheck:test` reads nothing there. `--checkJs` over
    `scripts/` reports 253 errors, which is a project rather than a follow-on; type a script's
    boundary when a test needs it, as `rank` did.
-2. **The 16-instance mount clone**, above.
-3. **The doubles are still widened rather than verified** *(one instance found and fixed in
-   [[A declared member is a bet, and one was lost]]; the wider question stands)* — unchanged from
-   [[Typecheck the test suite]], and `asApp` plus `captureRegistrations` are two more places
-   asserting a shape nothing checks behaves like the real one.
+2. **The 16-instance mount clone**, above. *(Closed by
+   [[The mount injection was a cast nothing needed]].)*
+3. **The doubles are still widened rather than verified** *(answered by
+   [[The bet a declared member makes is loud now]], which takes the checkable half — every
+   unimplemented member throws instead of answering `undefined` — and states why `asApp` and
+   `captureRegistrations` have no third thing a test could say about them)* — the question
+   came from [[Typecheck the test suite]], and one instance was found and fixed in
+   [[A declared member is a bet, and one was lost]] before it was asked as a whole.

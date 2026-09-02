@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs';
 import type { Plugin } from 'obsidian';
 import { afterEach, beforeEach, vi } from 'vitest';
 import { cleanup as liveRegionCleanup } from '@atlaskit/pragmatic-drag-and-drop-live-region';
@@ -188,6 +189,43 @@ export function treeOf(containerEl: HTMLElement): HTMLElement {
 	const tree = containerEl.querySelector<HTMLElement>('.pbl-tree');
 	if (!tree) throw new Error('tree not rendered');
 	return tree;
+}
+
+export function toolbarOf(containerEl: HTMLElement): HTMLElement {
+	const bar = containerEl.querySelector<HTMLElement>('.pbl-toolbar');
+	if (!bar) throw new Error('toolbar not rendered');
+	return bar;
+}
+
+/**
+ * The SHIPPED rules, in the document, so a question about what a fit step hides is asked
+ * of the stylesheet rather than of a copy of it. jsdom applies no stylesheet of its own
+ * but it does parse one it is given — `:not()` chains included — so
+ * `getComputedStyle(el).display` becomes a real answer, which is what `refocusShedControl`
+ * reads.
+ *
+ * EVERY partial that writes a rule those questions read, in the order `styles/index.css`
+ * declares them, and that is not tidiness. The `⋯` is `display: none` by DEFAULT — that
+ * rule is in `toolbar.css` — and `toolbarFit.css` only turns it ON from step 2. Loading
+ * the fit partial alone left it reading as visible at step 0, which is precisely the state
+ * the relaxing-direction test is about, so the test would have asked its question of a
+ * document where the answer could not be wrong.
+ *
+ * `busy.css` is here for the same reason, found the same way: `.pbl-busy` is
+ * `display: none` until a batch runs, that rule lives in the partial the indicator moved
+ * to at the 400-line cap, and without it the indicator read as VISIBLE at every rung — so
+ * the assertion that a rung sheds it was passing against a document where it had never
+ * been hidden by anything.
+ *
+ * **One list rather than a copy per file**, and that is the whole reason it is here: a
+ * short list is what both defects above look like, and a second copy is a second chance to
+ * be short in. Call it in `head` at module scope, once — `useViewHarness` empties the BODY
+ * between tests, never the head.
+ */
+export function loadToolbarStyles(): void {
+	for (const partial of ['styles/toolbar.css', 'styles/toolbarFit.css', 'styles/busy.css']) {
+		document.head.createEl('style', { text: readFileSync(partial, 'utf8') });
+	}
 }
 
 /** One position of the toolbar's projection toggle, found by its accessible name. */

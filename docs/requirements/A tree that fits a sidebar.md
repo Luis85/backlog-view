@@ -182,7 +182,79 @@ marker, and an `outsideFilter` ancestor re-rooting its member one level up:**
   and tuning the 260px cutoff to cover it was refused on this task's own terms rather than
   reversed here.
 
-**What this still does not answer, honestly**: a themed vault's colours, its accent, and
+### The polish pass of 2026-09-01
+
+**And a second round, from review: the indent needed a CAP, not a smaller step.** Halving
+the indent below the cutoff bought a fixed amount per level, which the next level spends
+again — so the row that runs out of pane was always just one deeper, and the failure was
+postponed rather than closed. Measured in the harness at a 200px pane before the cap: a
+depth-3 row carrying the Next marker sat **11px past the tree's edge**, and an unmarked
+depth-5 row was within 5px of it. `.pbl-tree` hides its own horizontal overflow, so both
+would have lost the trailing state icon rather than showing it cut — the partial-chip
+failure this pass exists to end.
+
+**The row that fails first is the deepest one CARRYING THE MARKER, not the deepest one**,
+and that is why this went unseen. The marker is ~36px that never shrinks, so a deep row
+without it has room to spare: the harness fixture was three levels deep with the marker
+higher up and drew clean at every width. The review reported the depth and inferred the
+clipping; the measurement confirmed the conclusion and corrected the mechanism. The
+harness fixture now finishes that row's parent so `nextAssigned` lands on the deepest row,
+which is the arrangement the width question is actually about.
+
+The cap is `2 * var(--pbl-indent)`, stated in LEVELS rather than pixels so it cannot drift
+from the step declared above it and so it carries no second number tuned to one fixture's
+depth — the mistake the 260px cutoff already records. Re-measured at 200px, 240px and
+260px across depths 0 to 5: nothing is clipped at any of them, with 5px of clearance on
+the worst row and 12px on the rest.
+
+**The band this section reported rather than fixed is closed, and closing it moved the
+marker rather than tuning the cutoff.** Task 10 measured the Next marker clipped at 280px
+and pushed off screen at 320px and declined to widen 260px on one fixture's evidence,
+which was the right refusal to a wrong question: the marker was drawn LAST in the row, so
+whatever the cutoff, some width existed where the reserved cell after it took the pane's
+last pixels and `.pbl-tree`'s `overflow-x: hidden` swallowed it. `renderTree.ts` now draws
+it before the row's spacer, beside the title it is about, and no cutoff decides that at
+all.
+
+**The reserved column was doing harm in the other direction too.** `.pbl-mw-statecol` was
+a fixed `inline-size: 92px`, narrower than `.pbl-state-chip`'s own shared 140px cap: `In
+progress` read `In progr…` in a 1000px pane, where nothing was competing for the room.
+Both of the reservation's jobs had lapsed — the row is anchored at its end, so a row with
+no chip slides nothing, and the marker it aligned is no longer drawn after it — so the
+cell is content-sized now, with a 22px floor (the chip's own icon) and no floor where the
+row drew no chip.
+
+**Which makes the narrow rule a different rule, and a smaller one.** Dropping the column
+below 260px was the only honest answer while it reserved 92px it could not fill; against a
+content-sized cell it cost the reader the one fact the chip carries — with no chip at all a
+finished row and an unfinished row are the same row, and hide-done is the only way left to
+tell them apart. Below 260px the chip's TEXT is hidden instead, the `.pbl-sr-only` way
+rather than `display: none`: a row is a `treeitem` with no `aria-label`, so its accessible
+name is derived from its content, and `display: none` would have let the pane's width
+decide whether a screen reader is told the state at all. The icon (`circle-check` against
+`circle`) still says whether the row is finished, and the chip's own tooltip still says the
+value in words.
+
+**Two more terms yield before the pane does.** `.pbl-title` loses the `min-width: 60px`
+floor `tree.css` gives every projection — for this pane only, at every width, because the
+title is what costs least (the row still opens the note, the badge still says what it is,
+and the title is tooltipped in full) — and below 260px the tree's indent step halves to
+12px, which is the only term on the row that grows with DEPTH: two ancestors cost 48px
+before a glyph is drawn.
+
+**Measured with a throwaway probe rather than by eye**, an uncommitted harness entry that
+mounted the same fixture and printed each row's child rectangles at five widths; the
+screenshots that preceded it had reported a chip "clipped" that was in fact an 8px column
+with the chip overflowing it, which is a different defect with a different fix. Reading the
+`Send the magic link` row (depth 2, the marker on it) as `title | marker | chip`, and the
+pane's own right edge beside it: **500px** — 129px, 36px, 91px (`In progress` in full),
+everything inside; **320px** — 63px, 36px, 45px (the value ellipsised); **280px** — 40px,
+36px, 28px; **240px** (below the cutoff) — 30px, 36px, 22px, the chip an icon, the row
+ending 4px inside the pane; **200px** — the title reduced to nothing, the marker and the
+icon both still drawn, the row's last pixel 2px inside the pane. Nothing is clipped by the
+pane at any of the five, which is what the 260–330px band could not say before.
+
+**What is unchanged and still owed**: a themed vault's colours, its accent, and
 anything Bases hands the view — `test/harness/theme.css`'s own stated limits, unchanged
 by this task. The live-vault check — does this actually feel right dragged into a real
 sidebar, at a size Obsidian itself lets a reader resize to — is still owed.
@@ -221,11 +293,23 @@ sidebar, at a size Obsidian itself lets a reader resize to — is still owed.
   guard unreachable for any configuration this view's own options screen can produce.
 - `.pbl-mw-view` declares `container-type: inline-size`, so the narrow rule keys on the
   PANE's own width rather than the window's.
-- Below a 260px container width, `.pbl-mw-statecol` — the COLUMN, not only the chip
-  inside it — is hidden outright, and `.pbl-mw-toolbar` wraps its controls rather than
-  clipping them.
-- The row's title, its depth indent and the Next marker (`.pbl-mw-next`) carry no rule
-  keyed to that container query — they are never hidden by it, at any width.
+- Below a 260px container width the chip's own TEXT is hidden the `.pbl-sr-only` way
+  (`clip-path`, never `display: none`, so the row's content-derived accessible name still
+  carries the state), `.pbl-mw-toolbar` wraps its controls rather than clipping them, and
+  the tree's indent step halves to 12px.
+- `.pbl-mw-statecol` is content-sized — `flex: 0 1 auto` with a 22px floor, and no floor at
+  all where the row drew no chip (`:empty`) — never a fixed reservation, so a state value
+  is shown in full wherever there is room for it and is reduced to its icon where there is
+  not.
+- `.pbl-mw-next` is drawn BEFORE the row's spacer, so the marker is never the row's last
+  child and no reserved cell after it can push it out of the pane.
+- `.pbl-mw-view .pbl-title` drops `tree.css`'s shared `min-width: 60px` floor at every
+  width — the title is the term that yields, and it is tooltipped in full.
+- `.pbl-mw-view .pbl-row` sets `user-select: auto`: this tree drags nothing, so a reader
+  can select a title to copy it, and `renderTree.ts`'s own drag-select guard on the row
+  click can be true.
+- The state chip carries its own value as a tooltip, which is what a chip reduced to its
+  icon — or clipped by the chip's shared 140px cap — cannot show.
 - `npm run harness -- test/harness/mywork.ts` mounts the real `MyWorkView` with a
   purpose-built fixture (a done PBI, an open one carrying the Next marker, and an
   `outsideFilter` ancestor re-rooting its member); `?person=<path>` picks a person
@@ -254,6 +338,18 @@ scope's own `wireScopeCreate` shape (`src/view/release/scopeCreate.ts:51-91`): a
 on every move — because a keyboard-fired `contextmenu` targets the TREE, never a row,
 once focus is managed through `aria-activedescendant` rather than real DOM focus. The
 first calls `showMyWorkRowMenu`, the second `showMyWorkRowMenuAt`.
+
+`src/view/scopeRow.ts` — the parts a scope-tree row is drawn from, shared with
+`src/view/release/scopeTree.ts`, which is what this view's own rows were copied from. Three
+of them: `wireRowOpen` (the primary and middle click that open the row's note, over the
+`opener`/`openContext` pair both views carry, with the drag-select guard the release scope
+established), `drawScopeBadge` (the type badge) and `drawScopeStateChip` (the static state
+chip, taking the column class each tree owns — the whole of what varied between the two
+copies). Extracted for the reason `scopeFolds.ts` and `scopeKeys.ts` were, and measured the
+same way: `npm run analyze` reported four clone groups and 139 lines between the two tree
+modules, the widest pair in `src/`. The DISCLOSURE is deliberately not among them — its two
+copies differ in their labels and in what a toggle does, one folding per person and one per
+release, so sharing it would leave a function whose whole body is its arguments.
 
 `src/view/mywork/toolbar.ts`, `src/view/scopeFolds.ts` and `src/view/scopeKeys.ts` carry
 no change for this task beyond `scopeKeys.ts`'s own pre-existing `activeRowFile` write;
@@ -286,3 +382,19 @@ and bundle entry that finally let a person LOOK at this view
 above; `test/harness/myWorkHarness.test.ts` pins that the entry still mounts and still
 draws the cases (a done row, an open one with the Next marker, the `outsideFilter`
 re-root, the `?width=` constraint) it exists to be looked at.
+
+**The polish pass (added 2026-09-01):** `src/view/mywork/renderTree.ts` — `drawRow` draws
+`drawNextMarker` BEFORE the row's spacer (the marker is no longer the row's last child),
+and `drawStateChip` sets the chip's own value as its tooltip. `styles/mywork.css` — the
+content-sized `.pbl-mw-statecol` and its `:empty` exemption, `.pbl-mw-view .pbl-row`'s
+`user-select: auto`, `.pbl-mw-view .pbl-title`'s floorless width, and a narrow block that
+now hides the chip's TEXT the `.pbl-sr-only` way and halves the tree's indent step instead
+of dropping the column; its header states that this file's position in `styles/index.css`
+is decided by SPECIFICITY now rather than by a disjoint vocabulary, since two of those
+rules re-target a selector `tree.css` and `columns.css` own. `test/view/mywork/tree.test.ts`
+— the marker's place in the row's own child order, and the chip's tooltip.
+`test/view/mywork/narrow.test.ts` — the rules that hold at every width (the content-sized
+cell and its floor, the dropped title floor, `user-select`), and the narrow block read for
+what it takes and what it keeps; both describe blocks strip comments from the stylesheet
+before matching, because a paragraph quoting the declaration it replaced is otherwise read
+as the declaration.

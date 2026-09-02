@@ -90,6 +90,18 @@ note assumed and `## Where it lives` explains it cannot be.
   channel: this chip is static — no hover, no menu, no accessible name of its own — so the icon
   is beside it rather than instead of it. Until 2026-08-29 `Done` and `Doing` were one word in
   one ink, while the summary strip above counted one of the two as finished.
+- **2d — a member's state is longer than a word.** The chip shows it in full wherever the
+  row has the room, and ellipsises it where it does not — never truncated at a width chosen
+  in advance. `.pbl-rel-statecol` reserved a fixed `inline-size: 92px` until 2026-09-01,
+  which is narrower than the 140px cap `columns.css` puts on the chip itself, so `In
+  progress` read `In progr…` in a full-width pane with hundreds of pixels of empty row
+  beside it. The cell is content-sized now, shrinkable to a 22px floor — the chip's own
+  icon, which is what stops the cell shrinking past the chip and clipping the icon to a
+  sliver — and the chip carries its value as a tooltip for the widths where it is
+  ellipsised. Nothing about the row's alignment depended on the 92px: `.pbl-row-spacer`
+  before the cell takes every spare pixel, so the chips end at one x whatever they hold,
+  and the rollup after it is anchored at the row's end regardless. Found while fixing the
+  identical cell in [[Assigned work in the sidebar]], which had copied this one.
 - **2b — a release nobody has folded anything in opens WHOLE.** Every parent is drawn
   unfolded, which is the opposite of the backlog tree's own default
   ([[Collapse persistence]] 1a, where a row nobody has ruled on opens collapsed once). Two
@@ -162,7 +174,14 @@ and the two empty states above the tree — including the header's own open-note
 toolbar's three controls are about the TREE and this one is about the release the title names; `src/view/release/scopeTree.ts` draws the tree
 itself — the rows, the disclosure and a row's click (and middle click), which open the
 note through `src/view/openTarget.ts`'s `OpenController`, the estimation view's own
-mechanism. **The fold set — scoped to the open release, never a bare path — and the
+mechanism; `drawStateChip` there also sets the chip's own value as its tooltip (extension
+2d), which is what a chip ellipsised by `styles/releaseScope.css`'s content-sized
+`.pbl-rel-statecol` cannot show. That partial sits exactly at the 400-line cap
+`scripts/styles-assemble.mjs` enforces, so the argument for its state cell is written at
+`styles/mywork.css`'s copy of the same rule and checked in
+`test/view/release/rowChrome.test.ts` rather than restated there — the next rule this
+partial gains splits it, the way `shelfList.css` and `timelineLeadResize.css` were split
+out of theirs. **The fold set — scoped to the open release, never a bare path — and the
 hide-done flag beside it moved to `src/view/scopeFolds.ts`** (Task 5 of [[Assigned work in
 the sidebar]]): the assigned-work tree asks the identical two questions per person rather
 than per release, and the whole of what varied was the key prefix, so `scopeTree.ts` now

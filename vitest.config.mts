@@ -11,9 +11,11 @@ export default defineConfig({
 	test: {
 		environment: 'node',
 		include: ['test/**/*.test.ts'],
-		// The locale is RESOLVED for the run rather than inherited, so the whole suite can
-		// be driven somewhere that is not the source language — see `test/helpers/locale.ts`.
-		setupFiles: ['./test/helpers/locale.ts'],
+		// One frozen day for every test file — see `test/helpers/clock.ts` for why the whole
+		// suite reads one, and why the freeze is not left to a hook. The locale is RESOLVED
+		// for the run rather than inherited, so the whole suite can be driven somewhere that
+		// is not the source language — see `test/helpers/locale.ts`.
+		setupFiles: ['./test/helpers/clock.ts', './test/helpers/locale.ts'],
 		coverage: {
 			provider: 'v8',
 			include: ['src/**/*.ts'],

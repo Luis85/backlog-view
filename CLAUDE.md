@@ -127,8 +127,8 @@ language is one file and one row. What must never enter the catalog is anything 
 writes, matches or persists — type names, state values, option keys, tags, file names. The
 test when it is not obvious: **ask what breaks if two people with different Obsidian
 languages open the same vault.** "One sees different words" is text; "one writes notes the
-other's view cannot read" is data. 686 keys are in it, counted two ways on the MERGED tree
-on 2026-08-29 and agreeing — an AST walk over the `as const`
+other's view cannot read" is data. 797 keys are in it, counted two ways on the MERGED tree
+on 2026-09-02 and agreeing — an AST walk over the `as const`
 object's own properties, and a match-counting
 `grep -Po` over the key lines. Two rather than the three the 2026-08-26 count used: the
 `Object.keys` over the BUNDLED catalog was not re-run, and this sentence says two because
@@ -138,11 +138,11 @@ some of these keys carry their value on the FOLLOWING line, which is exactly wha
 instrument gets wrong. The two DISAGREEING would itself be a finding rather than a nuisance:
 a walk that reports its DISTINCT properties beside its total drops a duplicate key the text
 still shows, so the pair answers "how many" and "are any of them the same key twice" in one
-pass — 686 total and 686 distinct on 2026-08-29. **A count is dated the moment
+pass — 797 total and 797 distinct on 2026-09-02. **A count is dated the moment
 it is written, and this paragraph has now been a merge conflict five times in one day** —
-550, 542, 553, 577, 556, 588, 591, 559, 597, 630, 643 and 655 were each true of the branch that
-wrote them and of nothing else, and 686 is what the merged tree measures rather than what any
-side's arithmetic predicted. Re-measure on the merged tree rather than picking a side.
+550, 542, 553, 577, 556, 588, 591, 559, 597, 630, 643, 655 and 686 were each true of the branch
+that wrote them and of nothing else, and 797 is what the merged tree measures rather than what
+any side's arithmetic predicted. Re-measure on the merged tree rather than picking a side.
 `ui/`, `commands/`, `view/interactions/`, `view/estimation/`, the whole of `view/render/`,
 `view/writeGate.ts`, `view/cardMoves.ts`, `main.ts`, `domain/viewOptions.ts`, the whole of
 `storage/` and — since 2026-08-22 — `domain/estimationOptions.ts`, `domain/board.ts`,
@@ -310,8 +310,11 @@ there. What stays here binds while you are editing `src/`:
   passing an argument the function does not take, two fixtures behind the shape they claim,
   and eight `@ts-expect-error` directives suppressing nothing — see
   `docs/tasks/Typecheck the test suite.md`. A double that cannot satisfy a real type is
-  widened ONCE in the helper that makes it (`asApp`, the `declare`d `TFile` members), never
-  by an `any` or a suppression at the call site.
+  widened ONCE in the helper that makes it (`asApp`), never by an `any` or a suppression at
+  the call site. A member it does NOT implement is a getter that THROWS through
+  `unimplemented()` — never a `declare`, which emits nothing and answers `undefined` when
+  `src/` starts reading it. That bet was lost once (`groupedData`); it is checked at the
+  member now, in `test/helpers/doubles.test.ts`.
 - **An invariant asserted in a comment gets a test that fails without it, and the test is
   watched failing.** Revert the fix, run it, see red, restore. Six of ten review findings
   on one pull request were comments precisely stating the rule the code beside them

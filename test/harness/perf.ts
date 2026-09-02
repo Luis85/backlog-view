@@ -28,7 +28,9 @@ const SAMPLES = 5;
  */
 export const PROJECTIONS: Projection[] = ['tree', 'board', 'roadmap', 'deliverables', 'catalog'];
 
-interface Row {
+/** Exported because `reportPerf` returns it: an exported signature naming a file-private
+ *  type is a caller that cannot name what it was handed — fallow's own private-type-leak. */
+export interface Row {
 	op: string;
 	median: number;
 	worst: number;

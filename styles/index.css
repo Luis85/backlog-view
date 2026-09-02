@@ -150,6 +150,12 @@
    `.pbl-rel-spacer`, `release.css`'s own vocabulary, are the ones this file only ever
    USES rather than redeclares. */
 @import "./releaseScope.css";
+/* Position load-bearing in one direction only: `.pbl-rel-crit` sets `max-width` against
+   `columns.css`'s `.pbl-state-chip` at the same (0,1,0) specificity, so this partial must
+   come after that one — it does, `columns.css` being imported well above. Nothing in
+   `releaseScope.css` declares `.pbl-rel-crit*` or `.pbl-rel-ready`, so the position
+   BESIDE its neighbour here is a reading convenience. */
+@import "./releaseReadiness.css";
 /* Position NOT load-bearing: every selector here is `.pbl-mw-*`, a vocabulary no other
    partial declares — see the partial's own header. */
 @import "./mywork.css";

@@ -55,13 +55,24 @@ export function resourceVault(): FakeVault {
  * empty row off this vault (the readout tests' own "quiet row") needs one behind it now
  * that a row is a note (Task 5) rather than a name a work item happened to carry.
  */
-export function countingVault(stretches: Array<{ title: string; start: string; target: string }> = []): FakeVault {
+/**
+ * What both vaults below open with: two `Resource` rows, and one epic Alice owns that
+ * runs 2026-08-01 → 2026-08-10 for a stretch to sit inside. Named once because it was
+ * written twice — and the reason is the one `countingVault` already gives for itself,
+ * turned on this file: two copies of one vault are two vaults free to drift.
+ */
+function rosterVault(): FakeVault {
 	const vault = new FakeVault();
 	vault.addFile('Alice.md', { frontmatter: { type: 'Resource' } });
 	vault.addFile('Bob.md', { frontmatter: { type: 'Resource' } });
 	vault.addFile('Work.md', {
 		frontmatter: { type: 'Epic', order: 10, assignee: 'Alice', start: '2026-08-01', due: '2026-08-10' },
 	});
+	return vault;
+}
+
+export function countingVault(stretches: Array<{ title: string; start: string; target: string }> = []): FakeVault {
+	const vault = rosterVault();
 	for (const one of stretches) {
 		vault.addFile(`${one.title}.md`, {
 			frontmatter: { type: 'Absence', assignee: 'Alice', start: one.start, due: one.target },
@@ -96,12 +107,7 @@ export const ALICE_AWAY_PATH = `${ALICE_AWAY}.md`;
  * also serves need a SECOND row to open their form from without touching Alice's own.
  */
 export function absenceVault(): FakeVault {
-	const vault = new FakeVault();
-	vault.addFile('Alice.md', { frontmatter: { type: 'Resource' } });
-	vault.addFile('Bob.md', { frontmatter: { type: 'Resource' } });
-	vault.addFile('Work.md', {
-		frontmatter: { type: 'Epic', order: 10, assignee: 'Alice', start: '2026-08-01', due: '2026-08-10' },
-	});
+	const vault = rosterVault();
 	vault.addFile(ALICE_AWAY_PATH, {
 		frontmatter: { type: 'Absence', assignee: 'Alice', start: '2026-08-04', due: '2026-08-06' },
 	});

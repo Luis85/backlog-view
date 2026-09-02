@@ -2,7 +2,7 @@
 type: PBI
 parent: "[[Release readiness]]"
 order: 10
-status: Open
+status: Done
 created: 2026-08-21
 source: user request — release management concept refinement, 2026-08-21
 started: ""
@@ -22,8 +22,9 @@ iteration: ""
 release's own members with a count behind it, **so that** the decision is made against stated
 criteria instead of a feeling.
 
-Nothing yet. Each criterion reads keys and value lists this view names for itself, over the
-membership [[The scope of a release as a tree]] resolves.
+Shipped 2026-09-02, as three chips under the single-release screen's footline. Each criterion
+reads keys and value lists this view names for itself, over the membership
+[[The scope of a release as a tree]] resolves.
 
 ## Use case
 
@@ -84,8 +85,37 @@ membership [[The scope of a release as a tree]] resolves.
 
 ## Where it lives
 
-The criteria are evaluated in the new `src/domain/` module beside the summary's figures, from
-the model in `src/domain/model.ts`, reading `src/domain/dependencies.ts` for the edges. Every
-key and every value list is declared in `src/domain/viewOptions.ts`, checked for consistency
-in `src/domain/settingsConsistency.ts`, and the checklist is drawn by the release view's
-render module in `src/view/render/`.
+The criteria are evaluated in `src/domain/releaseReadiness.ts`, beside the summary's figures
+— over the population `releaseScope` (`src/domain/releases.ts`) already resolved out of the
+model in `src/domain/model.ts`, rather than a second walk of it — reading
+`src/domain/dependencies.ts` for the edges.
+
+**Corrected 2026-09-02 against what shipped**, in two places this note had wrong. The five
+options are `src/domain/releaseOptions.ts`'s — the `estimateProperty`, `dependsOnProperty` and
+`riskProperty` keys, resolving to `estimateKey`, `dependsOnKey` and `riskKey`, and the
+`criticalRiskValues` and `addressedRiskValues` vocabularies — never
+`src/domain/viewOptions.ts`, which is the backlog view's own options module and reaches no
+property this screen reads; [[Summing up a release]] corrected the identical sentence for the
+identical reason. And nothing checks them for consistency: `releaseNoteProblems` and
+`membershipCollision` (`src/domain/settingsConsistency.ts`) enumerate the keys a RELEASE note
+carries, and these three name properties on the MEMBERS' notes, so they are outside the
+question that check asks rather than an omission from it.
+
+The checklist is drawn by `src/view/release/renderReadiness.ts` — the chip row under the
+header's footline, and the effort figures that join the summary strip
+`src/view/release/renderScope.ts` already draws — and styled by `styles/releaseReadiness.css`,
+which adds the three verdict colours and the row's own layout to the `.pbl-state-chip`
+(`styles/columns.css`) it reuses. A module of its own rather than more of `renderScope.ts`: it
+draws a different thing from a different model, and nothing in it derives a number — every
+figure and every verdict is handed to it by the one walk above.
+
+**Two decisions the code cannot show.** A prerequisite is cleared by **this view's own
+already-bound `stateProperty` and its done values**, not by a sixth and seventh option: the
+rule that each criterion declares its own key guards against borrowing the key from the view
+that WRITES it, and this view's state key already IS its own. A separate "cleared at" list is
+a later slice, for the day a vault clears a dependency short of done. And **every criterion
+unconfigured collapses to one chip**, naming all three in its tooltip and in a `.pbl-sr-only`
+span beside the count — three chips saying nothing three times is noise on exactly the vault
+that most needs signal, a first run where ✨ has bound the keys and nobody has written the
+risk vocabularies yet. The names ride the chip itself rather than the tooltip alone because
+the chip is a static, unfocusable `div`, which a tooltip reaches by pointer and nobody else.

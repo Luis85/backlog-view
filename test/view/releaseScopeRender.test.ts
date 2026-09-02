@@ -61,7 +61,10 @@ describe("a release's scope on screen", () => {
 		const tree = containerEl.querySelector('.pbl-tree') as HTMLElement;
 		expect(tree.querySelectorAll('.pbl-state-chip')).toHaveLength(0);
 		expect(tree.querySelectorAll('.pbl-count')).toHaveLength(0);
-		expect(containerEl.querySelectorAll('.pbl-rel-header .pbl-state-chip')).toHaveLength(1);
+		// Named `.pbl-rel-status` rather than counting every `.pbl-state-chip` in the header:
+		// the readiness row draws that same chip shell too (2026-09-02), so a bare count here
+		// stopped being about the release's own status the moment a second kind joined it.
+		expect(containerEl.querySelectorAll('.pbl-rel-header .pbl-rel-status')).toHaveLength(1);
 	});
 
 	it('anchors the state chip and rollup at the row’s end with a spacer, matching the tree’s own rows', () => {
@@ -613,10 +616,16 @@ describe('the scope screen’s own two affordances', () => {
 		expect(done.classList.contains('pbl-state-done')).toBe(true);
 		expect(done.querySelector('.pbl-state-icon')?.getAttribute('data-icon')).toBe('circle-check');
 		expect(done.textContent).toBe('Done');
+		// And the value in words on the chip itself, for the widths where the chip cannot
+		// show it: `.pbl-state-chip` caps at 140px in every projection, and this column
+		// ellipsises the chip once the row runs short of room. The my-work tree's own chip
+		// carries it for the same reason.
+		expect(done.getAttribute('data-tooltip')).toBe('Done');
 
 		const open = containerEl.querySelector('.pbl-row[data-path="M2.md"] .pbl-state-chip')!;
 		expect(open.classList.contains('pbl-state-done')).toBe(false);
 		expect(open.querySelector('.pbl-state-icon')?.getAttribute('data-icon')).toBe('circle');
+		expect(open.getAttribute('data-tooltip')).toBe('Doing');
 		// Static on both: this view writes nothing, so neither chip may look editable.
 		expect(done.classList.contains('pbl-state-static')).toBe(true);
 		expect(open.classList.contains('pbl-state-static')).toBe(true);

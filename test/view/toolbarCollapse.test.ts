@@ -3,7 +3,8 @@ import { describe, expect, it } from 'vitest';
 import { FakeVault } from '../helpers/vault';
 import { makeView, useViewHarness } from '../helpers/view';
 import { boardVault, cardByTitle, makeBoard } from '../helpers/board';
-import { horizonVault, makeRoadmap, shelfTitles, timelineTitles } from '../helpers/roadmap';
+import { horizonVault, laneNames, laneOrder, laneRoadmap, makeRoadmap, shelfTitles, timelineTitles } from '../helpers/roadmap';
+import { resourceVault } from '../helpers/resources';
 import { expandAll } from '../../src/view/render/toolbarControls';
 
 useViewHarness();
@@ -174,3 +175,30 @@ describe('the bulk collapse controls disable where nothing but a card would answ
 	});
 });
 
+
+describe('the bulk collapse controls reach the resources axis’s bands', () => {
+	// A band is the axis's own row disclosure — not a card's — so these two buttons are
+	// what a roster of twenty people needs: the per-band chevrons fold one row each.
+	it('folds every band with one press, and opens them all again', () => {
+		const { containerEl } = laneRoadmap(resourceVault());
+		expect(laneNames(containerEl)).toEqual(['Alice', 'Bob', 'Zoe']);
+		const collapse = collapseCtl(containerEl, 'Collapse all');
+		// Live on a screen whose bars hang under nothing: no bar draws a chevron here, so
+		// the bands are the whole of what the controls have to reach.
+		expect(collapse?.disabled).toBe(false);
+
+		collapse?.click();
+
+		expect(laneOrder(containerEl)).toEqual(['lane:Alice', 'lane:Bob', 'lane:Zoe']);
+		// Re-queried, never the captured button: the press rebuilt the toolbar.
+		collapseCtl(containerEl, 'Expand all')?.click();
+		expect(laneOrder(containerEl)).toEqual([
+			'lane:Alice',
+			'Alice dated',
+			'Cased',
+			'lane:Bob',
+			'lane:Zoe',
+			'Stray',
+		]);
+	});
+});

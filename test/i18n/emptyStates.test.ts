@@ -1,15 +1,14 @@
 // @vitest-environment jsdom
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import { ProductBacklogView } from '../../src/view/backlogView';
 import { en } from '../../src/i18n/en';
-import { Catalog, setLocale } from '../../src/i18n/t';
-import { resetLocale } from '../helpers/locale';
+import { Catalog } from '../../src/i18n/t';
 import { renderEmptyIterationState } from '../../src/view/render/emptyStates';
 import { boardVault } from '../helpers/board';
 import { installObsidianDom } from '../helpers/dom';
 import { fakeController, FakeVault } from '../helpers/vault';
 import { fixture, makeView, noOptionalProperties, projectionButton, useViewHarness } from '../helpers/view';
-import { filled, MARK, markedCatalog } from './fixtures';
+import { filled, MARK, markedCatalog, useMarkedLocale } from './fixtures';
 
 installObsidianDom();
 useViewHarness();
@@ -79,9 +78,7 @@ const SWEPT = [
 
 const xx: Catalog = markedCatalog(SWEPT);
 
-beforeEach(() => setLocale('xx', { xx }));
-// Resolution is module state by design (once, at load), so each test puts it back.
-afterEach(() => resetLocale());
+useMarkedLocale(xx);
 
 const titleOf = (el: HTMLElement): string => el.querySelector('.pbl-empty-title')?.textContent ?? '';
 const hintOf = (el: HTMLElement): string => el.querySelector('.pbl-empty-hint')?.textContent ?? '';
