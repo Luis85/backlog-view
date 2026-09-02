@@ -50,10 +50,16 @@ lands, the three ways to make the same move, and where `order` comes from.
    outdent in the tree, and the context menu's move up / down / to top / to bottom /
    indent / outdent.
 4. It explains `order`: **one** number ranking every note the Base returns, maintained by
-   the view rather than scoped to a parent, with unranked items sorting last in whatever
-   the Base's own sort produces. It says what that buys the reader — a between-drop takes
-   a value between the two neighbours, so it writes the dropped note alone and the rows
-   around it keep the numbers they had ([ADR 0032](../adrs/0034-order-is-a-global-rank.md)).
+   the view rather than scoped to a parent. It says what that buys the reader — a
+   between-drop takes a value between the two neighbours, so it writes the dropped note
+   alone and the rows around it keep the numbers they had
+   ([ADR 0034](../adrs/0034-order-is-a-global-rank.md)) — and it separates the two things
+   a missing rank does, which are not the same and read as one until they are told apart.
+   In a SIBLING group the unranked row sorts last, in the Base's own order. A FOCUSED list
+   is all or nothing: `inRankOrder` keeps the whole list in tree order while any row lacks
+   a rank or two share one, rather than sorting the odd row last, so an order set by hand
+   there would not show — which is why the drag is refused there and names its remedy
+   ([[Ranking at the focused level]] 2d).
 5. It closes with what a move does *not* do: re-type anything, ever.
 
 **Extensions**

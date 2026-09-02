@@ -36,7 +36,7 @@ list holding both drops back to tree order without saying why.
 
 **This got WIDER on 2026-08-30, and the widening is the point worth carrying.** Under
 ADR 0008 an `order` was scoped to a sibling group, so only a hidden SIBLING could collide
-with a placement. Under [ADR 0032](../adrs/0034-order-is-a-global-rank.md) it is one rank
+with a placement. Under [ADR 0034](../adrs/0034-order-is-a-global-rank.md) it is one rank
 over everything the Base returns, so any hidden note in the vault can. The mechanism the
 first version of this note described — a partial `children` list feeding
 `computeInsertOrder` — is gone with those symbols; the shape of the problem outlived them

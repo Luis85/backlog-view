@@ -37,7 +37,7 @@ and no property records a board position.
 **The original reason expired on 2026-08-30 and the decision did not.** It was that
 `order` is a sibling-scoped fractional rank: a column mixes items from different parents,
 so a hand-placed position inside it had no property to live in without inventing a
-board-only one. [ADR 0032](../adrs/0034-order-is-a-global-rank.md) made `order` one rank
+board-only one. [ADR 0034](../adrs/0034-order-is-a-global-rank.md) made `order` one rank
 over everything the Base returns, which is exactly the shared rank that argument said was
 missing — every card in a column is now comparable to every other one, and the write that
 would place a card between two others is the same `anchoredOrder` midpoint the tree takes.

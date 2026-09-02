@@ -57,7 +57,11 @@ const MOVING: ManualSection = {
 				'One number ranking every note this base returns, maintained by the view — not a ' +
 				'number scoped to one parent. A drop between two rows takes a value between ' +
 				'theirs, so it writes that one note and leaves its neighbours the numbers they ' +
-				'had. Missing orders sort last, in whatever order the Base itself returned them.',
+				'had. Within a sibling group, a row with no order sorts last, in whatever order ' +
+				'the Base itself returned them. A focused list is all or nothing instead: while ' +
+				'any row in it has no order, or two share one, the whole list keeps the tree\'s ' +
+				'own order rather than sorting the odd row last — so an order set by hand there ' +
+				'would not show, and the drag is refused and says which command fixes it.',
 		},
 		{
 			term: 'A move does not re-type',
