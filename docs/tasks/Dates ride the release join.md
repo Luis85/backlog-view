@@ -73,8 +73,9 @@ Both ride the **same** `ItemWrite` as the link, as an `AxisWrite`, for
 an undo could then return the link and keep the dates.
 
 **The write decides, against the note as it stands.** The `AxisWrite` gains a fill-only
-flag, honoured in `applyAxis` beside the `sameCivil` skip already there. Three live
-questions per end:
+flag, answered in `plannedAxis`/`suppressedAxis` (`src/storage/writeKeys.ts`) — **not inside
+`applyAxis`**, which receives the entries already decided and keeps only the `sameCivil` skip
+it always made. Three live questions per end:
 
 - Does the note still hold that end? Skip it if so.
 - Would writing it reverse the span against the end that stands? Skip it if so — in both
@@ -182,8 +183,8 @@ date spelling, and the redraw — which is
 effective lines against `max-lines`' cap of 400 (`skipBlankLines`, `skipComments`), so the
 live check almost certainly will not fit and lint will refuse it. **Measure before writing,
 and plan the extraction as step one rather than meeting it as a surprise.** The natural cut
-is the live-decision helper itself — the three questions `applyAxis` asks — into a module
-`storage/` already reaches, beside `writeKeys.ts`. `src/domain/writePlan.ts` is at roughly
+is the live-decision helper itself — the three questions above — into a module `storage/`
+already reaches, beside `writeKeys.ts`. `src/domain/writePlan.ts` is at roughly
 326 and has room; `src/view/interactions/labels.ts` at 153 does too.
 
 **The live join check is where a correct-looking implementation goes wrong.** The Approach
