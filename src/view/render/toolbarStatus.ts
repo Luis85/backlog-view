@@ -75,7 +75,7 @@ export function renderIgnoredNote(barEl: HTMLElement, model: BacklogModel): void
 	const note = barEl.createDiv({ cls: 'pbl-toolbar-note pbl-ignored-note' });
 	setIcon(note.createSpan({ cls: 'pbl-toolbar-note-icon' }), 'filter-x');
 	note.createSpan({ text: t('toolbar.ignoredNotes', { count: n }) });
-	setTooltip(note, t('toolbar.ignoredTooltip', { count: n }));
+	setTooltip(note, t('toolbar.ignoredTooltip', { count: n, option: t('option.hierarchyOnly') }));
 }
 
 /**

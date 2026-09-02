@@ -2,6 +2,7 @@
 import { describe, expect, it, afterEach, beforeEach } from 'vitest';
 import { en } from '../../src/i18n/en';
 import { Catalog, setLocale } from '../../src/i18n/t';
+import { resetLocale } from '../helpers/locale';
 import { FuzzySuggestModal, Menu, Modal, Notice } from '../helpers/obsidian-mock';
 import { FakeVault } from '../helpers/vault';
 import { flush, makeView, rowByTitle, useViewHarness } from '../helpers/view';
@@ -59,7 +60,7 @@ const xx: Catalog = markedCatalog();
 
 beforeEach(() => setLocale('xx', { xx }));
 // Resolution is module state by design (once, at load), so each test puts it back.
-afterEach(() => setLocale('en'));
+afterEach(() => resetLocale());
 
 /** Two siblings under an epic, so there is always something legal to depend on. */
 function vault(): FakeVault {

@@ -564,7 +564,10 @@ describe('the date position, over the product of both figures', () => {
 
 	function drawnParts(band: HTMLElement): string[] {
 		const whenEl = band.querySelector('.pbl-rel-when') as HTMLElement;
-		return [...whenEl.children].map((el) => (el.textContent ?? '').replace(/^[\d,]+ days? /, 'days '));
+		// The COUNT is dropped rather than asserted — this table is about which parts draw,
+		// not about how many days. Group separators are the locale's, so the pattern reads
+		// digits and any non-space punctuation between them rather than a comma alone.
+		return [...whenEl.children].map((el) => (el.textContent ?? '').replace(/^[\d\p{P}]+ days? /u, 'days '));
 	}
 
 	it('asks the whole product, not a list of remembered cases', () => {

@@ -39,15 +39,15 @@ export const en = {
 
 	'toolbar.ignoredNotes': { one: '{count} note ignored', other: '{count} notes ignored' },
 	'toolbar.ignoredTooltip': {
-		one: '{count} note in this base is not backlog items — no supported type and no parent. Turn off "Ignore notes outside the hierarchy" in the view options to show them.',
+		one: '{count} note in this base is not backlog items — no supported type and no parent. Turn off "{option}" in the view options to show them.',
 		other:
-			'{count} notes in this base are not backlog items — no supported type and no parent. Turn off "Ignore notes outside the hierarchy" in the view options to show them.',
+			'{count} notes in this base are not backlog items — no supported type and no parent. Turn off "{option}" in the view options to show them.',
 	},
 
 	'emptyState.ignored': {
-		one: '{count} note in this base has no supported type and no parent, so it is not treated as backlog items. Create your first {topLevel}, or turn off "Ignore notes outside the hierarchy" in the view options to organize the existing notes.',
+		one: '{count} note in this base has no supported type and no parent, so it is not treated as backlog items. Create your first {topLevel}, or turn off "{option}" in the view options to organize the existing notes.',
 		other:
-			'{count} notes in this base have no supported type and no parent, so they are not treated as backlog items. Create your first {topLevel}, or turn off "Ignore notes outside the hierarchy" in the view options to organize the existing notes.',
+			'{count} notes in this base have no supported type and no parent, so they are not treated as backlog items. Create your first {topLevel}, or turn off "{option}" in the view options to organize the existing notes.',
 	},
 	'emptyState.allDone': {
 		one: 'All {count} item is done and hidden.',
@@ -81,19 +81,21 @@ export const en = {
 	 * Two boards, two bodies, one title — and the titles are separate keys on purpose
 	 * (`en.ts`'s own rule: identical English is expected and must not be deduplicated).
 	 *
-	 * Each body quotes a view option by its LABEL, spelled here as English rather than
-	 * taken as a parameter. That matches `emptyState.ignored` and `toolbar.ignoredTooltip`
-	 * above and is the same debt they carry: `Every surface translated`'s second acceptance
-	 * criterion wants one parameter from one key, and the labels are
-	 * `domain/viewOptions.ts`'s, which is [[View options and config warnings]] and unswept.
-	 * Keying them here would be keying somebody else's string.
+	 * Each body quotes a view option by its LABEL, and the label is a PARAMETER filled
+	 * from the option's own key — `option.stateProperty` and the rest, which
+	 * [[View options and config warnings]] keyed. A sentence pointing at a control the
+	 * reader cannot find is worse than an untranslated one, so the label may never be
+	 * re-spelled here: one key, one label, quoted wherever a sentence names it.
+	 *
+	 * The quotation marks stay in the message rather than being added around the
+	 * parameter, because which marks a language uses is its own grammar.
 	 */
 	'emptyState.noWorkflow': 'No workflow to show',
 	'emptyState.noWorkflowBody':
-		'The board is a projection of your workflow, and this view has no state property yet. Set "State property" in the view options — and optionally "Workflow states (in order)" — and the board will draw one column per state.',
+		'The board is a projection of your workflow, and this view has no state property yet. Set "{stateOption}" in the view options — and optionally "{statesOption}" — and the board will draw one column per state.',
 	'emptyState.noDeliverableWorkflow': 'No workflow to show',
 	'emptyState.noDeliverableWorkflowBody':
-		'The Deliverables board projects a workflow, and this view has neither state property set. Set "Deliverable state property" in the view options to give Deliverables a workflow of their own, or set "State property" and they share the requirements one. Either draws a column per state, and "Deliverable workflow states (in order)" names them.',
+		'The Deliverables board projects a workflow, and this view has neither state property set. Set "{deliverableStateOption}" in the view options to give Deliverables a workflow of their own, or set "{stateOption}" and they share the requirements one. Either draws a column per state, and "{deliverableStatesOption}" names them.',
 
 	/**
 	 * "the Deliverables board" names a PROJECTION and stays in the sentence; the quoted
@@ -350,9 +352,9 @@ export const en = {
 	 * all of them, in [[View options and config warnings]].
 	 */
 	'board.undeclaredColumn':
-		'"{state}" is not one of the configured workflow states. Add it to "Workflow states (in order)" in the view options, or move its cards.',
+		'"{state}" is not one of the configured workflow states. Add it to "{statesOption}" in the view options, or move its cards.',
 	'board.undeclaredDeliverableColumn':
-		'"{state}" is not one of the configured workflow states. Add it to "Deliverable workflow states (in order)" in the view options, or move its cards.',
+		'"{state}" is not one of the configured workflow states. Add it to "{statesOption}" in the view options, or move its cards.',
 
 	'board.stripTooltip': 'Drop a card here to clear its state',
 	'board.noStateColumn': 'Items without the state property — dropping a card here removes it',
@@ -400,7 +402,7 @@ export const en = {
 	 * option debt `board.undeclaredColumn` above states.
 	 */
 	'roadmap.undeclaredBucket':
-		'"{value}" is not one of the declared horizons. Add it to "Horizons (in order)" in the view options, or re-place its items.',
+		'"{value}" is not one of the declared horizons. Add it to "{horizonsOption}" in the view options, or re-place its items.',
 	'roadmap.newInBucket': 'New {type} in {bucket}',
 	'roadmap.newInBucketTooltip': 'New {type} in "{bucket}"',
 
@@ -500,9 +502,9 @@ export const en = {
 	 * dates first cannot reorder a clause spliced in by the caller.
 	 */
 	'emptyState.noAxisBody':
-		'The roadmap draws whichever axis the view options declare — confidence horizons, or dates. Set "Horizon property" and "Horizons (in order)" for Now-Next-Later buckets, or set "Start date property" or "Target date property" for a timeline.',
+		'The roadmap draws whichever axis the view options declare — confidence horizons, or dates. Set "{horizonOption}" and "{horizonsOption}" for Now-Next-Later buckets, or set "{startOption}" or "{targetOption}" for a timeline.',
 	'emptyState.noAxisBodyHalfSet':
-		'The roadmap draws whichever axis the view options declare — confidence horizons, or dates. A horizon property is set, but "Horizons (in order)" is empty — fill it to get Now-Next-Later buckets, or set "Start date property" or "Target date property" for a timeline.',
+		'The roadmap draws whichever axis the view options declare — confidence horizons, or dates. A horizon property is set, but "{horizonsOption}" is empty — fill it to get Now-Next-Later buckets, or set "{startOption}" or "{targetOption}" for a timeline.',
 
 	/**
 	 * The resources axis with a configured assignee and date property, but no `Resource`

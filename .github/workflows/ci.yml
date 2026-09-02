@@ -51,6 +51,37 @@ jobs:
       - name: Validate the docs register and ADRs
         run: npm run docs
 
+  # The same suite, somewhere that is not the source language. A suite that has only ever
+  # run in English proves nothing about the translation layer: this leg is what exercises
+  # the catalog fallback across every surface (a code with no catalog of its own resolves
+  # to English, and English's plural rules have to come with it) and `Intl.NumberFormat`
+  # in a locale that groups and separates unlike English.
+  #
+  # `de-DE` rather than the pseudo-locale, and that is the leg's stated ceiling: most
+  # assertions in this suite name the English text on purpose, so a pass under a second
+  # CATALOG would be measuring the assertions rather than the layer. What checks the
+  # catalog half, key by key, is `test/i18n/`'s own marked catalogs.
+  #
+  # One platform, because a locale is not a path separator — `verify` is what asks the
+  # Windows question, and asking it twice buys nothing.
+  locale:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "22"
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run the suite in a non-English locale
+        run: npm test
+        env:
+          PBL_TEST_LOCALE: de-DE
+
   # Its own job, never a step in `verify`, and that separation is the decision rather
   # than a layout preference — see ADR 0022. `npm run check` is the offline definition
   # of done and every step in it can be satisfied by the commit being written; an

@@ -35,6 +35,23 @@ See [RELEASING.md](RELEASING.md) for how this file is kept in step with a releas
   view.
 - `npm run check` typechecks `test/` as well as `src/` (`npm run typecheck:test`), so a
   test calling a function with the wrong arguments fails the gate instead of passing.
+- Every shipped catalog is checked against English — the same keys, the same parameters,
+  and the plural categories its own language has — so a half-finished translation fails
+  the build instead of rendering half in English.
+- A pseudo-locale for development builds (`en-x-pseudo`): English accented, a third longer
+  and bracketed, so a layout can be looked at in something that is not English. It ships in
+  no release; set `localStorage['product-backlog-locale']` and reload to see it.
+- CI runs the whole test suite a second time in a non-English locale.
+
+### Changed
+
+- The sentences that tell you to set a view option now quote that option's own label, so a
+  renamed option cannot leave the guidance pointing at a control you cannot find.
+
+### Fixed
+
+- Two timeline tests measured against the calendar rather than a fixed day, so they began
+  failing a fortnight after they were written.
 
 ## [0.10.0] - 2026-08-30
 

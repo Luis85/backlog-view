@@ -4,6 +4,7 @@ import { dimRubricOption, resolveEstimationSettings, scaleRubricOption } from '.
 import { SUGGESTED_KEYS } from '../../src/domain/defaultModel';
 import { FakeViewConfig } from '../helpers/vault';
 import { configured, configuredValues } from '../helpers/estimationModel';
+import { num } from '../helpers/locale';
 
 /** A five-point dimension fixture with every `ScoringDimension` field filled — this suite
  *  asserts `modelProblems` against a hand-built model, below `resolveEstimationSettings`,
@@ -231,7 +232,11 @@ describe('a dimension is named the way the panel names it', () => {
 		// place later. `toPrecision` keeps significant figures regardless of magnitude, so
 		// 0.001 prints as 0.001 rather than 0.
 		const model = modelWith({ dimensions: [{ ...dimension('reach'), label: 'Reach', weight: 99.999 }] });
-		expect(modelProblems(model, 'type')).toContain('the weights total 99.999, not 100 (0.001 short)');
+		// The two figures go through the run's own formatter: a `.` between the digits is
+		// English number formatting, which the non-English pass varies and this test is not about.
+		expect(modelProblems(model, 'type')).toContain(
+			`the weights total ${num(99.999)}, not 100 (${num(0.001)} short)`,
+		);
 	});
 
 	it('refuses a type property that collides with a scoring key', () => {

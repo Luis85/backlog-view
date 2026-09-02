@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { Catalog, setLocale } from '../../src/i18n/t';
+import { resetLocale } from '../helpers/locale';
 import { BOARD_WORKFLOW, boardVault, expandColumns, makeBoard } from '../helpers/board';
 import { installObsidianDom } from '../helpers/dom';
 import { setScopeFlag } from '../../src/view/scopeFolds';
@@ -57,7 +58,7 @@ const xx: Catalog = markedCatalog();
 
 beforeEach(() => setLocale('xx', { xx }));
 // Resolution is module state by design (once, at load), so each test puts it back.
-afterEach(() => setLocale('en'));
+afterEach(() => resetLocale());
 
 /**
  * Every string a projection put where a person could read it — the leaves' text, and the
