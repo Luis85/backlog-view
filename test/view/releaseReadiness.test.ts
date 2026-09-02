@@ -34,6 +34,12 @@ describe("a release's readiness on screen", () => {
 		vault.addFile('Huge.md', { frontmatter: { type: 'Release' } });
 		vault.addFile('H1.md', { frontmatter: { type: 'PBI', order: 1, release: '[[Huge]]', effort: 1e308 } });
 		vault.addFile('H2.md', { frontmatter: { type: 'PBI', order: 2, release: '[[Huge]]', effort: 1e308 } });
+		// ONE huge member, and done: the sum stays finite so the aggregate guard passes, and
+		// it is the percentage's own numerator that overflows.
+		vault.addFile('One.md', { frontmatter: { type: 'Release' } });
+		vault.addFile('O1.md', {
+			frontmatter: { type: 'PBI', order: 1, release: '[[One]]', effort: 1e308, status: 'Done' },
+		});
 		return vault;
 	}
 
@@ -212,6 +218,28 @@ describe("a release's readiness on screen", () => {
 		expect(strip?.textContent).not.toContain('NaN');
 		// The unestimated COUNT is a number of members and cannot overflow, so it survives.
 		expect(strip?.textContent).toContain('0 unestimated');
+	});
+
+	it('computes a percentage without overflowing its own numerator', () => {
+		// The aggregate guard checks the SUM. `100 * done` overflows before the division does
+		// its work, so a single finite estimate of 1e308 drew `Infinity%` with every total
+		// finite and the guard satisfied — a second overflow door behind the first, found by
+		// a review bot on the commit that closed the first.
+		const { containerEl } = openScope(CONFIGURED, 'One.md');
+		const strip = containerEl.querySelector('.pbl-rel-summary');
+		expect(strip?.textContent).not.toContain('Infinity');
+		expect(strip?.textContent).not.toContain('NaN');
+		expect(strip?.textContent).toContain('(100%)');
+	});
+
+	it('names the estimate property on the overflow path too', () => {
+		// The early return added for the overflowed total skipped the provenance span the
+		// ordinary path draws, so the one state where a reader most needs to know WHICH
+		// property to go and fix was the one state that did not say. Found by a review bot on
+		// the commit that added the branch.
+		const { containerEl } = openScope(CONFIGURED, 'Huge.md');
+		const said = [...containerEl.querySelectorAll('.pbl-rel-summary .pbl-sr-only')].map((el) => el.textContent).join(' | ');
+		expect(said).toContain('Estimates read effort.');
 	});
 
 	it('plans no write while the screen renders', () => {

@@ -208,6 +208,10 @@ export function drawReadinessFigures(
 	if (readiness.estimatedEffort.invalid) {
 		sumEl.createSpan({ cls: 'pbl-rel-unreadable', text: t('release.scope.effortUnreadable') });
 		drawUnestimated(sumEl, readiness);
+		// The provenance too, and this branch skipped it until a review bot noticed: the one
+		// state where a reader most needs to know WHICH property to go and fix was the one
+		// state that did not say so.
+		drawEstimateProvenance(sumEl, settings);
 		return;
 	}
 	if (total === null) {
@@ -228,10 +232,19 @@ export function drawReadinessFigures(
 	if (estimatedMembers > 0) drawEffort(sumEl, total, done);
 	else sumEl.createSpan({ cls: 'pbl-rel-unreadable', text: t('release.scope.effortNothingToSum') });
 	drawUnestimated(sumEl, readiness);
-	// Step 5 again, for the figures rather than the chips. All three read ONE key, which is
-	// why one sentence covers them — the reason `estimateKey` is one option and not three.
-	// Hidden text only: `drawSummary` already owns the strip's tooltip for the progress
-	// figure, and overwriting it would trade this provenance for that one.
+	drawEstimateProvenance(sumEl, settings);
+}
+
+/**
+ * Step 5 again, for the figures rather than the chips. All three read ONE key, which is why
+ * one sentence covers them — the reason `estimateKey` is one option and not three. Hidden
+ * text only: `drawSummary` already owns the strip's tooltip for the progress figure, and
+ * overwriting it would trade this provenance for that one.
+ *
+ * A function rather than a line, because there are two paths out of
+ * {@link drawReadinessFigures} and one of them forgot it.
+ */
+function drawEstimateProvenance(sumEl: HTMLElement, settings: ReleaseSettings): void {
 	sumEl.createSpan({ cls: 'pbl-sr-only', text: t('release.scope.provenanceEstimate', { property: settings.estimateKey }) });
 }
 
@@ -258,6 +271,11 @@ function drawEffort(sumEl: HTMLElement, total: number, done: number | null): voi
 	// `NaN` that would be drawn as one. Zero is the only case left: negative estimates are
 	// refused at the reader, so `0 <= done <= total` holds and the percentage cannot come out
 	// negative or above 100.
-	const pct = total === 0 ? 0 : Math.round((100 * done) / total);
+	// **Divide BEFORE multiplying.** `100 * done` overflows to `Infinity` for a `done` near
+	// `Number.MAX_VALUE` even though `done` and `total` are both finite and the aggregate
+	// guard in `effortFigures` passed — a second overflow door behind the first, which drew
+	// `∞%`. `done / total` is bounded by 1 (estimates are non-negative and `done <= total`),
+	// so the multiplication after it cannot overflow.
+	const pct = total === 0 ? 0 : Math.round(100 * (done / total));
 	sumEl.createSpan({ cls: 'pbl-rel-figure', text: t('release.scope.effort', { done, total, pct }) });
 }
