@@ -43,7 +43,8 @@ interface Boundary {
 	script: string;
 	name: string;
 	params: number;
-	typed: number;
+	/** Parameters carrying no typed `@param` of their own, by the name the source spells. */
+	untyped: string[];
 }
 
 /**
@@ -54,6 +55,16 @@ interface Boundary {
  * comment above `export const prose = (text) => …` attaches to the VariableStatement, two
  * nodes up from the arrow. The first version of this walk read the arrow's own parent and
  * reported both of `docs-markdown.mjs`'s prose helpers as undocumented when they are not.
+ *
+ * **Asked of each PARAMETER, never of a total** — the correction of review round 1 on
+ * PR #256, and it is this pass's own named defect wearing a new shape. Counting typed
+ * `@param` tags and comparing the total to the arity agrees by construction whenever the
+ * two errors cancel: a tag duplicated or misspelled for one parameter, another parameter
+ * with none, `2 === 2`, no gap reported, and the untagged one an `any` at every call site.
+ * Reproduced on `headings` before the fix — two `text` tags, `depth` undocumented, both
+ * tests green. `ts.getJSDocParameterTags` matches a tag to the parameter it names, and
+ * falls back to position for a DESTRUCTURED parameter, which `health-collect.mjs`'s `rank`
+ * is the one instance of here.
  */
 const boundaries = (): Boundary[] => {
 	const imported = new Map<string, Set<string>>();
@@ -100,10 +111,10 @@ const boundaries = (): Boundary[] => {
 			const fn = fns.get(name);
 			// Not a function export — a constant, a class, a re-export. Nothing to type.
 			if (!fn) continue;
-			const typed = ts
-				.getJSDocTags(fn)
-				.filter((tag): tag is ts.JSDocParameterTag => ts.isJSDocParameterTag(tag) && tag.typeExpression !== undefined);
-			out.push({ script, name, params: fn.parameters.length, typed: typed.length });
+			const untyped = fn.parameters
+				.filter((param) => !ts.getJSDocParameterTags(param).some((tag) => tag.typeExpression !== undefined))
+				.map((param) => param.name.getText(src));
+			out.push({ script, name, params: fn.parameters.length, untyped });
 		}
 	}
 	return out;
@@ -112,14 +123,20 @@ const boundaries = (): Boundary[] => {
 describe('the scripts/ boundary a test calls across', () => {
 	it('types every parameter of every exported function a test imports', () => {
 		const found = boundaries();
-		const gaps = found.filter((b) => b.typed < b.params).map((b) => `${b.script}#${b.name}`);
+		const gaps = found.flatMap((b) => b.untyped.map((param) => `${b.script}#${b.name}(${param})`));
 		expect(gaps).toEqual([]);
-		// Not vacuous: a walk that found nothing reports no gaps and would pass. A floor
-		// rather than the number, so an added import does not fail this — and a named
-		// instance, so a rewrite that stopped seeing `export const` arrows cannot stay
-		// green (`prose` is one, and is the shape the first version of this walk missed).
+		// Not vacuous, and the three guards are three different ways this could go hollow.
+		// A walk that found nothing reports no gaps and would pass — hence a floor on the
+		// functions, kept a floor rather than the number so an added import does not fail
+		// this. A walk that lost `export const` arrows would still find 23 declarations one
+		// day and none of them `prose`, which is the shape its first version missed — hence
+		// the name. And a walk that stopped reading PARAMETERS would report every function
+		// as gapless, since a function with no parameters has nothing to report — hence the
+		// count of parameters actually inspected, which the aggregate version could not have
+		// asserted at all.
 		expect(found.length).toBeGreaterThanOrEqual(23);
 		expect(found.some((b) => b.script === 'docs-markdown.mjs' && b.name === 'prose')).toBe(true);
+		expect(found.reduce((total, b) => total + b.params, 0)).toBeGreaterThanOrEqual(29);
 	});
 
 	/**

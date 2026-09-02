@@ -103,6 +103,39 @@ does.
 Restored from a copy saved outside the repository, not with `git checkout`, per the
 standing rule.
 
+## And review found the census agreeing with itself (PR #256, round 1)
+
+The committed check counted typed `@param` tags and compared the total to the arity:
+`typed === params`, no gap. **Two errors cancel in that comparison**, and Codex's review
+named the pair — a tag duplicated or misspelled for one parameter, another parameter with
+none. `2 === 2`, no gap reported, and the untagged parameter an `any` at every call site
+in `test/`.
+
+**Reproduced before it was fixed**, on `headings`: two `@param {string} text` tags,
+`depth` undocumented, **both tests green**. The probe stayed green too, and for the reason
+this note already gives — `depth` has a default, so the compiler infers it either way,
+which is precisely why the census cannot be the only thing looking.
+
+This is the rule this pass was handed, met inside the check written to enforce it:
+**deriving an assertion from the same shape as the thing under test makes it agree by
+construction.** A total is that shape. `ts.getJSDocParameterTags(parameter)` asks each
+parameter for its own tag instead, and the gap list now names the parameter rather than
+the function.
+
+Watched failing on the same planted input, which now reports
+`docs-markdown.mjs#headings(depth)`.
+
+`health-collect.mjs`'s `rank` is the one destructured parameter here, and the fallback
+that covers it was measured in both directions rather than taken from the API's
+documentation: **renaming** its tag from `sources` to `notSources` leaves the check green
+(so the match is by POSITION, not by name), and **removing** the tag turns it red. A
+per-parameter check that silently reported every destructured parameter as a gap would
+have been the opposite failure and just as invisible.
+
+The third assertion in the non-vacuity guard came from the same round: the parameter
+COUNT the walk inspected, which the aggregate version had no way to assert, and which is
+what fails if a rewrite stops reading parameters at all.
+
 ## What was refused, and on what evidence
 
 **`checkJs`, in every spelling.** The parent note measured 253 errors over the whole of
