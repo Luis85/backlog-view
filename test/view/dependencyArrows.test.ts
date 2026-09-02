@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { FakeVault } from '../helpers/vault';
 import { useViewHarness } from '../helpers/view';
 import { markersLane, markFor, roadmapView, rowFor, shelfOf, shelfTitles, timelineRowEls } from '../helpers/roadmap';
+import { beforeWindow, fromToday, HALF_WINDOW } from '../helpers/window';
 
 /**
  * The arrow layer on the dated axis — `renderDependencyArrows` in
@@ -509,9 +510,19 @@ describe('a route clipped at the left edge keeps itself out of the lead column',
 		// which reaches BACK along the run it terminates, would be invisible there and
 		// the clipped edge would show a line with no direction on it.
 		const vault = new FakeVault();
-		vault.addFile('Anchor.md', { frontmatter: { type: 'PBI', order: 10, start: '2026-08-01', due: '2026-08-05' } });
+		// Derived: the anchor has to sit INSIDE the clamped window and the dependent has to
+		// start before its left edge, and both are positions around today rather than dates.
+		// `beforeWindow(HALF_WINDOW)` is a full half-window past that edge, which is also what
+		// keeps the total span over `MAX_TIMELINE_DAYS` and so keeps the window clamped at all.
+		vault.addFile('Anchor.md', { frontmatter: { type: 'PBI', order: 10, start: fromToday(0), due: fromToday(4) } });
 		vault.addFile('Long.md', {
-			frontmatter: { type: 'PBI', order: 20, dependsOn: 'Anchor', start: '2020-01-01', due: '2026-09-01' },
+			frontmatter: {
+				type: 'PBI',
+				order: 20,
+				dependsOn: 'Anchor',
+				start: beforeWindow(HALF_WINDOW),
+				due: fromToday(30),
+			},
 		});
 		const { containerEl } = roadmapView(vault, { ...DATES });
 

@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { FakeVault } from '../helpers/vault';
 import { useViewHarness } from '../helpers/view';
 import { laneRoadmap, rowFor } from '../helpers/roadmap';
+import { clampingSpan, fromToday, pastWindow } from '../helpers/window';
 import { ALICE_AWAY, ALICE_AWAY_PATH, absenceVault } from '../helpers/resources';
 import { addDays, formatCivil, MAX_TIMELINE_DAYS } from '../../src/domain/timeline';
 import { readDate, todayStamp } from '../../src/domain/noteFields';
@@ -34,7 +35,7 @@ function clampedVault(): FakeVault {
 	const vault = new FakeVault();
 	vault.addFile('Alice.md', { frontmatter: { type: 'Resource' } });
 	vault.addFile('Long.md', {
-		frontmatter: { type: 'Epic', order: 5, assignee: 'Alice', start: '2020-01-01', due: '2032-01-01' },
+		frontmatter: { type: 'Epic', order: 5, assignee: 'Alice', ...clampingSpan() },
 	});
 	return vault;
 }
@@ -125,11 +126,13 @@ describe('the days a band is unavailable, shaded across its work', () => {
 		// `.pbl-bar-outside` is a direction rather than a span; a shaded column of days has no
 		// such vocabulary, so it draws nothing at all.
 		const vault = clampedVault();
+		// Derived, because this vault's window is CLAMPED: "inside it" is a position around
+		// today, and a typed date drifts out of it as the clock advances.
 		vault.addFile('Alice away.md', {
-			frontmatter: { type: 'Absence', assignee: 'Alice', start: '2026-08-04', due: '2026-08-06' },
+			frontmatter: { type: 'Absence', assignee: 'Alice', start: fromToday(2), due: fromToday(4) },
 		});
 		vault.addFile('Far away.md', {
-			frontmatter: { type: 'Absence', assignee: 'Alice', start: '2031-01-04', due: '2031-01-20' },
+			frontmatter: { type: 'Absence', assignee: 'Alice', start: pastWindow(), due: pastWindow(76) },
 		});
 		const { containerEl } = laneRoadmap(vault);
 
@@ -226,13 +229,13 @@ describe('the mark a bar carries for crossing one', () => {
 		// the same construction the wash's own outside-window test uses.
 		const vault = clampedVault();
 		vault.addFile('Far work.md', {
-			frontmatter: { type: 'Epic', order: 10, assignee: 'Alice', start: '2031-01-01', due: '2031-01-31' },
+			frontmatter: { type: 'Epic', order: 10, assignee: 'Alice', start: pastWindow(-3), due: pastWindow(87) },
 		});
 		vault.addFile('Near work.md', {
 			frontmatter: { type: 'Epic', order: 20, assignee: 'Alice', start: '2026-08-01', due: '2026-08-10' },
 		});
 		vault.addFile('Far away.md', {
-			frontmatter: { type: 'Absence', assignee: 'Alice', start: '2031-01-04', due: '2031-01-20' },
+			frontmatter: { type: 'Absence', assignee: 'Alice', start: pastWindow(), due: pastWindow(76) },
 		});
 		const { containerEl } = laneRoadmap(vault);
 

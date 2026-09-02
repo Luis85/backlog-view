@@ -8,6 +8,7 @@ import { makeMyWorkView, myWorkVault } from '../helpers/mywork';
 import { horizonVault, laneRoadmap, makeRoadmap, roadmapView } from '../helpers/roadmap';
 import { makeReleaseView, RELEASE_CONFIG, releaseVault, scopeVault } from '../helpers/release';
 import { countingVault, resourceVault } from '../helpers/resources';
+import { beyondPlan, fromToday } from '../helpers/window';
 import { FakeVault } from '../helpers/vault';
 import { clickExpandAll, fixture, makeView, treeOf } from '../helpers/view';
 import { MARK, markedCatalog, useMarkedLocale } from './fixtures';
@@ -232,9 +233,13 @@ describe('a lane with absences reads its own words from the catalog', () => {
 	it('leaves nothing but dates, names and titles unmarked when a bar crosses an absence', () => {
 		// One absence inside the bar's span, one ahead of today: the first draws the
 		// days-lost pair on the bar, the second the away pill on the lane's lead.
+		// Derived: 'Later' pushes the plan past `MAX_TIMELINE_DAYS`, so the window clamps
+		// around today — and then "inside the bar's span" and "ahead of today" are both
+		// positions relative to today rather than dates. Typed as 2026 and 2099 they were
+		// both true when written and the first stopped being so as the clock advanced.
 		const vault = countingVault([
-			{ title: 'Away', start: '2026-08-04', target: '2026-08-06' },
-			{ title: 'Later', start: '2099-01-05', target: '2099-01-09' },
+			{ title: 'Away', start: fromToday(3), target: fromToday(5) },
+			{ title: 'Later', start: beyondPlan(), target: beyondPlan(4) },
 		]);
 		// A MARKER too: its diamond carries the only copy of the span sentence, since it
 		// has no row to put one in, and no other fixture on this axis draws one.

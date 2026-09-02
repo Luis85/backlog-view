@@ -1,60 +1,61 @@
 {
-  "name": "product-backlog-view",
-  "version": "0.10.0",
-  "description": "Obsidian Bases view that displays notes as a product backlog: a drag-and-drop tree of Epics, Features, PBIs and Tasks, a kanban board with WIP limits, a roadmap, a release view and a weighted estimation view, inspired by Azure DevOps Boards.",
-  "main": "main.js",
-  "scripts": {
-    "dev": "node scripts/esbuild.config.mjs",
-    "build": "tsc -noEmit -skipLibCheck && node scripts/esbuild.config.mjs production",
-    "typecheck:test": "tsc -p tsconfig.test.json --noEmit",
-    "test-build": "tsc -noEmit -skipLibCheck && node scripts/test-build.mjs",
-    "harness": "node scripts/harness.mjs",
-    "perf": "node scripts/perf.mjs",
-    "test": "vitest run",
-    "test:watch": "vitest",
-    "test:coverage": "vitest run --coverage && node scripts/coverage-floors.mjs",
-    "lint": "eslint .",
-    "lint:md": "markdownlint-cli2",
-    "analyze": "fallow",
-    "docs": "node scripts/docs-check.mjs",
-    "health": "node scripts/health-collect.mjs && node scripts/health-render.mjs",
-    "audit": "npm audit --omit=dev --audit-level=critical",
-    "check": "npm run build && npm run typecheck:test && npm run lint && npm run lint:md && npm run test:coverage && npm run analyze && npm run docs",
-    "version": "node scripts/version-bump.mjs && git add manifest.json versions.json"
-  },
-  "keywords": [
-    "obsidian",
-    "obsidian-plugin",
-    "bases",
-    "backlog"
-  ],
-  "author": "Luis85",
-  "license": "MIT",
-  "devDependencies": {
-    "@types/node": "^22.20.1",
-    "@typescript-eslint/parser": "^8.68.0",
-    "@vitest/coverage-v8": "^4.1.11",
-    "esbuild": "^0.28.2",
-    "eslint": "^10.9.1",
-    "eslint-plugin-obsidianmd": "^0.4.2",
-    "fallow": "^3.19.0",
-    "jsdom": "^30.0.1",
-    "lucide-static": "^1.34.0",
-    "markdownlint-cli2": "^0.23.2",
-    "mdast-util-from-markdown": "^2.0.3",
-    "mdast-util-gfm-table": "^2.0.0",
-    "micromark-extension-gfm-table": "^2.1.1",
-    "obsidian": "1.12.0",
-    "typescript": "~6.0.3",
-    "typescript-eslint": "^8.68.0",
-    "vitest": "^4.1.10"
-  },
-  "engines": {
-    "node": ">=22"
-  },
-  "dependencies": {
-    "@atlaskit/pragmatic-drag-and-drop": "^3.0.0",
-    "@atlaskit/pragmatic-drag-and-drop-auto-scroll": "^3.1.0",
-    "@atlaskit/pragmatic-drag-and-drop-live-region": "^2.0.0"
-  }
+	"name": "product-backlog-view",
+	"version": "0.10.0",
+	"description": "Obsidian Bases view that displays notes as a product backlog: a drag-and-drop tree of Epics, Features, PBIs and Tasks, a kanban board with WIP limits, a roadmap, a release view and a weighted estimation view, inspired by Azure DevOps Boards.",
+	"main": "main.js",
+	"scripts": {
+		"dev": "node scripts/esbuild.config.mjs",
+		"build": "tsc -noEmit -skipLibCheck && node scripts/esbuild.config.mjs production",
+		"typecheck:test": "tsc -p tsconfig.test.json --noEmit",
+		"test-build": "tsc -noEmit -skipLibCheck && node scripts/test-build.mjs",
+		"harness": "node scripts/harness.mjs",
+		"perf": "node scripts/perf.mjs",
+		"test": "vitest run",
+		"test:watch": "vitest",
+		"test:coverage": "vitest run --coverage && node scripts/coverage-floors.mjs",
+		"lint": "eslint .",
+		"lint:md": "markdownlint-cli2",
+		"analyze": "fallow",
+		"docs": "node scripts/docs-check.mjs",
+		"health": "node scripts/health-collect.mjs && node scripts/health-render.mjs",
+		"audit": "npm audit --omit=dev --audit-level=critical",
+		"check": "npm run build && npm run typecheck:test && npm run lint && npm run lint:md && npm run test:coverage && npm run analyze && npm run docs",
+		"version": "node scripts/version-bump.mjs && git add manifest.json versions.json",
+		"clock": "vitest run --config scripts/vitest.clock.mts"
+	},
+	"keywords": [
+		"obsidian",
+		"obsidian-plugin",
+		"bases",
+		"backlog"
+	],
+	"author": "Luis85",
+	"license": "MIT",
+	"devDependencies": {
+		"@types/node": "^22.20.1",
+		"@typescript-eslint/parser": "^8.68.0",
+		"@vitest/coverage-v8": "^4.1.11",
+		"esbuild": "^0.28.2",
+		"eslint": "^10.9.1",
+		"eslint-plugin-obsidianmd": "^0.4.2",
+		"fallow": "^3.19.0",
+		"jsdom": "^30.0.1",
+		"lucide-static": "^1.34.0",
+		"markdownlint-cli2": "^0.23.2",
+		"mdast-util-from-markdown": "^2.0.3",
+		"mdast-util-gfm-table": "^2.0.0",
+		"micromark-extension-gfm-table": "^2.1.1",
+		"obsidian": "1.12.0",
+		"typescript": "~6.0.3",
+		"typescript-eslint": "^8.68.0",
+		"vitest": "^4.1.10"
+	},
+	"engines": {
+		"node": ">=22"
+	},
+	"dependencies": {
+		"@atlaskit/pragmatic-drag-and-drop": "^3.0.0",
+		"@atlaskit/pragmatic-drag-and-drop-auto-scroll": "^3.1.0",
+		"@atlaskit/pragmatic-drag-and-drop-live-region": "^2.0.0"
+	}
 }
