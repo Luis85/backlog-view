@@ -54,7 +54,10 @@ describe("a release's readiness on screen", () => {
 		// Three chips saying nothing three times is noise on exactly the vault that most
 		// needs signal. One chip still LISTS them, which is what the readiness note asks;
 		// the tooltip names all three.
-		const { containerEl } = openScope(RELEASE_CONFIG);
+		// The three keys are CLEARED rather than left to `RELEASE_CONFIG`'s silence: ✨ binds
+		// all three since 2026-09-01, so that fixture is a configured vault again and a test
+		// whose whole claim is "nothing is configured" has to say so itself.
+		const { containerEl } = openScope({ ...RELEASE_CONFIG, estimateProperty: '', dependsOnProperty: '', riskProperty: '' });
 		const chips = [...containerEl.querySelectorAll('.pbl-rel-crit')] as HTMLElement[];
 		expect(chips).toHaveLength(1);
 		// The three names are reachable without a pointer: a tooltip on a static, unfocusable
