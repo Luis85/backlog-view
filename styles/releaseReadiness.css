@@ -1,0 +1,39 @@
+/* The readiness chip row, under the footline. `.pbl-state-chip` (columns.css) supplies the
+   whole chip; this partial adds only the three verdict colours and the row's own layout.
+
+   `max-width: none` overrides the chip's own 140px cap, which exists for a property column
+   and would clip a sentence here. */
+.pbl-rel-ready {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: var(--size-4-2);
+	padding-block-start: var(--size-4-2);
+}
+
+.pbl-rel-crit {
+	max-width: none;
+}
+
+/* Obsidian's own semantic colours, never literals — a themed vault restates these and the
+   chips follow it. Border AND text, so the verdict survives a theme that flattens one. */
+.pbl-rel-crit-ok {
+	color: var(--text-success);
+	border-color: var(--text-success);
+}
+
+.pbl-rel-crit-part {
+	color: var(--text-warning);
+	border-color: var(--text-warning);
+}
+
+.pbl-rel-crit-no {
+	color: var(--text-error);
+	border-color: var(--text-error);
+}
+
+/* Recessive on purpose: an unbound key is a setup task, not a release blocker, so it must
+   not compete with a real verdict beside it. */
+.pbl-rel-crit-unset {
+	font-style: italic;
+}

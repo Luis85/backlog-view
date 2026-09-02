@@ -61,7 +61,10 @@ describe("a release's scope on screen", () => {
 		const tree = containerEl.querySelector('.pbl-tree') as HTMLElement;
 		expect(tree.querySelectorAll('.pbl-state-chip')).toHaveLength(0);
 		expect(tree.querySelectorAll('.pbl-count')).toHaveLength(0);
-		expect(containerEl.querySelectorAll('.pbl-rel-header .pbl-state-chip')).toHaveLength(1);
+		// Named `.pbl-rel-status` rather than counting every `.pbl-state-chip` in the header:
+		// the readiness row draws that same chip shell too (2026-09-02), so a bare count here
+		// stopped being about the release's own status the moment a second kind joined it.
+		expect(containerEl.querySelectorAll('.pbl-rel-header .pbl-rel-status')).toHaveLength(1);
 	});
 
 	it('anchors the state chip and rollup at the row’s end with a spacer, matching the tree’s own rows', () => {

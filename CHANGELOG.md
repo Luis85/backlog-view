@@ -44,6 +44,9 @@ See [RELEASING.md](RELEASING.md) for how this file is kept in step with a releas
   and bracketed, so a layout can be looked at in something that is not English. It ships in
   no release; set `localStorage['product-backlog-locale']` and reload to see it.
 - CI runs the whole test suite a second time in a non-English locale.
+- Release readiness on a release's own screen: three criteria — everything estimated,
+  dependencies resolved, critical risks addressed — beside the effort totals, the estimate
+  progress and how much of the scope carries no estimate at all.
 
 ### Changed
 
