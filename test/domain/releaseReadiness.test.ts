@@ -589,4 +589,22 @@ describe('the critical risk predicate', () => {
 		expect(criterion?.cleared).toBe(1);
 		expect(criterion?.outstanding).toBe(2);
 	});
+
+	it('does not call a repeated prerequisite unreadable', () => {
+		// `settle` collapses duplicate RESOLVED entries on purpose, so `dependsOn: [A, A]`
+		// yields one prerequisite from two declared values. Inferring "the reader rejected
+		// something" from that difference marked a perfectly readable member unreadable —
+		// which is why this counts what the reader REFUSES rather than comparing totals.
+		// Introduced by the fix for malformed values and caught by a review bot on it.
+		const vault = new FakeVault();
+		vault.addFile('R.md', { frontmatter: { type: 'Release' } });
+		vault.addFile('Done.md', { frontmatter: { type: 'PBI', order: 1, status: 'Done' } });
+		vault.addFile('Twice.md', {
+			frontmatter: { type: 'PBI', order: 2, release: '[[R]]', dependsOn: ['[[Done]]', '[[Done]]'] },
+		});
+		const criterion = blockedReadiness(vault).criteria.find((c) => c.key === 'blocked');
+		expect(criterion?.unreadable).toBe(0);
+		// And the prerequisite is done, so the member clears.
+		expect(criterion?.cleared).toBe(1);
+	});
 });

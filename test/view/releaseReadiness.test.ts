@@ -242,6 +242,23 @@ describe("a release's readiness on screen", () => {
 		expect(said).toContain('Estimates read effort.');
 	});
 
+	it('says a satisfied criterion is satisfied, not only in colour', () => {
+		// The acceptance criterion is "each criterion states satisfied, partly with a count,
+		// or not". A satisfied chip drew the bare name and left the verdict to its border
+		// colour, so a screen reader heard "Estimated" and a reader who cannot tell the
+		// colours apart saw the same. Found by a review bot.
+		//
+		// The VISIBLE text stays the bare name — that is the design the harness was looked at
+		// with, and a count on a chip that has nothing outstanding is noise for the reader who
+		// can see the colour. The verdict rides a hidden span instead, which is this module's
+		// established answer for a static unfocusable chip.
+		const { containerEl } = openScope(CONFIGURED, 'Zeros.md');
+		const chip = containerEl.querySelector('.pbl-rel-crit[data-criterion="estimated"]');
+		expect(chip?.textContent).toContain('Estimated');
+		expect(chip?.querySelector('.pbl-sr-only')?.textContent).toContain('satisfied');
+		expect(chip?.querySelector('.pbl-sr-only')?.textContent).toContain('2 of 2');
+	});
+
 	it('plans no write while the screen renders', () => {
 		// The category check on the CALL, not a list of the paths somebody thought of: this
 		// whole increment is a read, and the next render path added must not be able to

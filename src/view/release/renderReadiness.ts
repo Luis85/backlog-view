@@ -104,6 +104,11 @@ function drawChip(
 	chipEl.dataset.criterion = criterion.key;
 	const provenance = criterion.verdict === 'unconfigured' ? '' : criterionProvenance(criterion.key, settings, planSettings);
 	setTooltip(chipEl, provenance === '' ? name : `${name}. ${provenance}`);
+	// The verdict first, then what produced it. Only `satisfied` needs saying: every other
+	// verdict is already in the chip's own visible text, and repeating it here would have a
+	// screen reader read it twice.
+	const spoken = satisfiedText(criterion, name);
+	if (spoken !== '') chipEl.createSpan({ cls: 'pbl-sr-only', text: spoken });
 	if (provenance !== '') chipEl.createSpan({ cls: 'pbl-sr-only', text: provenance });
 }
 
@@ -151,6 +156,21 @@ function criterionProvenance(
 		property: settings.riskKey,
 		critical: settings.criticalRiskValues,
 		addressed: settings.addressedRiskValues,
+	});
+}
+
+/**
+ * A satisfied chip draws the bare name and carries its verdict in the border colour alone,
+ * which states nothing to a screen reader and nothing to a reader who cannot tell the colours
+ * apart — against the acceptance criterion that each criterion STATES satisfied. Empty for
+ * every other verdict, whose own words are already in {@link chipText}.
+ */
+function satisfiedText(criterion: ReleaseCriterion, name: string): string {
+	if (criterion.verdict !== 'satisfied' || criterion.cleared === null || criterion.outstanding === null) return '';
+	return t('release.scope.readinessSatisfied', {
+		criterion: name,
+		cleared: criterion.cleared,
+		count: criterion.cleared + criterion.outstanding,
 	});
 }
 

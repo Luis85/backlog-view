@@ -2007,6 +2007,14 @@ export const en = {
 	 *  unreadable ones stated rather than folded into the total. */
 	'release.scope.readinessPartlyUnreadable': '{criterion}: {outstanding} of {count} outstanding, {unreadable} unreadable',
 	'release.scope.readinessUnconfigured': '{criterion}: not configured',
+	/**
+	 * A satisfied chip's verdict, for the readers its border colour does not reach. The chip's
+	 * VISIBLE text stays the bare criterion name — the design the harness was looked at with,
+	 * and a count with nothing outstanding is noise beside a colour that already says so — so
+	 * this rides the same hidden span the provenance does. The acceptance criterion is that
+	 * each criterion STATES satisfied, which a colour alone does not do.
+	 */
+	'release.scope.readinessSatisfied': '{criterion}: satisfied, {cleared} of {count}.',
 	/** Every criterion unconfigured — one chip rather than three saying nothing. The chip's
 	 *  own hidden text names all three, so nothing is hidden by the collapse. */
 	'release.scope.readinessNoneConfigured': {

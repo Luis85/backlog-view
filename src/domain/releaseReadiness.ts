@@ -355,23 +355,28 @@ function effortFigures(
 }
 
 /**
- * How many entries this member's prerequisite property declares that the model never got.
+ * How many entries this member's prerequisite property holds that a link reader cannot read
+ * at all — `readLinkList` skips a non-string silently, so these reach no list and would
+ * otherwise leave a garbage `dependsOn` looking like no dependencies.
+ *
+ * **Counted at the REFUSAL, never inferred from a total.** This compared the declared count
+ * against the model's two lists until a review bot pointed out what that infers wrongly:
+ * `settle` collapses duplicate resolved entries on purpose, so `dependsOn: [A, A]` yields one
+ * prerequisite from two values and the difference marked a perfectly readable member
+ * unreadable. Asking which values the reader REFUSES has no such coupling — it is the same
+ * test `readLinkList` itself applies, and it stays correct however the model dedupes.
  *
  * The raw value is re-read here rather than a signal being threaded out of `readLinkList`,
  * which is shared with the parent link and every other link reader: widening that return
  * type would change what four other callers see to answer a question only this criterion
- * asks. An empty string and an empty list are ABSENT, not malformed — a member declaring
- * nothing clears, which is the "no edges is resolved" rule this must not break.
+ * asks. `null`, `undefined` and a blank string are ABSENT rather than malformed — a member
+ * declaring nothing clears, which is the "no edges is resolved" rule this must not break.
  */
 function unreadableEntries(app: App, item: BacklogItem, settings: ReleaseSettings): number {
 	const raw: unknown = ownValue(app.metadataCache.getFileCache(item.file)?.frontmatter, settings.dependsOnKey);
 	if (raw === undefined || raw === null) return 0;
 	const values: unknown[] = Array.isArray(raw) ? raw : [raw];
-	const declared = values.filter((value) => !(typeof value === 'string' && value.trim() === '')).length;
-	// What the model KEPT — resolved edges plus the ones it resolved and refused. Anything
-	// declared beyond that never reached it.
-	const read = item.prerequisites.length + item.brokenPrerequisites.length;
-	return Math.max(0, declared - read);
+	return values.filter((value) => value !== null && value !== undefined && typeof value !== 'string').length;
 }
 
 function estimateOf(app: App, item: BacklogItem, settings: ReleaseSettings): unknown {
