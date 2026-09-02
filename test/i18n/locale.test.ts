@@ -363,4 +363,25 @@ describe('collation, folding and numbers follow the requested locale', () => {
 		expect(formatNumber(9.9e-7, true)).toBe('9,9E-7');
 		expect(formatNumber(1234.5, true)).toBe('1.234,5');
 	});
+
+	it('shows a rounded-away negative as zero, not as minus zero', () => {
+		// IEEE negative zero is a real value `Math.round` produces — `round2(-0.001)` is
+		// `-0`, and a scoring model may legitimately span negatives (`outputMin` need only
+		// be an integer below `outputMax`, so `-1`..`1` is valid), so a weighted total
+		// landing just under zero rounds to `-0` and reaches the table.
+		//
+		// `String(-0)` is `'0'`; `Intl.NumberFormat` renders `'-0'`. So the switch to
+		// `Intl` put a meaningless minus sign on a score that had rounded to nothing.
+		// Normalized once where the numbers reach `Intl`, not at the callers.
+		// Found by review (Codex, PR #251, third round).
+		setLocale('en');
+		expect(formatNumber(-0)).toBe('0');
+		expect(formatNumber(-0, true)).toBe('0');
+		// A real negative keeps its sign — the guard is for the signed ZERO alone.
+		expect(formatNumber(-0.01, true)).toBe('-0.01');
+		// The same guard on the other path a number takes to `Intl` in this module: a
+		// numeric message parameter, which `fill` formats itself.
+		expect(t('count.shownOfTotal', { shown: -0, total: 3 })).toContain('0');
+		expect(t('count.shownOfTotal', { shown: -0, total: 3 })).not.toContain('-0');
+	});
 });

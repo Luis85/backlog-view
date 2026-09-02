@@ -296,6 +296,26 @@ const SPELLED_OUT_FROM = 1e-6;
 const SPELLED_OUT_BELOW = 1e21;
 
 /**
+ * IEEE negative zero, made ordinary before any formatter sees it.
+ *
+ * `-0` is a value arithmetic really produces — `Math.round(-0.001)` is `-0`, so
+ * `weightedScore.ts`'s `round2` returns it for any weighted total that lands just below
+ * zero, and a scoring model may legitimately span negatives (`outputMin` need only be an
+ * integer below `outputMax`). `String(-0)` is `'0'` and hid this; `Intl.NumberFormat`
+ * spells it `'-0'`, so the switch to `Intl` put a meaningless minus sign on a score that
+ * had rounded away to nothing.
+ *
+ * Normalized HERE rather than at the callers, because "a number this module hands to
+ * `Intl`" is one category with exactly two members — `formatNumber` and `fill` — and a
+ * guard placed at the sites that happen to produce a score today would miss the next one.
+ * `Object.is` rather than `=== -0`, which is true for plain zero as well.
+ * Found by review (Codex, PR #251).
+ */
+function withoutNegativeZero(value: number): number {
+	return Object.is(value, -0) ? 0 : value;
+}
+
+/**
  * A bare number shown to a person, in the REQUESTED locale — presentation, like collation.
  * The SAME formatter `t()` gives a `{count}` parameter, so a count outside a sentence and
  * one inside it cannot disagree; they did, at a thousand, which is what this exists for.
@@ -319,10 +339,11 @@ const SPELLED_OUT_BELOW = 1e21;
  * reach either extreme, so the default formatter stays one formatter.
  */
 export function formatNumber(value: number, precise = false): string {
-	if (!precise) return active.number.format(value);
-	const magnitude = Math.abs(value);
+	const shown = withoutNegativeZero(value);
+	if (!precise) return active.number.format(shown);
+	const magnitude = Math.abs(shown);
 	const spelledOut = magnitude === 0 || (magnitude >= SPELLED_OUT_FROM && magnitude < SPELLED_OUT_BELOW);
-	return (spelledOut ? active.numberPrecise : active.numberScientific).format(value);
+	return (spelledOut ? active.numberPrecise : active.numberScientific).format(shown);
 }
 
 /**
@@ -393,6 +414,6 @@ function fill(text: string, grammar: Grammar, values: Values | undefined): strin
 		const value = values[name];
 		if (value === undefined) return whole;
 		if (Array.isArray(value)) return grammar.list.format(value as readonly string[]);
-		return typeof value === 'number' ? active.number.format(value) : (value as string);
+		return typeof value === 'number' ? active.number.format(withoutNegativeZero(value)) : (value as string);
 	});
 }
