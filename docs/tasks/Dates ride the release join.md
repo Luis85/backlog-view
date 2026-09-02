@@ -49,7 +49,13 @@ before a line was written, and every one of them was the same mistake** — a ru
 the planner that only the writer can keep. That is the shape to hold on to while building
 this: the planner knows two values and nothing else.
 
-## What to do
+## Why it matters
+
+An item committed to a release draws no bar on the dated axis, so the release's scope is
+invisible on the one screen that shows time. Committing work to a version today means
+opening the item and typing two dates.
+
+## Approach
 
 **The planner carries. It decides nothing.**
 
@@ -110,7 +116,7 @@ definition of done**, in the same commit as the work — nothing else will, and 
 
 `CHANGELOG.md` gains its `[Unreleased]` entry in the same pull request, per `RELEASING.md`.
 
-## How it is checked
+## Acceptance criteria
 
 The PBI's acceptance criteria are the list. Three of them cannot be reached from the
 planner and belong at the writer, each as plan-then-edit-then-apply:
@@ -126,9 +132,50 @@ planner; and **the horizon drag, the timeline resize and the iteration join stil
 overwrite**, each driven against a note already holding the end being written, so a
 fill-only default leaking into `applyAxis` fails in the suite rather than in a vault.
 
-Coverage floors in `vitest.config.mts` only ever go up, and `npm run check` is the gate.
+**The files, named rather than left to search.** The planner's assertions go in
+`test/domain/releaseWrites.test.ts` (node, 112 effective lines, which already owns this
+planner). The three races and the two overwriting-path invariants go in
+`test/storage/releaseWrite.test.ts` (node, 52 effective lines — the emptiest storage file
+this work touches, and the one already about this write). The one-batch undo goes in
+`test/storage/restore.test.ts`, which already holds that shape for every other write.
+
+**The first failing test is the planner's**, and it is the cheapest red: drive
+`computeReleaseWrites` with a fixed `today` against an item whose captured dates would
+suppress each end in turn, and assert the batch carries **both** candidates anyway. It fails
+today because the function takes no `today` and carries no axis at all.
+
+**The two invariants are watched failing**, per root `CLAUDE.md`: revert the fix, run,
+see red, restore. They are the state-key assertion on the planner, and the three overwriting
+paths against `applyAxis`'s default.
+
+**Coverage.** `vitest.config.mts` carries `statements: 99.04`, `branches: 95.72`,
+`functions: 99.92`, `lines: 99.78`. Do not hand-edit them to a measurement:
+`scripts/coverage-floors.mjs` runs after the coverage run and answers how many covered units
+the tree can lose before a floor fails, and a floor pinned to what one run measured fails on
+the next — the register has that open as
+[[The coverage figure is not reproducible to a hundredth]]. Raise a floor only where that
+script reports the headroom to do it, and below the one-fewer figure.
+
 What none of it reaches is Obsidian itself — the real `processFrontMatter`, the note's own
 date spelling, and the redraw — which is
 [[Making a release, and putting work in one]]'s to answer.
+
+## Risks
+
+**`src/storage/frontmatter.ts` has almost no room left.** Measured 2026-09-02 at roughly 393
+effective lines against `max-lines`' cap of 400 (`skipBlankLines`, `skipComments`), so the
+live check almost certainly will not fit and lint will refuse it. **Measure before writing,
+and plan the extraction as step one rather than meeting it as a surprise.** The natural cut
+is the live-decision helper itself — the three questions `applyAxis` asks — into a module
+`storage/` already reaches, beside `writeKeys.ts`. `src/domain/writePlan.ts` is at roughly
+326 and has room; `src/view/interactions/labels.ts` at 153 does too.
+
+**The live join check is where a correct-looking implementation goes wrong.** The Approach
+above states both directions and the planner's own predicate; the risk is an implementer
+reading only the first sentence of that bullet and writing a raw-text compare that passes a
+plain-shaped race test.
+
+**A `Test case` is not this task's to close.** [[Making a release, and putting work in one]]
+is a walk in a live vault, and nothing in this run can perform it.
 
 ## Outcome
