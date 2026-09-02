@@ -346,9 +346,15 @@ parents, and that is all. "Never a ranking peer" means never written to — its 
 is still *read* (`anchoredOrder`'s neighbour walk, `rankTaken`'s
 occupancy check, the backfill's own floor and ceiling), because the row is on screen and a
 rank that ignored it would place an item above something the user can see. An UNRANKED one
-is the exception both ways: it constrains nothing, so `anchoredOrder` skips it rather than
-refusing beside it — a refusal there would send the user to a backfill that may never
-write it. Ask that question of any new
+is `anchoredOrder`'s exception, and **only its**: one placement has somewhere else to go, so
+it skips the row rather than refusing beside it — a refusal there would send the user to a
+backfill that may never write it. The BACKFILL answers the opposite way, and that is not a
+contradiction but a different question: it is the pass that would have to hand the row a
+number later, and it never can, so a blank it would rank PAST an unranked context row is
+left blank instead (`allocateRanks`, poisoning that row's focus key and sibling group
+exactly as a refusal does). One gesture may step over a row nothing can rank; a pass
+filling every blank may not, or the row it stepped over is the one that moves.
+Ask that question of any new
 code touching the tree; the "write safety with context rows, across every entry point"
 test in `test/view/contextRowWrites.test.ts` drives every interaction against a fixture
 with context rows above, beside and between results, so a new write path fails it

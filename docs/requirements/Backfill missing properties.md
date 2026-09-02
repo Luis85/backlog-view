@@ -144,8 +144,10 @@ frontmatter, **I want** one button that sets the properties up and writes them f
   a LOWER rank than the row drawn before this one, and then no number is both above the
   first and below the second. The count comes out with the writes so the notice can say
   it, and the remedy it names is **Seed ranks from the hierarchy**, the one pass not
-  bounded by what is drawn around the row.
-  **Checked by** `test/view/backfillFocusOrder.test.ts` — "says the rank was skipped rather than claiming there was nothing to do"
+  bounded by what is drawn around the row. An unranked CONTEXT row is the second cause and
+  the permanent one: it can never be given a rank at all, so a blank that would be ranked
+  past one is left blank too rather than sorting a visible row behind itself.
+  **Checked by** `test/view/backfillFocusOrder.test.ts` — "says the rank was skipped rather than claiming there was nothing to do", "leaves a blank alone when an unranked context row is drawn above it in the focus list"
 - **4b — the item is an orphan**, its parent link resolving to nothing. `order` is written;
   `type` is not. Its real level is unknowable, so an implied one would be derived from the
   provisional top-level position the broken link put it in — a guess about a guess.

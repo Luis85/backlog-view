@@ -363,7 +363,13 @@ a node test that did would be measuring the runner.
   where a context row may be READ and may not be WRITTEN.** `anchoredOrder` SKIPS an
   unranked one (it can never be given a rank, so refusing beside one would be a permanent
   block behind advice that cannot work), `rankTaken` counts a RANKED one as occupying its
-  number, and `computeInitWrites` and `spreadAround` write neither. What refuses up front
+  number, and `computeInitWrites` and `spreadAround` write neither. **`anchoredOrder`'s skip
+  is not the backfill's answer**, and reading it as one shipped a defect: one placement can
+  land elsewhere, while the backfill is the pass that would have had to rank the row later
+  and never can, so `allocateRanks` treats an unranked context row as a BARRIER — poisoning
+  its focus key and its sibling group, so a blank drawn after it stays blank rather than
+  taking a number that sorts the visible context row behind it
+  (`test/view/backfillFocusOrder.test.ts`). What refuses up front
   is the ROW in hand, and since Tasks 1 and 4 its GROUP as well: `siblingPosition` (drag),
   `siblingContext` (Alt+arrow and the move menu) and `outdentTarget` each decline an
   `outsideFilter` row outright, and every population any ranking site reads — both

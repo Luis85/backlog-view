@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, expect, it } from 'vitest';
-import { FakeVault } from '../helpers/vault';
+import { FakeVault, setResults } from '../helpers/vault';
 import { Notice } from '../helpers/obsidian-mock';
 import { flush, makeView, noOptionalProperties, refresh, titlesOf, useViewHarness } from '../helpers/view';
 
@@ -175,6 +175,58 @@ describe('the backfill and the focused order', () => {
 		expect(vault.fm('A.md')['order']).toBeUndefined();
 		expect(vault.fm('Bug1.md')['order']).toBeUndefined();
 		expect(titlesOf(containerEl)).toEqual(before);
+	});
+
+	it('leaves a blank alone when an unranked context row is drawn above it in the focus list', async () => {
+		// The row that moves can never be GIVEN a rank at all, which is what makes a context
+		// row the PERMANENT case of the refusal the two tests above poison for. `Ctx` is a
+		// Feature the base excluded and `loadOutsideParents` kept on screen because `P` hangs
+		// from it, so it is a focus root drawn above `F2` and its `order` stays null whatever
+		// this action does. Fill `F2`'s blank and the focused Feature list turns from tree
+		// order into rank order with `Ctx` still unranked — and a null rank sorts LAST, so
+		// `Ctx` lands behind the row that was drawn under it. Skipping the context row
+		// silently is what let that happen: it has to poison what it is comparable to, the
+		// same way a refused blank does.
+		const vault = new FakeVault();
+		vault.addFile('Epic A.md', { frontmatter: { type: 'Epic', order: 100 } });
+		vault.addFile('Ctx.md', { frontmatter: { type: 'Feature' }, parentLink: 'Epic A' });
+		vault.addFile('P.md', { frontmatter: { type: 'PBI', order: 150 }, parentLink: 'Ctx' });
+		vault.addFile('Epic B.md', { frontmatter: { type: 'Epic', order: 200 } });
+		vault.addFile('F2.md', { frontmatter: { type: 'Feature' }, parentLink: 'Epic B' });
+		const { view, containerEl } = makeView(vault, noOptionalProperties(), { focus: 'Feature', except: ['Ctx.md'] });
+		const before = titlesOf(containerEl);
+		expect(before).toEqual(['Ctx', 'P', 'F2']);
+
+		initButton(containerEl)?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+		await flush();
+		// Refreshed with `Ctx` still cut, the way the base returned it in the first place.
+		setResults(view, vault.entries().filter((entry) => entry.file.path !== 'Ctx.md'));
+
+		expect(titlesOf(containerEl)).toEqual(before);
+		expect(vault.fm('F2.md')['order']).toBeUndefined();
+		expect(Notice.messages).toContain(
+			'1 item was left without a rank, because no number fits where it is drawn. Run "Seed ranks from the hierarchy" from the command palette to renumber the whole backlog.',
+		);
+	});
+
+	it('does not stop a blank that shares neither focus key nor sibling group with the context row', async () => {
+		// The control the test above cannot supply, and the difference between a NARROW
+		// poison and a blanket one: every context ancestor stopping the backfill below it
+		// would leave a filtered vault unable to seed anything. `Ctx` is a Feature under `A`
+		// and `B` is a root Epic, so the two share no focus key and no parent — they can
+		// never be drawn against each other, and `B`'s blank is filled as usual.
+		const vault = new FakeVault();
+		vault.addFile('A.md', { frontmatter: { type: 'Epic', order: 100 } });
+		vault.addFile('Ctx.md', { frontmatter: { type: 'Feature' }, parentLink: 'A' });
+		vault.addFile('P.md', { frontmatter: { type: 'PBI', order: 150 }, parentLink: 'Ctx' });
+		vault.addFile('B.md', { frontmatter: { type: 'Epic' } });
+		const { containerEl } = makeView(vault, noOptionalProperties(), { except: ['Ctx.md'] });
+
+		initButton(containerEl)?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+		await flush();
+
+		expect(Notice.messages).toEqual(['Product Backlog: updated 1 item.']);
+		expect(vault.fm('B.md')['order']).toBeGreaterThan(150);
 	});
 
 	it('says the rank was skipped rather than claiming there was nothing to do', async () => {

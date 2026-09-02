@@ -221,7 +221,9 @@ function initWriteFor(item: BacklogItem, settings: BacklogSettings, order: numbe
  *   different question, and it is NOT scoped to `focusKey` alone**: a refusal poisons the
  *   blank's sibling group too (`isPoisoned`), because a `compareSiblings` peer at another
  *   level — sharing a parent rather than a focus key — draws adjacent to it just the same
- *   and would otherwise be ranked ahead of it once the sibling itself stayed blank.
+ *   and would otherwise be ranked ahead of it once the sibling itself stayed blank. An
+ *   unranked CONTEXT row poisons both populations the same way and never becomes a write:
+ *   it is the permanently blank row, so anything ranked past it moves it for good.
  *   **Still asked of the ROW, which is what decides where a run ends**: a run carries ONE
  *   ceiling, so a blank whose own ceiling differs starts a new one rather than joining and
  *   dragging the group down to the lower of the two. Bounding a whole run by its members'
@@ -328,8 +330,11 @@ function ceilingsOf(drawn: BacklogItem[]): (number | null)[] {
  * the run belongs below whatever is drawn next. A blank with a DIFFERENT ceiling ends it
  * too, without raising anything — one run is spread across one interval, and a member
  * bounded by somebody else's lower ceiling would be refused for a collision it cannot have.
- * An unranked context row constrains nothing and does neither, for the same reason
- * `anchoredOrder` skips one as an anchor. A poisoned row is refused on its own and is NOT a
+ * An unranked context row raises no floor and joins no run — it has no number to give and
+ * can never be given one — but it is a BARRIER rather than nothing, poisoning what it is
+ * comparable to on the way past. `anchoredOrder` skips one as an anchor and this does not,
+ * because a single placement has somewhere else to go and a pass that fills every blank
+ * does not. A poisoned row is refused on its own and is NOT a
  * run member — it takes no number, so it raises nothing — which is why poison is asked per
  * row as the walk reaches it, AFTER the split above may have flushed the run that poisons
  * it, and cannot be worked out in advance.
@@ -388,7 +393,19 @@ function allocateRanks(
 			floor = Math.max(item.order, floor ?? item.order);
 			continue;
 		}
-		if (item.outsideFilter) continue;
+		if (item.outsideFilter) {
+			// **A context row is the PERMANENT refusal, and it poisons like one.** It can never be
+			// GIVEN a rank — the base excluded it — so a blank drawn after it and comparable to it
+			// must not take one either: a null rank sorts LAST, so the numbered row would jump
+			// ahead of a row the user can see. Not COUNTED as unplaceable — it was never a row
+			// this pass could write — and the run is not flushed, because blanks drawn BEFORE it
+			// take numbers and still sort above a null, so their drawn order holds. Honestly
+			// bounded: the FOCUS KEY is the half a test can reach, because a context row is loaded
+			// after every result and so always draws LAST among its blank siblings — the sibling
+			// group is here as the same expression the refusal below spells, not as a covered case.
+			poisoned.add(focusKey(item)).add(item.parent);
+			continue;
+		}
 		// One run, one ceiling — and flushed BEFORE the poison question below, so a row that
 		// the refusal of the run just ended has poisoned is seen as poisoned.
 		if (run.length > 0 && ceilings[i] !== runCeiling) flush();
