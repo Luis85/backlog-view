@@ -615,6 +615,10 @@ export class ProductBacklogView extends ViewStateSurface implements BacklogViewH
 		return this.gate.applySafely(writes);
 	}
 
+	runFileWrite<T>(run: () => Promise<T>): Promise<T | null> {
+		return this.gate.runFileWrite(run);
+	}
+
 	canUndo(): boolean {
 		return this.gate.canUndo();
 	}

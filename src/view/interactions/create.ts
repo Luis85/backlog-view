@@ -188,35 +188,46 @@ async function createFromPrompt(host: BacklogViewHost, request: CreateRequest): 
 			console.error('Product Backlog: could not save folder to the view options', e);
 		}
 	}
-	// **Placed before anything is revealed.** A refused creation that had already opened
-	// the parent would leave the tree looking as though something had been added to it.
-	// `cardMoves.ts`'s `performDrop` had the identical defect and the identical fix: accept
-	// first, reveal second — a shape to look for wherever a gesture prepares the screen for
-	// an outcome it has not yet earned.
-	const parentItem = request.parentItem;
-	const placed = newItemOrder(host, parentItem);
-	if ('refusal' in placed) {
-		new Notice(t(refusalKey(placed.refusal)));
-		return;
-	}
-	// The new child has to be visible under its parent, collapsed or not.
-	if (parentItem) host.setCollapsed(parentItem.file.path, false);
+	// **The rank and the write are ONE exclusive section**, not two — `runFileWrite`'s own
+	// rule, which creation was outside of until 2026-09-02. Locking the write alone leaves
+	// the half that actually misplaces the note: `newItemOrder` reads `host.model`, which
+	// the gate holds stale for as long as the batch it is deferring runs, so a rank taken
+	// beside a running Seed or Respace is computed against numbers already replaced. The
+	// gate refuses (loudly) when a batch is in flight, so a refused creation still speaks.
+	await host.runFileWrite(async () => {
+		// **Placed before anything is revealed.** A refused creation that had already opened
+		// the parent would leave the tree looking as though something had been added to it.
+		// `cardMoves.ts`'s `performDrop` had the identical defect and the identical fix: accept
+		// first, reveal second — a shape to look for wherever a gesture prepares the screen for
+		// an outcome it has not yet earned.
+		const parentItem = request.parentItem;
+		const placed = newItemOrder(host, parentItem);
+		if ('refusal' in placed) {
+			new Notice(t(refusalKey(placed.refusal)));
+			return;
+		}
+		// The new child has to be visible under its parent, collapsed or not.
+		if (parentItem) host.setCollapsed(parentItem.file.path, false);
 
-	try {
-		const file = await createBacklogItem(host.app, host.settings, {
-			folder: request.folder,
-			title: request.title,
-			typeName: request.levelName,
-			parent: parentItem?.file ?? null,
-			order: placed.order,
-			horizon: request.horizon,
-			...iterationOf(host),
-		});
-		new Notice(t('create.created', { name: file.basename }));
-	} catch (e) {
-		console.error('Product Backlog: failed to create item', e);
-		new Notice(t('create.failed'));
-	}
+		// Caught INSIDE the section, like the release notes writer: `runExclusively` would
+		// otherwise report this as the generic apply failure and lose the creation's own
+		// sentence.
+		try {
+			const file = await createBacklogItem(host.app, host.settings, {
+				folder: request.folder,
+				title: request.title,
+				typeName: request.levelName,
+				parent: parentItem?.file ?? null,
+				order: placed.order,
+				horizon: request.horizon,
+				...iterationOf(host),
+			});
+			new Notice(t('create.created', { name: file.basename }));
+		} catch (e) {
+			console.error('Product Backlog: failed to create item', e);
+			new Notice(t('create.failed'));
+		}
+	});
 }
 
 /**
@@ -450,31 +461,36 @@ function openIterationPrompt(
  */
 async function createIteration(host: BacklogViewHost, result: IterationResult): Promise<void> {
 	const axis = axisFrom(host, result);
-	// An iteration is a root, so it takes the same placement the toolbar's parentless
-	// creation does — and the same refusal rather than a rank nobody chose.
-	const placed = newItemOrder(host, null);
-	if ('refusal' in placed) {
-		new Notice(t(refusalKey(placed.refusal)));
-		return;
-	}
-	try {
-		const file = await createBacklogItem(host.app, host.settings, {
-			folder: folderForType(ITERATION_TYPE, host.settings) || host.settings.homeFolder,
-			title: iterationNoteName(result.name, result.goal),
-			typeName: ITERATION_TYPE,
-			parent: null,
-			order: placed.order,
-			axis: { ...(axis.start ? { start: axis.start } : {}), ...(axis.target ? { target: axis.target } : {}) },
-			...(host.settings.iterationGoalKey && result.goal ? { iterationGoal: result.goal } : {}),
-		});
-		// **Not opened**, like every other creation this plugin makes. It was opened for
-		// one round on the argument that an iteration draws nowhere and would otherwise be
-		// a note to go and find; the user's answer is that making a sprint is a planning
-		// act and taking the reader off the board they are planning ON is the cost that
-		// argument did not count. The scope picker names it either way.
-		new Notice(t('create.iterationCreated', { name: file.basename }));
-	} catch (e) {
-		console.error('Product Backlog: failed to create iteration', e);
-		new Notice(t('create.iterationFailed'));
-	}
+	// Under the gate for `createFromPrompt`'s reason, which is this function's too: the
+	// rank below is read off a model a running batch is holding stale, and this prompt is
+	// modal for as long as one takes.
+	await host.runFileWrite(async () => {
+		// An iteration is a root, so it takes the same placement the toolbar's parentless
+		// creation does — and the same refusal rather than a rank nobody chose.
+		const placed = newItemOrder(host, null);
+		if ('refusal' in placed) {
+			new Notice(t(refusalKey(placed.refusal)));
+			return;
+		}
+		try {
+			const file = await createBacklogItem(host.app, host.settings, {
+				folder: folderForType(ITERATION_TYPE, host.settings) || host.settings.homeFolder,
+				title: iterationNoteName(result.name, result.goal),
+				typeName: ITERATION_TYPE,
+				parent: null,
+				order: placed.order,
+				axis: { ...(axis.start ? { start: axis.start } : {}), ...(axis.target ? { target: axis.target } : {}) },
+				...(host.settings.iterationGoalKey && result.goal ? { iterationGoal: result.goal } : {}),
+			});
+			// **Not opened**, like every other creation this plugin makes. It was opened for
+			// one round on the argument that an iteration draws nowhere and would otherwise be
+			// a note to go and find; the user's answer is that making a sprint is a planning
+			// act and taking the reader off the board they are planning ON is the cost that
+			// argument did not count. The scope picker names it either way.
+			new Notice(t('create.iterationCreated', { name: file.basename }));
+		} catch (e) {
+			console.error('Product Backlog: failed to create iteration', e);
+			new Notice(t('create.iterationFailed'));
+		}
+	});
 }

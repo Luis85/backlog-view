@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { FakeVault } from '../helpers/vault';
 import { Modal, Notice } from '../helpers/obsidian-mock';
 import { fixture, flush, makeView, refresh, rowByTitle, submitButton, submitPrompt, useViewHarness } from '../helpers/view';
+import { WriteLock } from '../../src/view/writeLock';
 
 /**
  * Clear every configured folder, so folder INFERENCE is what runs. Both layers have to
@@ -367,6 +368,37 @@ describe('creation flows', () => {
 				'No room left between those two items. Run "Respace ranks" from the command palette.',
 			);
 		});
+	});
+
+	it('refuses to create while a batch holds the plugin-wide lock', async () => {
+		// Creation is a vault write that is not a frontmatter batch — `runFileWrite`'s own
+		// shape — and it was the one such write taking no lock at all. Both halves are
+		// inside the exclusive section, not just the write: `newItemOrder` reads
+		// `host.model`, which the gate deliberately holds stale until the batch it is
+		// deferring finishes, so a rank taken here would be computed against numbers a
+		// whole-population rewrite has already replaced and the note would land in the
+		// wrong place — the half that survives locking the write alone.
+		const vault = fixture();
+		const lock = new WriteLock();
+		let release: () => void = () => {};
+		// Stall the OTHER view's batch, so the creation arrives while it is in flight.
+		vault.beforeWrite = (path) => (path === 'Epic A.md' ? new Promise<void>((r) => (release = r)) : undefined);
+		const writer = makeView(vault, {}, { lock });
+		const { containerEl } = makeView(vault, { ...NO_TYPE_FOLDERS }, { lock });
+		const epic = vault.entries().find((e) => e.file.path === 'Epic A.md')!.file;
+
+		const batch = writer.view.applySafely([{ file: epic, order: 99 }]);
+		await flush();
+		rowByTitle(containerEl, 'Epic B')
+			.querySelector<HTMLElement>('.pbl-add')
+			?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+		submitPrompt({ title: 'Mid-batch' });
+		await flush();
+
+		expect(vault.app.vault.getFileByPath('Mid-batch.md')).toBeNull();
+		expect(Notice.messages).toContain('Still applying the previous change — try again in a moment.');
+		release();
+		await batch;
 	});
 
 	it('surfaces creation failures as a notice', async () => {
