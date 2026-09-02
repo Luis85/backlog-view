@@ -1,7 +1,7 @@
 import esbuild from "esbuild";
 import process from "process";
 import { builtinModules as builtins } from "node:module";
-import { statSync, watch, writeFileSync } from "node:fs";
+import { readFileSync, statSync, watch, writeFileSync } from "node:fs";
 import { assembleStyles } from "./styles-assemble.mjs";
 
 const banner = `/*
@@ -35,6 +35,32 @@ const BUDGET = {
 	"main.js": 480 * 1024,
 	"dist/styles.css": 96 * 1024,
 };
+
+/**
+ * The pseudo-locale is a development catalog and must not reach a user — see
+ * `docs/requirements/English ships alone.md`, which is what "English ships alone" means
+ * once a second catalog exists in the tree at all. The `localStorage` key that ASKS for
+ * it is here for the same reason and not for symmetry: the catalog falls back in a
+ * release, but the requested code still reaches `Intl`, so a key left in a vault would
+ * give its reader English number formatting off a production build.
+ *
+ * Nothing here turns it off: `t.ts` registers it behind `process.env.NODE_ENV`, which
+ * the `define` below folds to a literal, so the release drops the branch and the module
+ * with it. This asserts the RESULT rather than trusting the mechanism — a bundler
+ * setting that quietly stopped tree-shaking would otherwise ship it, and the only
+ * evidence either way is the file.
+ */
+const DEVELOPMENT_ONLY = ["en-x-pseudo", "product-backlog-locale"];
+
+function refusePseudoLocale() {
+	const bundle = readFileSync("main.js", "utf8");
+	const carried = DEVELOPMENT_ONLY.filter((name) => bundle.includes(name));
+	if (carried.length === 0) return;
+	console.error(`\nThe production bundle carries development-only strings: ${carried.join(", ")}.`);
+	console.error("The pseudo catalog and the localStorage locale override are both gated on");
+	console.error("process.env.NODE_ENV in src/i18n/t.ts. Check that gate and that treeShaking is on.");
+	process.exit(1);
+}
 
 function enforceBudget() {
 	const over = [];
@@ -109,6 +135,7 @@ if (prod) {
 		minify: true,
 		logLevel: "info",
 	});
+	refusePseudoLocale();
 	enforceBudget();
 	process.exit(0);
 } else if (mode === "once") {

@@ -422,7 +422,7 @@ function renderBucket(
 		drawIcon(mark, 'circle-help');
 		setTooltip(
 			colEl,
-			t('roadmap.undeclaredBucket', { value: bucket.value }),
+			t('roadmap.undeclaredBucket', { value: bucket.value, horizonsOption: t('option.horizonValues') }),
 		);
 	}
 	renderBucketNew(ctx, header, bucket);

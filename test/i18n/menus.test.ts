@@ -2,6 +2,7 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { en } from '../../src/i18n/en';
 import { Catalog, MessageKey, setLocale } from '../../src/i18n/t';
+import { resetLocale } from '../helpers/locale';
 import { Menu, MenuItem, Modal, Notice } from '../helpers/obsidian-mock';
 import { FakeVault } from '../helpers/vault';
 import { boardVault, cardByTitle, makeBoard } from '../helpers/board';
@@ -100,7 +101,7 @@ beforeEach(() => {
 	setLocale('xx', { xx });
 });
 // Resolution is module state by design (once, at load), so each test puts it back.
-afterEach(() => setLocale('en'));
+afterEach(() => resetLocale());
 
 /** Every title a menu draws, following submenus — the whole of what the reader sees. */
 function titlesOf(menu: Menu): string[] {

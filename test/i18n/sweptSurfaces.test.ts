@@ -2,6 +2,7 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { en } from '../../src/i18n/en';
 import { Catalog, setLocale } from '../../src/i18n/t';
+import { resetLocale } from '../helpers/locale';
 import {
 	AbsencePromptModal,
 	FolderPromptModal,
@@ -99,7 +100,7 @@ beforeEach(() => {
 	setLocale('xx', { xx });
 });
 // Resolution is module state by design (once, at load), so each test puts it back.
-afterEach(() => setLocale('en'));
+afterEach(() => resetLocale());
 
 /** The `.setting-item-name` of every row a dialog drew, in order. */
 const rowNames = (el: HTMLElement): string[] =>

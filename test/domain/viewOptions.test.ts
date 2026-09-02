@@ -6,6 +6,7 @@ import { resolveSettings } from '../../src/domain/settingsResolve';
 import { defaultResourceFolder, defaultTypeFolder } from '../../src/domain/typeVocabulary';
 import { FakeViewConfig } from '../helpers/vault';
 import { MARK, markedCatalog } from '../i18n/fixtures';
+import { resetLocale } from '../helpers/locale';
 
 
 /**
@@ -375,7 +376,7 @@ function shown(options: BasesAllOptions[]): string[] {
 const unmarked = (options: BasesAllOptions[]): string[] => shown(options).filter((word) => !word.startsWith(MARK));
 
 describe('the options menu reads its words from the catalog', () => {
-	afterEach(() => setLocale('en'));
+	afterEach(() => resetLocale());
 
 	it('leaves unmarked only the keys a picker suggests and the defaults a box mirrors', () => {
 		setLocale('xx', { xx });

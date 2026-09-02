@@ -9,6 +9,7 @@ import { installObsidianDom } from './dom';
 import { FakeVault, FakeViewConfig, mountLeaf, mountView, setResults } from './vault';
 import { Menu, Modal, Notice } from './obsidian-mock';
 import { fakeController } from '../helpers/vault';
+import { resetLocale } from './locale';
 
 installObsidianDom();
 
@@ -51,6 +52,9 @@ export function useViewHarness(): void {
 		// look would read the previous test's move. Dropping it makes the next
 		// announcement build a fresh one.
 		liveRegionCleanup();
+		// Explicitly, never inherited: locale resolution is module state, so a test that
+		// drove `setLocale` itself would otherwise leave the next one reading its catalog.
+		resetLocale();
 		Notice.reset();
 		Menu.forget();
 		Modal.forget();
