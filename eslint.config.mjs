@@ -56,7 +56,7 @@ const pluginRules = obsidianmd.configs.recommended.map((c) => ({ ...c, ignores: 
  * line. Collapsed back on 2026-08-25; split it again when a second consumer actually exists,
  * and never spread the split over an index into this array, which a later edit can reorder.
  */
-const WRITE_BOUNDARY = [
+export const WRITE_BOUNDARY = [
 	{
 		selector: "MemberExpression[property.name='processFrontMatter']",
 		message:
@@ -100,7 +100,7 @@ const WRITE_BOUNDARY = [
  * is therefore "no bare `projection === 'tree'`", not "nothing compares to `'tree'`", and
  * `src/view/CLAUDE.md` states it that narrowly.
  */
-const PROJECTION_TREE = [
+export const PROJECTION_TREE = [
 	{
 		selector:
 			"BinaryExpression[operator=/^[!=]==$/]:matches([left.name='projection'], [left.property.name='projection'], [left.expression.property.name='projection'])[right.value='tree']",
@@ -395,6 +395,20 @@ const ROW_LISTENER = {
  * every selector that applies to it. Adding a region means removing its files from the
  * one it came out of; adding a selector means asking which regions want it. The
  * `syntaxRules` wrapper exists so that is the only decision, and the shape is uniform.
+ *
+ * **Two of those selectors are checked rather than trusted.** `WRITE_BOUNDARY` and
+ * `PROJECTION_TREE` hold across `src/` rather than belonging to one region, and both are
+ * spread in BY HAND — so a block added without them loses them in silence, which is what
+ * happened to `src/storage/` (PR #252). `test/verification/banRegions.test.ts` asks
+ * ESLint itself, per file, what it would actually apply, and fails on a file that carries
+ * neither ban and no exemption. It sees a region that forgot a spread, a later block that
+ * replaced an earlier one's list, and a carve-out given no block at all — the three shapes
+ * a reading of this file cannot. It sees nothing about the OTHER selectors here, which
+ * are per-region by design and have no rule to check them against.
+ *
+ * Both are `export const` for that test alone, so it compares against the selectors this
+ * file actually spreads rather than against a copy. ESLint reads the default export; a
+ * named one changes nothing about how this file is loaded.
  */
 const STORAGE = 'src/storage/**/*.ts';
 // Everything outside view/ that renders text and has been SWEPT, so the text bans land on
