@@ -52,6 +52,12 @@ See [RELEASING.md](RELEASING.md) for how this file is kept in step with a releas
 
 - Two timeline tests measured against the calendar rather than a fixed day, so they began
   failing a fortnight after they were written.
+- My work: the Next marker stays inside the pane at every width, the state chip shows its
+  value in full where there is room and its icon where there is not, a title can be
+  selected and copied, and a narrow pane keeps the state instead of dropping it.
+- A release's scope: a member's state chip shows its value in full rather than truncating
+  it at a fixed column width, and carries the value as a tooltip where the row is too
+  narrow to show it.
 
 ## [0.10.0] - 2026-08-30
 
