@@ -169,7 +169,11 @@ from.
 `src/domain/rankOrder.ts` (`rankedItems` and the comparator, `inRankOrder`,
 `distinctlyRanked`, `focusKey`) ·
 `src/domain/writePlan.ts` (`anchoredOrder`, `orderForTarget`, `dropPlacement`,
-`computeDropWrites`, `refusalKey`) ·
+`computeDropWrites`) ·
+`src/domain/rankArithmetic.ts` (`ORDER_SPACING`, `rankBetween` over `midpoint` and
+`edgeRank`, `roundOrder`'s six-decimal grid, `placeRun`, and `RankResult`/`refusalKey` —
+the one answer to what a rank may be, shared by the one-row placement, the two rewrites
+and the backfill) ·
 `src/domain/rankSpread.ts` (`computeSeedWrites`, `computeRespaceWrites`, and the one
 spread they share) ·
 `src/commands/rank.ts` (the `seed-ranks` and `respace-ranks` palette commands) ·

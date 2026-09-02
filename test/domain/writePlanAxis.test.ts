@@ -2,7 +2,8 @@ import { describe, expect, it } from 'vitest';
 import { BacklogSettings } from '../../src/domain/settings';
 import { settingsWith } from '../helpers/settings';
 import { BacklogItem, buildModel } from '../../src/domain/model';
-import { computeHorizonWrites, computeInitWrites, computeScheduleWrites } from '../../src/domain/writePlan';
+import { computeInitWrites } from '../../src/domain/rankBackfill';
+import { computeHorizonWrites, computeScheduleWrites } from '../../src/domain/writePlan';
 import { PlacementEnd } from '../../src/domain/itemTypes';
 import { FakeVault } from '../helpers/vault';
 

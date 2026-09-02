@@ -1,5 +1,6 @@
 import { BacklogItem, BacklogModel } from './model';
-import { ItemWrite, ORDER_SPACING, roundOrder } from './writePlan';
+import { placeRun } from './rankArithmetic';
+import { ItemWrite } from './writePlan';
 
 /**
  * The two whole-population rank rewrites, worked out without touching anything.
@@ -123,28 +124,4 @@ function spreadAround(sequence: BacklogItem[]): SpreadResult {
 		floor = item.order;
 	}
 	return flush() ? { writes } : { wedged: run };
-}
-
-/**
- * `count` ranks evenly spread in the open interval, or null when they will not fit.
- *
- * **Fails closed, like every other place a rank is produced.** The question is asked of
- * the ROUNDED values, because at large magnitudes "the gap is wide enough" and "the
- * value is clear of its neighbour" disagree — see `midpoint` in `writePlan.ts`. Two
- * context rows a hair apart cannot hold three distinct six-decimal ranks between them,
- * and neither can an unbounded run whose spacing rounds back onto the rank below it.
- */
-function placeRun(count: number, floor: number | null, ceiling: number | null): number[] | null {
-	if (count === 0) return [];
-	const step = floor !== null && ceiling !== null ? (ceiling - floor) / (count + 1) : ORDER_SPACING;
-	// The leading run hangs BELOW its ceiling rather than counting up from a synthetic
-	// zero: the population may already start well below it.
-	const base = floor ?? (ceiling === null ? 0 : ceiling - (count + 1) * ORDER_SPACING);
-	const placed = Array.from({ length: count }, (_, k) => roundOrder(base + step * (k + 1)));
-	let previous = floor;
-	for (const order of placed) {
-		if (previous !== null && order <= previous) return null;
-		previous = order;
-	}
-	return ceiling !== null && placed[count - 1] >= ceiling ? null : placed;
 }

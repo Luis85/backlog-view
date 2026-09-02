@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { buildModel } from '../../src/domain/model';
 import { childTypeChoices, displayType, inCatalog, keepsProjection, ladderFor } from '../../src/domain/itemTypes';
-import { computeInitWrites } from '../../src/domain/writePlan';
+import { computeInitWrites } from '../../src/domain/rankBackfill';
 import { defaultSettings } from '../../src/domain/settings';
 import { EXTRA_TYPES, LEVELS, TEST_LEVELS } from '../../src/domain/typeVocabulary';
 import { ownWorkflowKind, ownWorkflowReading, stateKeyFor, workflowStateInfo } from '../../src/domain/board';

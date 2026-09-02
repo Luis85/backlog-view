@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { anchoredOrder, dropPlacement, ORDER_SPACING, refusalKey } from '../../src/domain/writePlan';
+import { ORDER_SPACING, refusalKey } from '../../src/domain/rankArithmetic';
+import { anchoredOrder, dropPlacement } from '../../src/domain/writePlan';
 import { BacklogItem } from '../../src/domain/model';
 
 /** The only fields `anchoredOrder` reads. */

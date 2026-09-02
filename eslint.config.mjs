@@ -446,9 +446,14 @@ const MENU_SWEPT = [
 	'src/view/interactions/undo.ts',
 	'src/view/interactions/stateColors.ts',
 ];
-// Ranking code lives in one domain file and one view file; split so a view-only rule
-// (ALL_TYPES_IMPORT) can apply to the latter without reaching into domain/.
-const RANKING_DOMAIN = ['src/domain/writePlan.ts'];
+// Ranking code lives in three domain files and one view file; split so a view-only rule
+// (ALL_TYPES_IMPORT) can apply to the last without reaching into domain/. The domain half
+// is a LIST rather than one name because `writePlan.ts` was split at its line ceiling: the
+// arithmetic every placement shares went to `rankArithmetic.ts` and the ✨ backfill's
+// whole-tree pass to `rankBackfill.ts`, and RENDERED_ROOTS and VISUAL_DEPTH have to follow
+// the code they guard — the backfill is what walks `realRoots` and what chains a typeless
+// note's level.
+const RANKING_DOMAIN = ['src/domain/writePlan.ts', 'src/domain/rankArithmetic.ts', 'src/domain/rankBackfill.ts'];
 const RANKING_VIEW = ['src/view/interactions/create.ts'];
 const RANKING = [...RANKING_DOMAIN, ...RANKING_VIEW];
 const RENDER = 'src/view/render/**/*.ts';

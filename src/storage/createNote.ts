@@ -193,7 +193,7 @@ export interface NewReleaseSpec {
  * could fail in between and leave a blank note without its fields behind.
  *
  * **A field the creator left blank is not written at all** ({@link stated}), which is the
- * same ruling [[Releases as their own type]] 3b and `neverStubbed` (`domain/writePlan.ts`,
+ * same ruling [[Releases as their own type]] 3b and `neverStubbed` (`domain/rankBackfill.ts`,
  * *"An empty release is not an empty slot"*) each already made from their own end. It has
  * to be kept HERE, at the creator every release goes through, rather than at the dialog
  * that happens to produce the blanks today: `readLabel` and `readSoleDate`

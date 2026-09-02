@@ -107,9 +107,11 @@ a node test that did would be measuring the runner.
 - `depth` is VISUAL only (focus mode re-roots it). Level math must use
   `effectiveLevelIndex`, which chains down the parent levels and carries unknown
   custom types through the ladder (see `childLevelIndex`). Never derive levels
-  from depth — now a lint rule (`VISUAL_DEPTH`) over the two files that decide
-  types (`writePlan.ts` and `interactions/create.ts`), since `rows.ts` legitimately reads
-  depth for `aria-level`. `nextLevelIndex` is the one statement of "a child sits one rung
+  from depth — now a lint rule (`VISUAL_DEPTH`) over the files that decide
+  types (`writePlan.ts`, `rankArithmetic.ts`, `rankBackfill.ts` and
+  `interactions/create.ts`; the ✨ backfill's implied type is `rankBackfill.ts`'s), since
+  `rows.ts` legitimately reads depth for `aria-level`. `nextLevelIndex` is the one
+  statement of "a child sits one rung
   below, clamped at the deepest level" and `childLevelIndex` is it applied to an item;
   both are what a type write asks, and neither has ever been allowed to ask depth. The
   last exception was the re-typing cascade, deleted 2026-08-11 with the feature it
@@ -131,8 +133,9 @@ a node test that did would be measuring the runner.
   a `DropTarget`'s `peers` says where the user aimed and `anchoredOrder` reads
   `model.ranked` for the number, so neither the peer list nor any projection's slice of
   it may be handed to the arithmetic as if it were the population.
-  Checked by lint in `writePlan.ts` and `interactions/create.ts` — the two files that
-  rank. The two files that POSITION at the top level hold both lists at once and must not
+  Checked by lint in `writePlan.ts`, `rankArithmetic.ts`, `rankBackfill.ts` and
+  `interactions/create.ts` — the files that rank. The two files that POSITION at the top
+  level hold both lists at once and must not
   let either answer the other's question: `dropTargets.ts` ranks against `realRoots` while
   asking its no-op question of the drawn order through the `drawn` predicate the view
   hands it — projection membership AND the completed toggle AND an emptied context

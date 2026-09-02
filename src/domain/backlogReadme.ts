@@ -7,7 +7,7 @@ import { stampRows, stampRule, startedStates } from './readmeStamps';
 import { andList, cell, cellList, code, yamlScalar } from './readmeText';
 import { hasHorizonAxis } from './roadmap';
 import { planningSection } from './readmePlanning';
-import { ORDER_SPACING } from './writePlan';
+import { ORDER_SPACING } from './rankArithmetic';
 import { t } from '../i18n/t';
 
 /**

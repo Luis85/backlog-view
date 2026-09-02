@@ -18,11 +18,10 @@ import {
 	computeStateWrites,
 	dropPlacement,
 	ItemWrite,
-	RankRefusal,
-	refusalKey,
 	ScheduleGesture,
 	SchedulePlan,
 } from '../domain/writePlan';
+import { RankRefusal, refusalKey } from '../domain/rankArithmetic';
 import { todayStamp } from '../domain/noteFields';
 import { configProblems } from '../domain/settingsConsistency';
 import { BacklogSettings } from '../domain/settings';

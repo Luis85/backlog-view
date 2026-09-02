@@ -157,7 +157,7 @@ design: the relationship between a test and the work it checks is
   not one rule but every place that indexes `LEVELS` by a computed level — five of them,
   each answering for whichever ladder the item is on: `childTypeChoices`'s `ladderChild`
   and `displayType` (`src/domain/itemTypes.ts`), the two branches of the move cascade, and
-  `initWriteFor` (`src/domain/writePlan.ts`), which is what ✨ eventually puts on disk.
+  `initWriteFor` (`src/domain/rankBackfill.ts`), which is what ✨ eventually puts on disk.
   Left alone, a typeless child of a suite takes the first ladder's rung at the same index:
   it **draws** as a `Feature`, and the backfill then **writes** `Feature` to it, which
   moves the note into the plan. The display half is a wrong badge; the write half is the
@@ -245,7 +245,7 @@ vocabulary and needed nothing.
 answers WHICH ladder before anything asks which rung, and `inCatalog`, the membership
 predicate over its result. `childLevelIndex` and `nextLevelIndex` take the ladder they
 clamp against, and every `LEVELS[…]` index became `ladder[…]` — the five a `grep 'LEVELS\['`
-enumerates, including `initWriteFor` in `src/domain/writePlan.ts`, the one that writes.
+enumerates, including `initWriteFor` in `src/domain/rankBackfill.ts`, the one that writes.
 A `keepsTypeOnMove` predicate sat beside them so the generated README could derive which
 types a move left alone rather than naming `EXTRA_TYPES` and being wrong about a marker;
 it went with the cascade on 2026-08-11, since a move now leaves every type alone.

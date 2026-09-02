@@ -640,7 +640,7 @@ export function refusesLiveAssignee(app: App, target: TFile | null | undefined, 
  * backfill's half of {@link refusesLiveType}'s question, and the reason it is not that
  * function: a stub is an empty key the reader is invited to fill, not a placement, so
  * refusing the batch over one would abandon every note after it for a key that carries no
- * decision. `missingKeyStubs` (`domain/writePlan.ts`) already declines to plan them;
+ * decision. `missingKeyStubs` (`domain/rankBackfill.ts`) already declines to plan them;
  * authorization at plan time is not authorization at write time, and a retype between the
  * plan and this callback is exactly the window that guard cannot see.
  *

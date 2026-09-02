@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import { BacklogItem } from '../../src/domain/model';
 import { buildModel } from '../../src/domain/model';
-import { computeDropWrites, computeInitWrites, ORDER_SPACING, roundOrder } from '../../src/domain/writePlan';
+import { ORDER_SPACING, roundOrder } from '../../src/domain/rankArithmetic';
+import { computeInitWrites } from '../../src/domain/rankBackfill';
+import { computeDropWrites } from '../../src/domain/writePlan';
 import { DropTarget } from '../../src/domain/dropTargets';
 import { defaultSettings } from '../../src/domain/settings';
 import { FakeVault } from '../helpers/vault';

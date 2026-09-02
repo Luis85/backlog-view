@@ -161,7 +161,7 @@ land on a catalog note the reader reports as unresolved and no control can clear
 task under a test suite is admitted by the field rule and refused by `inPlan` at the two doors
 that hold an item. **The backfill stubs nothing here**, and that is this field's exception rather than a
 consequence of the rule: ✨ Assign missing properties creates an empty key for every property a
-type may hold, and `neverStubbed` (`src/domain/writePlan.ts`) refuses `release` because an empty
+type may hold, and `neverStubbed` (`src/domain/rankBackfill.ts`) refuses `release` because an empty
 membership is not an empty slot — `membershipTarget` reads a present-but-blank value as an
 UNRESOLVED membership, so a backfill would open the release view reporting the whole backlog as
 broken. Adopting the property binds the option and writes no key to any note, which

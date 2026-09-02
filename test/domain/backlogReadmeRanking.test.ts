@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { settingsWith } from '../helpers/settings';
 import { backlogReadmeContent } from '../../src/domain/backlogReadme';
-import { ORDER_SPACING } from '../../src/domain/writePlan';
+import { ORDER_SPACING } from '../../src/domain/rankArithmetic';
 import { en } from '../../src/i18n/en';
 
 /**

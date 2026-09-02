@@ -5,7 +5,8 @@ import { BacklogViewHost } from '../host';
 import { BacklogItem } from '../../domain/model';
 import { DropTarget, isInvalidParent, isUnrankedContext, rankablePeers } from '../../domain/dropTargets';
 import { configProblems } from '../../domain/settingsConsistency';
-import { computeInitWrites, dropPlacement } from '../../domain/writePlan';
+import { computeInitWrites } from '../../domain/rankBackfill';
+import { dropPlacement } from '../../domain/writePlan';
 
 /**
  * Structural operations shared by the context menu and keyboard shortcuts.

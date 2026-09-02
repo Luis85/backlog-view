@@ -6,14 +6,8 @@ import { manualSections } from '../manual/sections';
 import { BacklogItem, BacklogModel } from '../../domain/model';
 import { focusTarget, folderForType, isIterationType } from '../../domain/itemTypes';
 import { rankablePeers } from '../../domain/dropTargets';
-import {
-	AxisWrite,
-	computeIterationNoteWrites,
-	dropPlacement,
-	ORDER_SPACING,
-	refusalKey,
-	RankResult,
-} from '../../domain/writePlan';
+import { ORDER_SPACING, RankResult, refusalKey } from '../../domain/rankArithmetic';
+import { AxisWrite, computeIterationNoteWrites, dropPlacement } from '../../domain/writePlan';
 import { createBacklogItem } from '../../storage/createNote';
 import { iterationNoteName, nextIterationDates, nextIterationName, previousIteration } from '../../domain/iterations';
 import { ITERATION_TYPE, LEVELS } from '../../domain/typeVocabulary';

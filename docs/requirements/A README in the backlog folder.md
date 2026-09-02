@@ -430,7 +430,7 @@ folder setting becomes the vault's own spelling in `src/domain/settingsResolve.t
 (`vaultFolder`), so the document,
 the creation prompt and the writes in `src/storage/` name one folder — and
 `src/domain/itemTypes.ts`; the tolerant reading rules it describes are
-`src/domain/noteFields.ts`, and the ranking step is `src/domain/writePlan.ts`.
+`src/domain/noteFields.ts`, and the ranking step is `src/domain/rankArithmetic.ts`.
 Tests: `test/domain/backlogReadme.test.ts` (what the document says, and that it says it
 from the configuration), `test/domain/readmeMarker.test.ts` (the marker's own
 escaping and round-trip, split out once the sibling file's line budget said so),

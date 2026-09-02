@@ -62,8 +62,8 @@ across notes I never touched.
   synthetic group whose members are not siblings, and a number taken from one projection's
   slice of a group can collide with a hidden root's. This is a lint rule (`RENDERED_ROOTS`)
   and not a convention — and the sentence is narrowed to what the rule reaches: it bans
-  `model.roots` in `writePlan.ts` and `interactions/create.ts`, the two files that produce
-  a rank. `dropTargets.ts` and `interactions/structure.ts` read it deliberately, to answer
+  `model.roots` in the three domain files that rank (`writePlan.ts`, `rankArithmetic.ts`
+  and `rankBackfill.ts`) and in `interactions/create.ts`. `dropTargets.ts` and `interactions/structure.ts` read it deliberately, to answer
   a different question — which rows a focus-level move is aimed among
   ([[Ranking at the focused level]]) — and take the NUMBER from `model.ranked` like
   everything else.
@@ -73,15 +73,16 @@ across notes I never touched.
 - A drop writes exactly one note, or none.
 - A placement with no room left refuses and names a remedy; nothing is renumbered to make
   room for it.
-- No rank is produced from the rendered roots — enforced by lint in the two files that
-  produce one.
+- No rank is produced from the rendered roots — enforced by lint in every file that
+  produces one.
 - An excluded row's `order` is read for placement and never written, and the number it
   holds is treated as taken.
 
 ## Where it lives
 
-`src/domain/writePlan.ts` (`anchoredOrder` and the one arithmetic under it,
-`orderForTarget`, `dropPlacement`, `computeDropWrites`) ·
+`src/domain/writePlan.ts` (`anchoredOrder`, `orderForTarget`, `dropPlacement`,
+`computeDropWrites`) · `src/domain/rankArithmetic.ts` (the one arithmetic under them —
+`rankBetween` over `midpoint` and `edgeRank`, on `roundOrder`'s grid) ·
 `src/domain/dropTargets.ts` (`dropTargetFor`, and `DropTarget.peers` as intent rather
 than arithmetic).
 Tests: `test/domain/writePlan.test.ts`, `test/domain/writePlanContextRows.test.ts`,

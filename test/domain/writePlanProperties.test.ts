@@ -3,9 +3,9 @@ import { defaultSettings } from '../../src/domain/settings';
 import { settingsWith } from '../helpers/settings';
 import { BacklogItem } from '../../src/domain/model';
 import { buildModel } from '../../src/domain/model';
+import { computeInitWrites } from '../../src/domain/rankBackfill';
 import {
 	computeDeliverableStateWrites,
-	computeInitWrites,
 	computeAssigneeWrites,
 	computePriorityWrites,
 	computeResourceMoveWrites,

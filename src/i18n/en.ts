@@ -1168,7 +1168,7 @@ export const en = {
 
 	/**
 	 * Why a placement produced no number, one sentence per member of `RankRefusal` —
-	 * `refusalKey` in `domain/writePlan.ts` is the only thing that picks between them,
+	 * `refusalKey` in `domain/rankArithmetic.ts` is the only thing that picks between them,
 	 * and it is a `switch` so a fourth refusal cannot quietly land on a third's advice.
 	 *
 	 * Each names a DIFFERENT remedy, which is the whole reason they are four keys:

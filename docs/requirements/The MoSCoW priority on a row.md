@@ -128,7 +128,7 @@ Priority is a row of the optional-property table in `src/domain/optionalProperti
 which is what makes steps 1 and 3 work with no code of their own: `adoptableProperties`
 binds the suggestion, `configProblems` reports its collisions, `readOwnKeys` in
 `src/domain/readItems.ts` tracks whether the note carries the key, and `missingKeyStubs`
-in `src/domain/writePlan.ts` stubs it. `hasPriorityLevels` in `src/domain/settings.ts` is
+in `src/domain/rankBackfill.ts` stubs it. `hasPriorityLevels` in `src/domain/settings.ts` is
 the pair from steps 1 and 2 asked once — beside `hasRiskLevels` and stated separately
 rather than parameterised, for the reason `resolvedTestStateKey` gives beside
 `resolvedDeliverableStateKey`.

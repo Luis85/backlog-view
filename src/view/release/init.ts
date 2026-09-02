@@ -17,7 +17,7 @@ import type { ReleaseView } from './releaseView';
  * backfilling is editing a note that already exists, which is exactly what Task 5's
  * narrowed write-boundary claim (`test/view/releaseNeverEdits.test.ts`) says this view
  * never does. The accepted cost is the one already taken for the membership key last
- * increment (`neverStubbed`, `domain/writePlan.ts`): the picker cannot offer `version`,
+ * increment (`neverStubbed`, `domain/rankBackfill.ts`): the picker cannot offer `version`,
  * `targetDate`, `status` or `release` (membership) until a note carries them. What
  * supplies one is a value somebody STATED — the first `Set release`, or the first
  * **New release** whose version, date or status box was filled in. A blank box is written

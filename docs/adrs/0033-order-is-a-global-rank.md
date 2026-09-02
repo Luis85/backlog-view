@@ -45,6 +45,17 @@ both leave every `outsideFilter` rank exactly where it is. They live beside
 `src/domain/writePlan.ts` rather than in it because every other plan there places ONE row
 against its neighbours.
 
+**That reason has since taken two more modules out of `writePlan.ts`, which strengthens it
+rather than qualifying it.** The ✨ backfill is a whole-tree pass by the same test, so
+`computeInitWrites` and everything under it is `src/domain/rankBackfill.ts`; and the
+arithmetic all three kinds of plan share — `ORDER_SPACING`, `rankBetween` over `midpoint`
+and `edgeRank`, `roundOrder`'s six-decimal grid, `placeRun`, and the `RankResult` /
+`refusalKey` pair that names a refusal — is `src/domain/rankArithmetic.ts`. That last one
+is the point rather than a line-count dodge: a one-row placement, a whole-population
+rewrite and a blank being filled must land on ONE grid, and a second definition of it
+would be a second answer to what a rank may be. `ItemWrite` stays in `writePlan.ts`,
+because a type belongs with the code that produces it.
+
 `src/commands/rank.ts` is how a user reaches them: two palette commands rather than one
 that guesses, because the two look alike and mean very different things to a backlog
 somebody has ordered by hand. Each confirms with the count it would write, recomputes that
@@ -53,7 +64,8 @@ the active view's own `applySafely` — which is why `LiveBacklogView` in
 `src/view/registry.ts` publishes it.
 
 The placement math that reads that population is `anchoredOrder`, `orderForTarget` and
-`dropPlacement` in `src/domain/writePlan.ts`, and **every path that produces a rank goes
+`dropPlacement` in `src/domain/writePlan.ts` — over `src/domain/rankArithmetic.ts`, which
+is where the number itself comes from — and **every path that produces a rank goes
 through it** — a drop, an indent, an outdent, an Alt+arrow, a menu move, `New <child>`,
 the release scope screen's own creation, and the ✨ backfill filling a blank. That is the
 rule and not an observation: `newItemOrder` once called `orderForTarget` directly, missed
@@ -79,7 +91,8 @@ row's own exclusion.
   and including them here can only reduce collisions, never manufacture one — they stay
   unwritable through `applySafely` regardless of which array names their rank.
 - **A drop's rank is now planned from this population.** `dropPlacement` and
-  `computeDropWrites` in `src/domain/writePlan.ts` take a midpoint between the anchor's
+  `computeDropWrites` in `src/domain/writePlan.ts` take a midpoint (`rankBetween` in
+  `src/domain/rankArithmetic.ts`) between the anchor's
   neighbours in `ranked`, so a drop, an indent, an outdent and a keyboard reorder all
   write ONE note and no group is ever renumbered — `renumberWrites`, `afterHighestKnown`
   and `dropTargets.ts`'s `reorderableGroup` are deleted with the sibling-scoped arithmetic

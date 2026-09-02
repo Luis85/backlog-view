@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { BacklogItem, buildModel } from '../../src/domain/model';
-import { computeDropWrites, computeInitWrites } from '../../src/domain/writePlan';
+import { computeInitWrites } from '../../src/domain/rankBackfill';
+import { computeDropWrites } from '../../src/domain/writePlan';
 import { defaultSettings } from '../../src/domain/settings';
 import { FakeVault } from '../helpers/vault';
 

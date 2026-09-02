@@ -197,8 +197,12 @@ frontmatter, **I want** one button that sets the properties up and writes them f
 `src/domain/optionalProperties.ts` (`OPTIONAL_PROPERTIES`, the one table of what each
 optional
 property is called and suggests, and `adoptableProperties`) ·
-`src/domain/writePlan.ts` (`computeInitWrites`, over `initWriteFor`,
-`missingKeyStubs` and the `rankBetween` arithmetic every placement shares) ·
+`src/domain/rankBackfill.ts` (`computeInitWrites`, over `initWriteFor` and
+`missingKeyStubs` — the whole-tree pass, beside `writePlan.ts` rather than in it for the
+rule ADR 0033 already states about `rankSpread.ts`) ·
+`src/domain/rankArithmetic.ts` (`rankBetween`, the arithmetic every placement shares, and
+the `roundOrder` grid it lands on) · `src/domain/writePlan.ts` (`ItemWrite`, the record
+every plan here produces) ·
 `src/domain/rankOrder.ts` (`focusKey`, which decides whether a row drawn later can
 constrain a blank at all) · `src/domain/model.ts` (`ownKeys`, which key a note carries) ·
 `src/view/interactions/structure.ts` (`runInit`, the action both entry points call) ·

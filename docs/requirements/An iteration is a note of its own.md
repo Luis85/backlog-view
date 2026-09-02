@@ -260,6 +260,6 @@ is the shape both of these take. An earlier revision of this note omitted the mo
 entirely and would have had an implementer ship exactly that hole.
 
 The backfill exclusion is a third early return in `missingKeyStubs`, in
-`src/domain/writePlan.ts`. The menu entry is `src/view/interactions/labels.ts`, beside
+`src/domain/rankBackfill.ts`. The menu entry is `src/view/interactions/labels.ts`, beside
 the assignee's ([[Setting the assignee on an item]]). Driven in
 `test/domain/settings.test.ts` and `test/view/contextRowWrites.test.ts`.

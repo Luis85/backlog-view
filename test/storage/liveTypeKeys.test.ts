@@ -7,9 +7,9 @@
 import { describe, expect, it } from 'vitest';
 import { applyRestores, applyWrites, RestoreWrite } from '../../src/storage/frontmatter';
 import { buildModel, inPlan } from '../../src/domain/model';
+import { computeInitWrites } from '../../src/domain/rankBackfill';
 import {
 	computeAssigneeWrites,
-	computeInitWrites,
 	computeIterationNoteWrites,
 	computeIterationWrites,
 	computeReleaseWrites,
