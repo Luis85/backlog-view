@@ -77,6 +77,17 @@ questions per end:
 - Does the note still hold that end? Skip it if so.
 - Would writing it reverse the span against the end that stands? Skip it if so — in both
   directions.
+
+**Decide BOTH ends from one snapshot, taken before any axis write lands.** This is the
+trap, and the rule reads correct while the obvious implementation inverts it:
+`AXIS_FIELDS` is `['horizon', 'start', 'target']` (`src/domain/optionalProperties.ts`), so a
+check written inside `applyAxis`'s existing loop reads, at `target`, a start it wrote itself
+one iteration earlier. An undated item joining a release whose date has passed then gets
+today as a start — nothing stood to forbid it — and the due is suppressed against that new
+start. That is the precise inverse of extension 4b, which wants the past due copied and no
+start invented. Read both live values first, decide both, then write. Its test is an
+initially empty item joining a past release: due copied, no start. Found by review
+(Codex, PR #242).
 - Is this pick still a join? The membership must be read **before** `applyLinks` overwrites
   it, the way `leaving` already captures the departing state — and read with the **same
   semantics the planner uses**, which is the part an implementer will otherwise get wrong.
@@ -109,10 +120,13 @@ sentence claiming a schedule it cannot verify is worse than one that only claims
 membership.
 
 [ADR 0033](../adrs/0033-a-stale-rule-is-decided-at-the-writer.md) is the decision this task
-carries out, and it stands at `status: Proposed` because `docs/adrs/README.md` reserves
-`Accepted` for a record the code follows. **Flipping it to `Accepted` is part of this task's
-definition of done**, in the same commit as the work — nothing else will, and an ADR left
-`Proposed` after its own implementation lands understates the rule that now binds.
+carries out, and it stays at `status: Proposed` when this task lands. **Do not flip it.**
+This note said the opposite for one commit, which was a contradiction with the ADR's own
+`## Consequences`: that record names the reverse membership race as a case this task does
+NOT fix, assigning it to [[A pick compared against the model reads as a no-op]], so a named
+example still violates the decision after this work is done. `docs/adrs/README.md` reserves
+`Accepted` for a record the code follows, and it would not yet. The increment that moves the
+last stale check is the one that accepts the ADR (Codex, PR #242).
 
 `CHANGELOG.md` gains its `[Unreleased]` entry in the same pull request, per `RELEASING.md`.
 

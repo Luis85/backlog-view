@@ -73,9 +73,11 @@ for the stronger reading: the decision is not even true of one example named abo
 `computeReleaseWrites` still returns an empty plan from the captured membership and
 [[Joining a release dates the work]] 6c concedes that no writer check runs in that race —
 [[A pick compared against the model reads as a no-op]] owns moving all three planners and is
-its own increment. Flipping this record to `Accepted` is part of that task's definition of
-done. Recorded after review (Codex, PR #242) read the status against this README's own
-vocabulary.
+its own increment. **That increment is what accepts this record**, not
+[[Dates ride the release join]] — which for one commit claimed the flip as its own definition
+of done, and would have set `Accepted` on a decision one of its own examples still violated.
+Recorded after two rounds of review (Codex, PR #242) read the status against this README's
+own vocabulary, and then read the task against this paragraph.
 
 **The plan no longer fully describes the write.** Reading `computeReleaseWrites` alone no
 longer tells you what lands on disk, and the flag is the only thing linking the two halves.

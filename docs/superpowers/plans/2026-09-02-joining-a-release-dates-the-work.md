@@ -20,13 +20,16 @@ down from the two entry points and nothing else.
 The decision behind that split is
 `docs/adrs/0033-a-stale-rule-is-decided-at-the-writer.md`, and it stands at
 `status: Proposed` because this repository reserves `Accepted` for a record the code
-follows. Flipping it is part of Task 1's definition of done.
+follows. **It stays `Proposed` after this run**: its own `## Consequences` names a case this
+work does not fix, so the increment that moves the last stale planner is the one that
+accepts it.
 
 ## Not tasks
 
 - `docs/adrs/0033-a-stale-rule-is-decided-at-the-writer.md` — **prose, already written** by
-  the decomposition and repaired by the refinement pass. Context to build against, not work.
-  Task 1 flips its status; nothing else touches it.
+  the decomposition and repaired by the refinement pass. Context to build against, not work,
+  and **not edited at all**: it stays `Proposed` until a later increment moves the last
+  stale planner.
 - `docs/tests/cases/Making a release, and putting work in one.md` — **the human's.** A walk
   in a live vault, which no subagent reaches: Obsidian cannot run here. It stays `Open`
   after this run, and its `Test suite` stays `Open` because its cases are re-walked at each
@@ -58,9 +61,9 @@ the write-`npm run check`-commit variant.
 
 **Closing the note is part of the task's definition of done, in the same commit as the
 work:** `## Outcome` written, `status: Done`, `closed:` dated. Close **only** the note the
-task dispatched you to. The ADR and the `Test case` above are context: the ADR takes
-`status: Accepted` from Task 1 and never a `closed:` key or an `## Outcome`, and the
-`Test case` is closed by nobody in this run.
+task dispatched you to. The ADR and the `Test case` above are context, and **neither is edited by any task here**: the ADR keeps
+`status: Proposed` and never takes a `closed:` key or an `## Outcome`, and the `Test case`
+is closed by nobody in this run.
 
 ## Task 1
 
