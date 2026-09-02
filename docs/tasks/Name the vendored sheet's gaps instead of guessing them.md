@@ -49,8 +49,9 @@ drawn-but-unstyled without anyone reading the CSS.* That is
 `test/harness/vendoredCoverage.test.ts`, and it names both — plus four the note never did.
 
 It mounts the `edges` fixture under `?phone`, expands the tree, drives all four
-projections, all three roadmap axes, the shelf and focus knobs and all three dialogs, then
-collects every class on the page that is not `pbl-*`. Which classes count as Obsidian's is
+projections, all three roadmap axes, the shelf and focus knobs and all three dialogs, and
+collects every class that is not `pbl-*` **after each of those states** — see the review
+correction below for why the word "each" is load-bearing. Which classes count as Obsidian's is
 a RULE and not a table: the view's stylesheet dresses only its own prefix, so anything else
 was written by the mock, by `dom.ts` or by app.css.
 
@@ -71,6 +72,26 @@ seeing dialog markup cannot leave it green.
 
 **Watched failing**: deleting `.setting-item-name` from the vendored sheet's shared
 typography rule turns the check red naming it, on a suite nobody edited.
+
+### And review found it reaching less than it claimed (PR #254)
+
+The first committed version collected classes ONCE, after every state had been driven,
+and the section above already claimed it measured "across all four projections, three
+axes, the knobs and the three dialogs". It did not. A projection switch replaces the DOM,
+so a class only the board or the roadmap draws is gone by the time the catalog is up, and
+what was actually measured was the last state plus whatever the dialogs left behind. The
+axis loop was worse: it ran after the switch to the catalog, so `setAxisPick` re-rendered
+the catalog three times and the three axes drew nothing at all.
+
+Measured both ways over the identical drive: per-state collection sees **21** classes,
+end-only sees **20** and misses `.mod-cta`. The six unstyled names do not change — they
+are the dialogs', which persist — so the FINDING survived, and the GUARANTEE did not.
+This is the second time this instrument answered plausibly about a set it never measured,
+and the first time was in this same file.
+
+Fixed by collecting after each rendered state and switching back to the roadmap before
+the axis loop. The floor assertion is now pinned at 21 and `.mod-cta` is pinned present:
+end-only collection fails on both, which is what was watched.
 
 ## What was refused
 

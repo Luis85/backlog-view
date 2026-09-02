@@ -84,7 +84,8 @@ which classes the harness draws has the vendored sheet no rule for. It names
 `.modal-title` and `.modal-content` as predicted, and four more nobody had —
 `.extra-setting-button`, `.mod-dim`, `.setting-item-control`, `.setting-item-info` — out
 of 21 Obsidian classes drawn across all four projections, three axes, the knobs and the
-three dialogs. The six are RECORDED rather than filled: guessing values into `theme.css`
+three dialogs — collected after EACH of those states, which is a correction review had to
+make: reading once at the end measured the last state and missed one class outright. The six are RECORDED rather than filled: guessing values into `theme.css`
 is what this file's own header refuses, and filling them is a re-derivation against a
 local install. See [[Name the vendored sheet's gaps instead of guessing them]].
 

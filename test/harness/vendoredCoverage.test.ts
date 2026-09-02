@@ -44,7 +44,19 @@ installObsidianDom();
  *   configuration variants draw classes nothing here asks for.
  */
 describe('the vendored app.css reaches what the harness draws', () => {
-	/** Every non-`pbl` class the page wears after the committed states have been driven. */
+	/**
+	 * Every non-`pbl` class the page wears across the committed states, READ AFTER EACH
+	 * ONE. Reading once at the end measures the last state and nothing else: a projection
+	 * switch replaces the DOM, so a class only the board draws is gone by the time the
+	 * catalog is up. Measured — end-only collection over this same drive sees 20 classes
+	 * and misses `.mod-cta`, which is why one is pinned in the test below.
+	 *
+	 * The axis loop switches BACK to the roadmap first for the same reason: set from
+	 * whatever projection happened to be last, `setAxisPick` re-renders that one and the
+	 * three axes draw nothing. Both were found by review on PR #254, and both are the
+	 * shape this file's own header warns about — an instrument that answers plausibly
+	 * about a set it never measured.
+	 */
 	function drawnObsidianClasses(): Set<string> {
 		applyPlatform('?phone');
 		const root = document.createElement('div');
@@ -52,17 +64,29 @@ describe('the vendored app.css reaches what the harness draws', () => {
 		// `edges` rather than `demo`: same markup, and the awkward fixture is the one whose
 		// bars, shelf and unknown types reach the most of it.
 		const { view, containerEl } = mountHarness(root, 'edges');
+		const drawn = new Set<string>();
+		const collect = (): void => {
+			for (const el of document.querySelectorAll<HTMLElement>('*')) {
+				for (const name of el.classList) if (!name.startsWith('pbl-')) drawn.add(`.${name}`);
+			}
+		};
+
 		clickExpandAll(containerEl);
 		applyWantedState(view, '?shelf&focus=PBI');
-		for (const label of ['Show as kanban boards', 'Show as roadmap', 'Show as test catalog']) {
+		collect();
+		const show = (label: string): void => {
 			projectionButton(containerEl, label).dispatchEvent(new MouseEvent('click', { bubbles: true }));
+			collect();
+		};
+		for (const label of ['Show as kanban boards', 'Show as roadmap', 'Show as test catalog']) show(label);
+		show('Show as roadmap');
+		for (const axis of ['horizons', 'dates', 'resources'] as const) {
+			view.setAxisPick(axis);
+			collect();
 		}
-		for (const axis of ['horizons', 'dates', 'resources'] as const) view.setAxisPick(axis);
-		for (const dialog of ['manual', 'colors', 'new']) openWantedDialog(view, containerEl, `?dialog=${dialog}`);
-
-		const drawn = new Set<string>();
-		for (const el of document.querySelectorAll<HTMLElement>('*')) {
-			for (const name of el.classList) if (!name.startsWith('pbl-')) drawn.add(`.${name}`);
+		for (const dialog of ['manual', 'colors', 'new']) {
+			openWantedDialog(view, containerEl, `?dialog=${dialog}`);
+			collect();
 		}
 		return drawn;
 	}
@@ -101,9 +125,11 @@ describe('the vendored app.css reaches what the harness draws', () => {
 		expect([...drawn].filter((name) => !styled.has(name)).sort()).toEqual(UNSTYLED);
 		// Not vacuous: a drive that rendered nothing reports no gaps and would pass. The
 		// count is a floor rather than the number, so an added fixture does not fail this.
-		expect(drawn.size).toBeGreaterThanOrEqual(20);
-		// And pinned to the instance the note predicted, so a rewrite of the filter that
-		// stopped seeing dialog markup could not leave this green.
-		expect(drawn.has('.modal-title')).toBe(true);
+		expect(drawn.size).toBeGreaterThanOrEqual(21);
+		// Pinned to the instance the note predicted, so a rewrite of the filter that
+		// stopped seeing dialog markup could not leave this green — and to the one class
+		// that is NOT on the page at the end of the drive, which is what holds the
+		// per-state collection above in place.
+		expect([drawn.has('.modal-title'), drawn.has('.mod-cta')]).toEqual([true, true]);
 	});
 });
