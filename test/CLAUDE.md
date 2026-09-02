@@ -26,6 +26,16 @@ a watched-failing test" — stay in [`../CLAUDE.md`](../CLAUDE.md).
 - `test/helpers/vault.ts` — `FakeVault` (metadata cache, vault, `processFrontMatter`, workspace
   recorder) and `FakeViewConfig` (records `set()` calls). Assert writes via
   `vault.fm(path)` / `vault.writeLog`; assert navigation via `vault.opened`.
+- `test/helpers/locale.ts` — the locale the run resolves, once and explicitly, from
+  `PBL_TEST_LOCALE` (default `en`). It is vitest's `setupFiles` entry, so a file that never
+  mentions a locale still runs in the one the run asked for, and `resetLocale()` is what a
+  test restores after driving `setLocale` itself — never a hard-coded `'en'`, which is
+  what would make CI's second pass green by accident. `PBL_TEST_LOCALE=de-DE npx vitest run`
+  is that pass locally; it exercises the catalog FALLBACK and `Intl.NumberFormat`, not a
+  second catalog, because most assertions here name the English text on purpose. `num()`
+  is beside it: an expectation spelling `2.5` or `12,345` is asserting English number
+  formatting, which is the one thing that pass varies — it found five such assertions on
+  its first run, in three files none of which was about a number.
 - `test/helpers/view.ts` — the view harness every `test/view/*.test.ts` file shares:
   `makeView`, `refresh`, `fixture`, the row/tree accessors, `drag`, `key`, `stubRect`,
   `flush`, `submitPrompt`, and `useViewHarness()` for the per-test reset. Call

@@ -2,6 +2,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { en } from '../../src/i18n/en';
 import { Catalog, setLocale } from '../../src/i18n/t';
+import { resetLocale } from '../helpers/locale';
 import { announced } from '../helpers/dnd';
 import { installObsidianDom } from '../helpers/dom';
 import { roadmapView } from '../helpers/roadmap';
@@ -37,7 +38,7 @@ useViewHarness();
 const xx: Catalog = markedCatalog();
 
 beforeEach(() => setLocale('xx', { xx }));
-afterEach(() => setLocale('en'));
+afterEach(() => resetLocale());
 
 /**
  * The whole announcement, composed the way the view composes it: the frame with each end

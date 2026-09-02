@@ -132,7 +132,7 @@ function emptyHint(host: BacklogViewHost, focused: boolean, topLevel: string): s
 	}
 	const ignored = host.model?.ignoredCount ?? 0;
 	if (ignored > 0) {
-		return t('emptyState.ignored', { count: ignored, topLevel });
+		return t('emptyState.ignored', { count: ignored, topLevel, option: t('option.hierarchyOnly') });
 	}
 	return t('emptyState.filterHint', { type: topLevel });
 }
@@ -144,7 +144,11 @@ function emptyHint(host: BacklogViewHost, focused: boolean, topLevel: string): s
  * set and where, never a blank pane.
  */
 export function renderBoardNoWorkflowState(host: BacklogViewHost, treeEl: HTMLElement): void {
-	const empty = guidanceShell(treeEl, 'square-kanban', t('emptyState.noWorkflow'), t('emptyState.noWorkflowBody'));
+	const body = t('emptyState.noWorkflowBody', {
+		stateOption: t('option.stateProperty'),
+		statesOption: t('option.stateValues'),
+	});
+	const empty = guidanceShell(treeEl, 'square-kanban', t('emptyState.noWorkflow'), body);
 	renderSetupCta(host, empty, ['state']);
 }
 
@@ -158,7 +162,11 @@ export function renderDeliverablesBoardNoWorkflowState(host: BacklogViewHost, tr
 		treeEl,
 		'square-kanban',
 		t('emptyState.noDeliverableWorkflow'),
-		t('emptyState.noDeliverableWorkflowBody'),
+		t('emptyState.noDeliverableWorkflowBody', {
+			deliverableStateOption: t('option.deliverableStateProperty'),
+			stateOption: t('option.stateProperty'),
+			deliverableStatesOption: t('option.deliverableStateValues'),
+		}),
 	);
 	// BOTH fields fix this frame, which is `resolvedDeliverableStateKey`'s own rule as a
 	// list: this board resolves through its own key when one is set and through the
@@ -250,7 +258,14 @@ export function renderRoadmapNoAxisState(host: BacklogViewHost, treeEl: HTMLElem
 	// One key per whole body, never a clause spliced into a shared frame: which half is
 	// missing decides the sentence, and a locale that names the dates first has no way
 	// into a middle the caller assembled.
-	const body = halfConfigured ? t('emptyState.noAxisBodyHalfSet') : t('emptyState.noAxisBody');
+	const axisOptions = {
+		horizonsOption: t('option.horizonValues'),
+		startOption: t('option.startProperty'),
+		targetOption: t('option.targetProperty'),
+	};
+	const body = halfConfigured
+		? t('emptyState.noAxisBodyHalfSet', axisOptions)
+		: t('emptyState.noAxisBody', { ...axisOptions, horizonOption: t('option.horizonProperty') });
 	const empty = guidanceShell(treeEl, 'map', t('emptyState.noAxis'), body);
 	renderSetupCta(host, empty, ['horizon', 'start', 'target']);
 }

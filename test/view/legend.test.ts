@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { FakeVault } from '../helpers/vault';
 import { makeView, useViewHarness } from '../helpers/view';
 import { STATE_COLOR_SLOTS } from '../../src/domain/settings';
@@ -262,6 +262,13 @@ describe('the roadmap legend', () => {
 		// claim a key for a mark nothing on screen makes. Reached the same way
 		// `absenceCollision.test.ts` reaches it: a near-term backlog at quarter zoom, where
 		// `timelineFurniture.test.ts` already establishes every bar's label is dropped.
+		// The clock is PINNED, and that is the defect this line fixes rather than a style:
+		// `timelineWindow` pads its span to include today, so a fixture dated in a fixed
+		// month gets a wider window every day that passes — and the width this test is
+		// about is the one thing that drops the label. It passed for a fortnight and then
+		// failed on the calendar. `setSystemTime` alone, so only `Date` is mocked and the
+		// view's own timers still run.
+		vi.setSystemTime(new Date('2026-08-05T12:00:00Z'));
 		const vault = new FakeVault();
 		vault.addFile('Alice.md', { frontmatter: { type: 'Resource' } });
 		vault.addFile('Work.md', {
