@@ -98,20 +98,24 @@ describe('searching the shelf', () => {
 	function shelfOf(): ReturnType<typeof shelfFrom> {
 		const vault = new FakeVault();
 		vault.addFile('Login screen.md', { frontmatter: { type: 'Epic', order: 10 } });
-		vault.addFile('Billing export.md', { frontmatter: { type: 'Epic', order: 20 } });
+		vault.addFile('Billing Export.md', { frontmatter: { type: 'Epic', order: 20 } });
 		return shelfFrom(vault);
 	}
 
 	it('keeps the cards whose title holds the needle, whatever its case', () => {
-		// Neither needle holds an `I`, and that is deliberate rather than arbitrary: the
-		// search folds in the RUN's locale, so `LOGIN` against `Login screen` asserts
-		// ENGLISH case folding — under `PBL_TEST_LOCALE=tr-TR` those are two different
-		// letters and the miss is correct Turkish. The same trap `num()` names for a
-		// number, wearing a letter. Which locale folds what is
-		// `test/i18n/localeFolds.test.ts`'s subject; this assertion is only that case is
-		// ignored at all.
+		// One needle each way, because the search folds BOTH sides and an assertion that
+		// only ever upper-cases the needle passes with the haystack's fold deleted — which
+		// is what this test did until review caught it. `SCREEN` proves the needle is
+		// folded, `export` against `Billing Export` proves the title is.
+		//
+		// Neither needle holds an `I`, and that is deliberate: the search folds in the
+		// RUN's locale, so `LOGIN` against `Login screen` asserts ENGLISH case folding —
+		// under `PBL_TEST_LOCALE=tr-TR` those are two different letters and the miss is
+		// correct Turkish. The same trap `num()` names for a number, wearing a letter.
+		// Which locale folds what is `test/i18n/localeFolds.test.ts`'s subject; this
+		// assertion is only that case is ignored at all.
 		expect(titlesOf(searchShelf(shelfOf(), 'SCREEN'))).toEqual(['Login screen']);
-		expect(titlesOf(searchShelf(shelfOf(), 'export'))).toEqual(['Billing export']);
+		expect(titlesOf(searchShelf(shelfOf(), 'export'))).toEqual(['Billing Export']);
 	});
 
 	it('narrows nothing on an empty or blank needle', () => {
@@ -123,6 +127,6 @@ describe('searching the shelf', () => {
 	});
 
 	it('keeps the input order, leaving grouping and sort to say what comes first', () => {
-		expect(titlesOf(searchShelf(shelfOf(), 'i'))).toEqual(['Login screen', 'Billing export']);
+		expect(titlesOf(searchShelf(shelfOf(), 'i'))).toEqual(['Login screen', 'Billing Export']);
 	});
 });
