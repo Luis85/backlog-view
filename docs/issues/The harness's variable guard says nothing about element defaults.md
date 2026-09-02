@@ -77,6 +77,23 @@ selectors the vendored sheet defines against the elements and classes the harnes
 puts on the page would not catch staleness, but it would have named `.modal-title` and
 `.modal-content` as drawn-but-unstyled without anyone reading the CSS.
 
+## The cheaper half is built (2026-09-02)
+
+`test/harness/vendoredCoverage.test.ts` asks the question the section above sketched:
+which classes the harness draws has the vendored sheet no rule for. It names
+`.modal-title` and `.modal-content` as predicted, and four more nobody had —
+`.extra-setting-button`, `.mod-dim`, `.setting-item-control`, `.setting-item-info` — out
+of 21 Obsidian classes drawn across all four projections, three axes, the knobs and the
+three dialogs — collected after EACH of those states, which is a correction review had to
+make: reading once at the end measured the last state and missed one class outright. The six are RECORDED rather than filled: guessing values into `theme.css`
+is what this file's own header refuses, and filling them is a re-derivation against a
+local install. See [[Name the vendored sheet's gaps instead of guessing them]].
+
+**This note stays Open**, on the half that is not lifted: nothing notices when Obsidian
+changes a default the vendored file still states at the old value, and nothing sees an
+element default carried by no class at all — a bare `<button>`, which is the episode this
+note was filed about.
+
 ## Impact
 
 Three real defects shipped past `npm run harness` and were only caught because the owner

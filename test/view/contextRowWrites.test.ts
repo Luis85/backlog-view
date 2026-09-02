@@ -2,17 +2,8 @@
 import { describe, expect, it } from 'vitest';
 import { FakeVault, setResults } from '../helpers/vault';
 import { FuzzySuggestModal, Menu, Modal } from '../helpers/obsidian-mock';
-import { drag, flush, itemAt, key, makeView, rowByTitle, rows, submitPrompt, treeOf, useViewHarness } from '../helpers/view';
+import { drag, flush, itemAt, key, makeView, noTypeFolders, rowByTitle, rows, submitPrompt, treeOf, useViewHarness } from '../helpers/view';
 import { computeAssigneeWrites } from '../../src/domain/writePlan';
-
-/**
- * Clear every configured folder, so folder INFERENCE is what runs. Both layers have to
- * go: a type's own folder answers first, and the home folder answers next.
- */
-const NO_TYPE_FOLDERS: Record<string, string> = {
-	homeFolder: '',
-	...Object.fromEntries(['epic', 'feature', 'pbi', 'task', 'issue', 'bug'].map((t) => [`typeFolder.${t}`, ''])),
-};
 
 useViewHarness();
 
@@ -26,7 +17,7 @@ describe('moves in a group that holds an outside-filter row', () => {
 		vault.addFile('PBI.md', { frontmatter: { type: 'PBI', order: 10 }, parentLink: 'Feature A' });
 		// Inference is what this test is about, so the type folders that would answer
 		// first are turned off.
-		const { view, containerEl } = makeView(vault, { ...NO_TYPE_FOLDERS }, { only: ['Feature B.md', 'PBI.md'] });
+		const { view, containerEl } = makeView(vault, noTypeFolders(), { only: ['Feature B.md', 'PBI.md'] });
 		return { view, containerEl, vault };
 	}
 
@@ -74,7 +65,7 @@ describe('new-item folder inference with context rows', () => {
 		// first are turned off.
 		const { containerEl } = makeView(
 			vault,
-			{ ...NO_TYPE_FOLDERS },
+			noTypeFolders(),
 			{ collapsed: true, only: ['Backlog/A.md', 'Backlog/B.md'] },
 		);
 
@@ -97,7 +88,7 @@ describe('creating a child under a context parent', () => {
 		// lands, which only comes up when the folder is being inferred at all.
 		const { view, containerEl } = makeView(
 			vault,
-			{ inferFolderHierarchy: true, ...NO_TYPE_FOLDERS },
+			noTypeFolders({ inferFolderHierarchy: true }),
 			{ only: ['Backlog/PBI.md'] },
 		);
 		return { view, containerEl, vault };
@@ -133,7 +124,7 @@ describe('creating a child under a context parent', () => {
 		vault.addFile('Backlog/Epic/Epic.md', { frontmatter: { type: 'Epic' } });
 		// Type folders off: the rule under test is where a child of a CONTEXT parent
 		// lands, which only comes up when the folder is being inferred at all.
-		const { containerEl } = makeView(vault, { inferFolderHierarchy: true, ...NO_TYPE_FOLDERS }, { collapsed: true });
+		const { containerEl } = makeView(vault, noTypeFolders({ inferFolderHierarchy: true }), { collapsed: true });
 
 		rowByTitle(containerEl, 'Epic')
 			.querySelector<HTMLElement>('.pbl-add')

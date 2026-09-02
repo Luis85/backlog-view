@@ -11,7 +11,7 @@ import {
 	wipLimitKey,
 } from './settings';
 import { OPTIONAL_PROPERTIES, OptionalSettingsKey } from './optionalProperties';
-import { ABSENCE_TYPE, defaultResourceFolder, defaultTypeFolder, FILED_TYPES, typeFolderKey } from './typeVocabulary';
+import { defaultResourceFolder, defaultTypeFolder, FOLDER_OPTION_TYPES, typeFolderKey } from './typeVocabulary';
 
 /**
  * Reading a `.base` file's stored options into a `BacklogSettings`.
@@ -272,16 +272,15 @@ export function resolveSettings(config: BasesViewConfig): BacklogSettings {
 	// Limits are refused for done states HERE rather than only in the schema, so a key
 	// left in the `.base` by re-marking a state as done cannot revive its limit.
 	const limitedStates = states.filter((s) => !doneSet.has(s.toLowerCase()));
-	// `FILED_TYPES` plus the one declared name that is deliberately in no vocabulary list.
-	// Passed as a local array rather than by widening either: `resolveFolders` already
-	// takes the types it should resolve, so this reuses the whole per-type shape — the
-	// option key, the clearable read, the home-folder fallback — without any consumer of
-	// those lists seeing an extra entry it would then have to exclude. It is the SAME
-	// list the options are declared from (`viewOptions.ts`), which is what stops a key
-	// being resolved that no box can set: `typeFolder.release` was resolved here for a
-	// row that had been dropped, and the generated README printed a `Release` folder no
-	// release is ever written to.
-	const folders = resolveFolders({ str, clearable }, [...FILED_TYPES, ABSENCE_TYPE], fallback);
+	// `FILED_TYPES` plus the one declared name that is deliberately in no vocabulary list,
+	// and it is the SAME BINDING the options are declared from (`viewOptions.ts`) rather
+	// than a second array spelled the same way — which is what this comment used to assert
+	// and nothing checked. That identity is what stops a key being resolved that no box can
+	// set: `typeFolder.release` was resolved here for a row that had been dropped, and the
+	// generated README printed a `Release` folder no release is ever written to. Passed as
+	// an argument rather than read inside `resolveFolders`, so that helper still takes the
+	// types it should resolve and no consumer of the vocabulary lists sees an extra entry.
+	const folders = resolveFolders({ str, clearable }, FOLDER_OPTION_TYPES, fallback);
 	// Every optional property's key, read from the ONE table that already names both the
 	// option and the field it lands in — rather than a line per property restating that
 	// pairing a second time. The lines this replaces were correct, but they were a copy
