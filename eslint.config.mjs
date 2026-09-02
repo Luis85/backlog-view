@@ -73,6 +73,49 @@ const WRITE_BOUNDARY = [
 ];
 
 /**
+ * "Is this projection tree-shaped" is `treeShaped()` in `src/view/projection.ts`, and that
+ * predicate is `'tree' || 'catalog'` — so a bare comparison against `'tree'` alone is
+ * exactly the shape that silently excludes the catalog from a gate it belongs in: no
+ * column fitting, no refit on resize, the fit classes cleared as though it were a card
+ * projection, a row menu with no Move up/down. That is the drift the module exists to
+ * stop, and until 2026-09-02 two guides claimed this rule already existed.
+ *
+ * **`'tree'` only, and that is a classification rather than a shortcut.** The other
+ * comparisons an AST sweep finds — `=== 'board'`, `=== 'roadmap'`, `=== 'deliverables'`,
+ * `=== 'iteration'`, and the two `=== 'catalog'` in `render/emptyStates.ts` and
+ * `render/projections.ts` — are dispatch on ONE projection's own behaviour, which is the
+ * question no predicate on that module answers and which a ban could only permit through
+ * an exemption list that goes stale. They are sorted, named and left alone in
+ * `docs/issues/The projection predicate has no lint rule behind it.md`. There was nothing
+ * to grandfather: the same rule reported zero violations across `src/` before it was
+ * turned on.
+ *
+ * What it SEES is an equality comparison with `projection`, `<x>.projection` or
+ * `<x>?.projection` on one side and the literal `'tree'` on the other. The optional-chain
+ * spelling needed its own term and did not have one for a day: typescript-eslint wraps an
+ * optional member access in a `ChainExpression`, so `left.property.name` reads nothing
+ * through it and `host?.projection === 'tree'` linted clean (Codex, PR #252) — verified by
+ * planting it, watching lint pass, and watching it fail once the term was added. It does not see `switch (projection)` with a
+ * `case 'tree'`, nor a projection first copied into a differently named local. The claim
+ * is therefore "no bare `projection === 'tree'`", not "nothing compares to `'tree'`", and
+ * `src/view/CLAUDE.md` states it that narrowly.
+ */
+const PROJECTION_TREE = [
+	{
+		selector:
+			"BinaryExpression[operator=/^[!=]==$/]:matches([left.name='projection'], [left.property.name='projection'], [left.expression.property.name='projection'])[right.value='tree']",
+		message:
+			"A bare projection === 'tree' misses the catalog, which is tree-shaped too. Ask src/view/projection.ts — treeShaped(), hidesCompleted(), hasRollup(), projectionPopulation() and the rest.",
+	},
+	{
+		selector:
+			"BinaryExpression[operator=/^[!=]==$/][left.value='tree']:matches([right.name='projection'], [right.property.name='projection'], [right.expression.property.name='projection'])",
+		message:
+			"A bare 'tree' === projection misses the catalog, which is tree-shaped too. Ask src/view/projection.ts — treeShaped(), hidesCompleted(), hasRollup(), projectionPopulation() and the rest.",
+	},
+];
+
+/**
  * Enter or Space on a focused button synthesizes a click at (0, 0), so anchoring a
  * menu to the pointer drops it in the viewport corner. This shipped once already.
  */
@@ -754,7 +797,7 @@ export default defineConfig([
 		// storage/, ui/, commands/, main.ts.
 		files: ['src/**/*.ts'],
 		ignores: [STORAGE, VIEW, ...RANKING_DOMAIN, ...SWEPT],
-		rules: syntaxRules([...WRITE_BOUNDARY, ...SVG_CLASS_TOKENS, MENU_ANCHOR, OVERBY, TREE_SCAN]),
+		rules: syntaxRules([...WRITE_BOUNDARY, ...PROJECTION_TREE, ...SVG_CLASS_TOKENS, MENU_ANCHOR, OVERBY, TREE_SCAN]),
 	},
 	{
 		// ui/ and commands/, carved out of the general region for the two text bans alone:
@@ -778,6 +821,7 @@ export default defineConfig([
 		files: SWEPT,
 		rules: syntaxRules([
 			...WRITE_BOUNDARY,
+			...PROJECTION_TREE,
 			...SVG_CLASS_TOKENS,
 			MENU_ANCHOR,
 			OVERBY,
@@ -806,7 +850,22 @@ export default defineConfig([
 		// title written INTO the `.base`, and it survives because it is at no setter and no
 		// banned property.
 		files: [STORAGE],
-		rules: syntaxRules([...SVG_CLASS_TOKENS, MENU_ANCHOR, OVERBY, TREE_SCAN, ...TEXT_TERNARY, UI_TEXT_LITERAL, UI_TEXT_PROPERTY]),
+		// `PROJECTION_TREE` joins the list here even though this directory carries no
+		// WRITE_BOUNDARY — it IS the write boundary — because the projection ban is about
+		// reach rather than about layer: it holds across `src/` with `view/projection.ts`
+		// as its ONE exemption, and a directory that quietly fell outside it is exactly the
+		// hole this register keeps finding. Verified by planting the comparison here and
+		// watching lint go from silent to red (2026-09-02).
+		rules: syntaxRules([
+			...SVG_CLASS_TOKENS,
+			...PROJECTION_TREE,
+			MENU_ANCHOR,
+			OVERBY,
+			TREE_SCAN,
+			...TEXT_TERNARY,
+			UI_TEXT_LITERAL,
+			UI_TEXT_PROPERTY,
+		]),
 	},
 	{
 		// The menu helper is where the anchoring decision is made, so it is the one place
@@ -820,6 +879,7 @@ export default defineConfig([
 		rules: syntaxRules([
 			...SVG_CLASS_TOKENS,
 			...WRITE_BOUNDARY,
+			...PROJECTION_TREE,
 			OVERBY,
 			TREE_SCAN,
 			DELIVERABLE_FIELD_READ,
@@ -837,7 +897,7 @@ export default defineConfig([
 		// at. It plans writes, which is exactly what overBy must stay out of. No
 		// ALL_TYPES_IMPORT: this file is domain/, not view/.
 		files: RANKING_DOMAIN,
-		rules: syntaxRules([...WRITE_BOUNDARY, ...SVG_CLASS_TOKENS, MENU_ANCHOR, RENDERED_ROOTS, VISUAL_DEPTH, OVERBY, TREE_SCAN]),
+		rules: syntaxRules([...WRITE_BOUNDARY, ...PROJECTION_TREE, ...SVG_CLASS_TOKENS, MENU_ANCHOR, RENDERED_ROOTS, VISUAL_DEPTH, OVERBY, TREE_SCAN]),
 	},
 	{
 		// Ranking code, view half: the same rules as the domain half, plus
@@ -849,6 +909,7 @@ export default defineConfig([
 		rules: syntaxRules([
 			...SVG_CLASS_TOKENS,
 			...WRITE_BOUNDARY,
+			...PROJECTION_TREE,
 			MENU_ANCHOR,
 			...RESOURCE_LABEL_BYPASS,
 			RENDERED_ROOTS,
@@ -889,6 +950,7 @@ export default defineConfig([
 		rules: syntaxRules([
 			...SVG_CLASS_TOKENS,
 			...WRITE_BOUNDARY,
+			...PROJECTION_TREE,
 			MENU_ANCHOR,
 			...RESOURCE_LABEL_BYPASS,
 			TREE_SCAN,
@@ -909,6 +971,7 @@ export default defineConfig([
 		rules: syntaxRules([
 			...SVG_CLASS_TOKENS,
 			...WRITE_BOUNDARY,
+			...PROJECTION_TREE,
 			MENU_ANCHOR,
 			...RESOURCE_LABEL_BYPASS,
 			TREE_SCAN,
@@ -931,6 +994,7 @@ export default defineConfig([
 		rules: syntaxRules([
 			...SVG_CLASS_TOKENS,
 			...WRITE_BOUNDARY,
+			...PROJECTION_TREE,
 			MENU_ANCHOR,
 			...RESOURCE_LABEL_BYPASS,
 			TREE_SCAN,
@@ -962,6 +1026,7 @@ export default defineConfig([
 		rules: syntaxRules([
 			...SVG_CLASS_TOKENS,
 			...WRITE_BOUNDARY,
+			...PROJECTION_TREE,
 			MENU_ANCHOR,
 			...RESOURCE_LABEL_BYPASS,
 			TREE_SCAN,
@@ -994,6 +1059,7 @@ export default defineConfig([
 		rules: syntaxRules([
 			...SVG_CLASS_TOKENS,
 			...WRITE_BOUNDARY,
+			...PROJECTION_TREE,
 			MENU_ANCHOR,
 			...RESOURCE_LABEL_BYPASS,
 			OVERBY,
@@ -1014,6 +1080,7 @@ export default defineConfig([
 		rules: syntaxRules([
 			...SVG_CLASS_TOKENS,
 			...WRITE_BOUNDARY,
+			...PROJECTION_TREE,
 			MENU_ANCHOR,
 			...RESOURCE_LABEL_BYPASS,
 			OVERBY,
@@ -1040,6 +1107,7 @@ export default defineConfig([
 		rules: syntaxRules([
 			...SVG_CLASS_TOKENS,
 			...WRITE_BOUNDARY,
+			...PROJECTION_TREE,
 			MENU_ANCHOR,
 			...RESOURCE_LABEL_BYPASS,
 			OVERBY,
@@ -1096,6 +1164,7 @@ export default defineConfig([
 		rules: syntaxRules([
 			...SVG_CLASS_TOKENS,
 			...WRITE_BOUNDARY,
+			...PROJECTION_TREE,
 			MENU_ANCHOR,
 			...RESOURCE_LABEL_BYPASS,
 			OVERBY,
@@ -1116,6 +1185,7 @@ export default defineConfig([
 		rules: syntaxRules([
 			...SVG_CLASS_TOKENS,
 			...WRITE_BOUNDARY,
+			...PROJECTION_TREE,
 			MENU_ANCHOR,
 			...RESOURCE_LABEL_BYPASS,
 			OVERBY,
@@ -1138,6 +1208,7 @@ export default defineConfig([
 		rules: syntaxRules([
 			...SVG_CLASS_TOKENS,
 			...WRITE_BOUNDARY,
+			...PROJECTION_TREE,
 			MENU_ANCHOR,
 			...RESOURCE_LABEL_BYPASS,
 			OVERBY,

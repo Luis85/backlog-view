@@ -89,33 +89,38 @@ describe('property columns', () => {
 		const { containerEl, config, view } = makeView(vault, {}, { widths: { 'note.points': 280, 'note.owner': 280 } });
 		config.order = ['note.points', 'note.owner'];
 		const tree = treeOf(containerEl);
-		const viewEl = containerEl.querySelector('.pbl-view');
 		const paneWidth = (px: number) => {
 			Object.defineProperty(tree, 'clientWidth', { value: px, configurable: true });
 			view.onDataUpdated();
 		};
 		const drawn = () => rowByTitle(containerEl, 'Epic A').querySelectorAll('.pbl-prop').length;
+		// The ROW's own rollup, not a class on the view element: since 2026-09-02 the rollup
+		// drops the way a column does, by not being rendered, so a hidden one and an absent
+		// one are the same DOM and there is nothing left for a stale class to answer for.
+		// `rollupDropped` is asserted beside it where the verdict itself is the subject.
+		const rollup = () => rowByTitle(containerEl, 'Epic A').querySelector('.pbl-meta-col');
 
 		// Wider than any fixed breakpoint would be, and two 280px columns still do not
 		// fit: the threshold is the configured width, not a guess.
 		paneWidth(1400);
 		expect(drawn()).toBe(2);
-		// The rollup column is on the row, so the class below has something to drop —
-		// without this the `pbl-hide-meta` assertions would hold over an absent column.
-		expect(rowByTitle(containerEl, 'Epic A').querySelector('.pbl-meta-col')).not.toBeNull();
+		// The rollup column is on the row, so the drops below have something to take —
+		// without this every assertion after them would hold over an absent column.
+		expect(rollup()).not.toBeNull();
 
 		paneWidth(900);
 		expect(drawn()).toBe(1);
-		expect(viewEl?.classList.contains('pbl-hide-meta')).toBe(false);
+		expect(rollup()).not.toBeNull();
 
 		// No column fits, and the rollup is still worth its 84px.
 		paneWidth(500);
 		expect(drawn()).toBe(0);
-		expect(viewEl?.classList.contains('pbl-hide-meta')).toBe(false);
+		expect(rollup()).not.toBeNull();
 
 		// Narrower than the row's own lead plus the rollup: nothing left to give.
 		paneWidth(300);
-		expect(viewEl?.classList.contains('pbl-hide-meta')).toBe(true);
+		expect(rollup()).toBeNull();
+		expect(view.columnFit?.rollupDropped).toBe(true);
 
 		// And every column comes back in the order it left. This is the case a fit that
 		// measured the DRAWN columns rather than the resolved ones would fail: it would
@@ -156,11 +161,10 @@ describe('property columns', () => {
 		);
 		view.setProjection('catalog');
 		const tree = treeOf(containerEl);
-		const viewEl = containerEl.querySelector('.pbl-view');
 		Object.defineProperty(tree, 'clientWidth', { value: 550, configurable: true });
 
 		const ctx = rowContext(view, new Map(), new Set(), new Map());
-		syncColumnFit(ctx, viewEl as HTMLElement, tree);
+		syncColumnFit(ctx, tree);
 
 		// 550px holds the one 200px column only when the rollup's 84px is not subtracted from
 		// the budget. With the same state property configured, the PLAN drops this same column
@@ -270,17 +274,20 @@ describe('property columns', () => {
 		);
 		config.order = ['note.points', 'note.owner'];
 		const tree = treeOf(containerEl);
-		const viewEl = containerEl.querySelector('.pbl-view');
 		Object.defineProperty(tree, 'clientWidth', { value: 300, configurable: true });
 		view.onDataUpdated();
 
 		// The narrowest verdict there is: no column fits and the rollup has gone too.
 		expect(view.columnFit?.shown).toBe(0);
-		expect(viewEl?.classList.contains('pbl-hide-meta')).toBe(true);
+		expect(view.columnFit?.rollupDropped).toBe(true);
+		expect(rowByTitle(containerEl, 'Epic A').querySelector('.pbl-meta-col')).toBeNull();
 
 		view.setProjection('board');
+		// Cleared, and that is the whole of what the card needs: `renderRollup` reads the
+		// verdict now, so a null one draws. A tree verdict carried onto a card frame would
+		// take the card's rollup with it.
 		expect(view.columnFit).toBeNull();
-		expect(viewEl?.classList.contains('pbl-hide-meta')).toBe(false);
+		expect(cardByTitle(containerEl, 'Epic A').querySelector('.pbl-meta-col')).not.toBeNull();
 		// Both plain properties, so the card draws every column that exists.
 		expect(cardByTitle(containerEl, 'Epic A').querySelectorAll('.pbl-prop').length).toBe(view.columns.length);
 	});
@@ -492,7 +499,6 @@ describe('property columns', () => {
 		);
 		view.setProjection('deliverables');
 		const tree = treeOf(containerEl);
-		const viewEl = containerEl.querySelector('.pbl-view');
 		Object.defineProperty(tree, 'clientWidth', { value: 560, configurable: true });
 
 		const d = view.model?.byPath.get('D.md');
@@ -507,7 +513,7 @@ describe('property columns', () => {
 		// rather than relying on that gating to keep the two from ever meeting.
 		const rows = new Map<string, HTMLElement>([[d.file.path, document.createElement('div')]]);
 		const ctx = rowContext(view, rows, new Set(), new Map());
-		syncColumnFit(ctx, viewEl as HTMLElement, tree);
+		syncColumnFit(ctx, tree);
 
 		// The one column fits beside a card's zero indent, and would not beside eight
 		// levels of a depth this projection does not have.
@@ -552,7 +558,6 @@ describe('property columns', () => {
 			{ order: ['note.horizon'] },
 		);
 		const tree = treeOf(containerEl);
-		const viewEl = containerEl.querySelector('.pbl-view');
 		const paneWidth = (px: number) => {
 			Object.defineProperty(tree, 'clientWidth', { value: px, configurable: true });
 			view.onDataUpdated();
@@ -567,7 +572,8 @@ describe('property columns', () => {
 		// lead and the rollup alone fit inside it with room to spare.
 		paneWidth(500);
 		expect(drawn()).toBe(0);
-		expect(viewEl?.classList.contains('pbl-hide-meta')).toBe(false);
+		expect(view.columnFit?.rollupDropped).toBe(false);
+		expect(rowByTitle(containerEl, 'Placed').querySelector('.pbl-meta-col')).not.toBeNull();
 	});
 
 	it('has no horizon column while the bucket axis is unconfigured', () => {

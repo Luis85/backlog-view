@@ -114,10 +114,11 @@ export function renderPass(host: BacklogViewHost, els: RenderPassEls, deps: Rend
 		host.clearRowIndex();
 	}
 	if (!treeShaped(projection)) {
-		// The column ladder is the tree's: a narrow-pane verdict from tree mode must
-		// not strip cells off cards, and its rollup class must not hide theirs.
+		// The column ladder is the tree's: a narrow-pane verdict from tree mode must not
+		// strip cells off cards, and — since the rows read the verdict rather than a class
+		// (`renderRollup`, `render/columns.ts`) — must not take their rollup away either.
+		// Clearing it is what does both, and it runs BEFORE the content renders.
 		host.setColumnFit(null);
-		els.viewEl.removeClass('pbl-hide-meta');
 	}
 	const content = renderProjectionContent(projection, deps.rowCtx(), els.treeEl, deps.cardDnd);
 	// Everything below reads these back off the host, so they are published here —

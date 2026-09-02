@@ -415,12 +415,15 @@ rule 7 holds that module to. Two shapes it started with are worth knowing as his
 `filterScopeFor`, the one the view held as a private getter — was deleted with the quick
 filter on 2026-08-17, which is the shape of how this list changes.
 
-Nothing enforces that mechanically — there is no lint rule forbidding a bare
-`projection === 'tree'` outside it, and it already appears directly in a dozen files, a
-grep for `projection === '` being what says how many today (see
-[[The projection predicate has no lint rule behind it]]) — so the seventh gate somebody
-writes tomorrow is correct only if they ask the module rather than compare the value
-themselves. `offerableTypes` moved here too, with its own lint exemption — see
+One spelling of that is enforced mechanically since 2026-09-02, and only one:
+`PROJECTION_TREE` in `eslint.config.mjs` forbids a bare `projection === 'tree'` anywhere in
+`src/` but this module — the shape that silently drops the catalog, since `treeShaped` is
+`'tree' || 'catalog'`. Every other comparison the view makes is dispatch on ONE
+projection's own behaviour and stays legal; they are sorted, named and left alone in
+[[The projection predicate has no lint rule behind it]], which also records what the ban
+cannot see (a `switch`, a projection renamed into a local). So the seventh gate somebody
+writes tomorrow is caught only if they spell it against `'tree'`; it is correct only if
+they ask the module rather than compare the value themselves. `offerableTypes` moved here too, with its own lint exemption — see
 [[Test suite and test case as a ladder of their own]]. `menusListChildren` arrived the
 other way on 2026-08-17: a comparison that had been written in `src/view/childrenList.ts`,
 moved here once it was the menu's question alone — the one such comparison this list has

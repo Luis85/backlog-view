@@ -181,10 +181,9 @@
 	width: 100%;
 }
 
-/* The board and the roadmap never drop the rollup for room the way the tree does — a
-   stale verdict from tree mode must not hide a card's. The columns need no such rule:
-   a card projection resets the count rather than carrying a class. */
-.pbl-view.pbl-board-mode .pbl-card .pbl-meta-col,
-.pbl-view.pbl-roadmap-mode .pbl-card .pbl-meta-col {
-	display: flex;
-}
+/* No board or roadmap override here, and that is a deletion rather than an omission. The
+   two carried one against `pbl-hide-meta`, the class the tree used to hide its rollup
+   with — a stale verdict from tree mode must not hide a card's. There is no such class
+   since 2026-09-02: the rows read the verdict the header always did, a card projection
+   resets it before it renders, and `display: flex` above is the only rule left saying
+   how this box lays out. */
