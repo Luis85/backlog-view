@@ -248,6 +248,22 @@ describe('a membership another view joined first', () => {
 		expect('due' in join.fm()).toBe(false);
 	});
 
+	it('leaves the membership SPELLING alone, so the race is a true no-op', async () => {
+		// The link half of the same question. `stillJoining` says this is not a join, so no
+		// date lands — but `applyLinks` wrote its canonical `[[2.4]]` over the alias anyway,
+		// `captureInverse` compares RAW values, and the undo slot went on a write that
+		// changed nothing anybody asked to change. The register already refuses exactly this
+		// tidying one field over: `applyAxis` skips an equal civil date rather than rewrite
+		// `2026-8-1`, because the spelling on disk is the user's (Codex, PR #242).
+		const join = joining({ releaseDate: '2026-12-01' });
+		join.fm().release = '[[Releases/2.4|2.4]]';
+		const outcome = await join.apply();
+		expect(join.fm().release).toBe('[[Releases/2.4|2.4]]');
+		// Nothing changed, so nothing was captured and the undo slot is still whatever it
+		// held — the point of the fix, and invisible in the frontmatter alone.
+		expect(outcome.changed).toBe(false);
+	});
+
 	it('writes no date where the note names it plainly either', async () => {
 		const join = joining({ releaseDate: '2026-12-01' });
 		join.fm().release = '[[2.4]]';

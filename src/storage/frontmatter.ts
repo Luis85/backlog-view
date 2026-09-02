@@ -26,7 +26,7 @@ import { ItemWrite, TagDelta } from '../domain/writePlan';
 import { wikilinkTo } from './createNote';
 import { DependsOnRestore, dependsOnRestore, restoreDependsOn } from './dependsOnWrite';
 import { setOwn } from './ownProperty';
-import { AxisEntry, plannedAxis, stubKeys, touchedKeys } from './writeKeys';
+import { AxisEntry, landsMembership, plannedAxis, stubKeys, touchedKeys } from './writeKeys';
 
 /**
  * The ONLY module that writes frontmatter. Everything upstream decides what a
@@ -238,8 +238,11 @@ function applyInto(
 	// own loop would judge the target against a start it wrote itself. Everything but the
 	// release join lands every key it names; see {@link plannedAxis}.
 	const axis = plannedAxis(app, fm, settings, write);
+	// Read here for `plannedAxis`' own reason — before the link it judges is replaced. A
+	// settled fill-only join keeps its own spelling rather than taking the canonical one.
+	const links = landsMembership(app, fm, settings, write) ? write : { ...write, release: undefined };
 	applyHierarchy(app, fm, settings, write);
-	applyLinks(app, fm, settings, write);
+	applyLinks(app, fm, settings, links);
 	// The stateKey may be unset (progress tracking off) — never write to an empty key.
 	if (write.removeStateKey && settings.stateKey) delete fm[settings.stateKey];
 	else if (write.state !== undefined && settings.stateKey) setOwn(fm, settings.stateKey, write.state);

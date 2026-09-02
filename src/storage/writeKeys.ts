@@ -156,6 +156,30 @@ export function plannedAxis(
 	return axisEntries(settings, write.axis).filter((entry) => !skip.has(entry.field));
 }
 
+/**
+ * Whether a write's membership link still CHANGES the note — the same question
+ * {@link plannedAxis} asks as its third, asked for the link itself so a settled race is a
+ * true no-op rather than a re-spelling.
+ *
+ * `applyLinks` writes `wikilinkTo`'s canonical form, and `captureInverse` compares RAW
+ * values, so a live `[[Releases/2.4|2.4]]` or a one-element list naming the same note
+ * counted as a change: the undo slot went on tidying a spelling nobody asked to tidy. The
+ * register already refuses that one field over — `applyAxis` skips an equal civil date
+ * rather than rewrite `2026-8-1`, because the spelling on disk is the user's.
+ *
+ * Only a fill-only join is asked. Every other write lands its link as it always did, and a
+ * removal never reaches here: `write.release` is `null` and this returns true, which is
+ * what deletes the key.
+ */
+export function landsMembership(
+	app: App,
+	fm: Record<string, unknown>,
+	settings: BacklogSettings,
+	write: ItemWrite,
+): boolean {
+	return !write.axis?.fillOnly || stillJoining(app, fm, settings, write);
+}
+
 /** Which of them {@link plannedAxis} withholds — see its own comment for the three questions. */
 function suppressedAxis(
 	app: App,
