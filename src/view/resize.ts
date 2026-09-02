@@ -26,7 +26,7 @@ export class ResizePolicy {
 
 	/** Re-measure the pane and apply the column ladder to what is currently rendered. */
 	refit(): boolean {
-		return syncColumnFit(this.rowCtx(), this.viewEl, this.treeEl);
+		return syncColumnFit(this.rowCtx(), this.treeEl);
 	}
 
 	/**

@@ -329,18 +329,19 @@ free of runtime code so imports stay cycle-free.
   clipping it in CSS would leave its cell in the accessibility tree — a Bases value can
   render a native control, and the chips are `tabindex="-1"` buttons assistive tech
   reaches by design — so focusing one would scroll the strip out from under its header.
-  The rollup is the one exception and keeps a class (`pbl-hide-meta`) for the ROWS,
-  because it is not in that order at all: pinned past its end, so "last" would always pick
-  it first, it goes after every column instead. **The header asks about it anyway**
-  (`columnFit.rollupDropped`), and that is the distinction to keep: configured is not
-  drawn, and a header built from the configuration alone was a sticky bordered bar holding
-  a spacer, an empty box and a label the stylesheet hides — the whole point of the bar is
-  the labels, so with none left it is not rendered. So the rollup is one concept behind
-  two mechanisms: the rows get a class, the header gets the verdict. That is a recorded
-  cost rather than an oversight — it cannot disagree visibly (`rollupDropped` implies no
-  columns implies no header) and `display: none` keeps the hidden box out of the
-  accessibility tree — and the two ways out of it are in
-  `docs/issues/The rollup is hidden by class and headed by verdict.md`. Every column a
+  The rollup is the one thing not in that order — pinned past its end, so "last" would
+  always pick it first, it goes after every column instead — but since 2026-09-02 it
+  drops the same WAY: **not rendered**, from the same stored verdict, on the rows
+  (`renderRollup`) and in the header (`renderColumnHeader`) alike. Both ask
+  `host.columnFit?.rollupDropped`, so configured is not drawn and neither half can
+  describe a frame the other does not — which is what a header built from the
+  configuration alone got wrong before the verdict existed: a sticky bordered bar holding
+  a spacer, an empty box and a label the stylesheet hid. The rows read a
+  `pbl-hide-meta` class until that date, one concept behind two mechanisms; the class and
+  its `display: none` rule are gone, and `docs/issues/The rollup is hidden by class and
+  headed by verdict.md` records which of that note's two candidates was taken and what it
+  cost. A card projection needs nothing added for this: `renderPass` clears the verdict
+  before any non-tree content renders, and an absent verdict draws. Every column a
   row can carry has to be in that budget: one drawn but not summed does not drop, it
   overflows. The two live in one file because a threshold
   computed in one place and applied in another is one edit from disagreeing; the view
@@ -597,8 +598,8 @@ free of runtime code so imports stay cycle-free.
 
 - One scroller, two projections: board mode reuses `.pbl-tree` with its role swapped to
   `listbox` and the keydown dispatched to `handleBoardKeydown`. The column fit is the
-  tree's — entering board mode resets the verdict to null and clears `pbl-hide-meta`, or a
-  narrow-pane decision from tree mode would strip cells off cards.
+  tree's — entering board mode resets the verdict to null, or a narrow-pane decision from
+  tree mode would strip cells off cards and take their rollup with them.
 - The mode is `host.projection` — six of them now, two reached through the board scope picker rather than a toggle position of their own — backed by the
   view-state store (UI state, per saved view, per device) — never `settings` and never
   the `.base`: base settings are saved on the view, working position in localStorage.
@@ -609,16 +610,24 @@ free of runtime code so imports stay cycle-free.
   list children — so each is one question asked in one place rather than a handful of
   equality checks scattered beside it. The module is the list and cannot go stale; what
   belongs in it is the rule above.
-  **Nothing enforces that mechanically** — unlike the SVG-`cls` and `showAtMouseEvent`
-  bans above, there is no `no-restricted-syntax` rule forbidding a bare
-  `projection === 'tree'` outside this module, and the gap is not hypothetical — a grep
-  for `projection === '` under `src/view/` is what says how wide it currently is, and no
-  count is written here because one written here goes stale on the next file that compares.
-  Some of those hits are legitimate dispatch —
-  `renderProjectionContent`'s if-chain in `render/projections.ts` is a dispatch on the
-  projection by design — and some are the drift this module exists to stop; nothing here
-  tells them apart yet, and [[The projection predicate has no lint rule behind it]] is
-  where sorting them is owed. Not routing through the
+  **One spelling of that is enforced mechanically, and only one.** `PROJECTION_TREE` in
+  `eslint.config.mjs` is a `no-restricted-syntax` ban on a bare `projection === 'tree'`
+  (either operand order, `projection` or `<x>.projection`) everywhere in `src/` except
+  this module — added 2026-09-02, when two guides were found claiming it already existed.
+  It bans `'tree'` and nothing else because `treeShaped` is `'tree' || 'catalog'`, so a
+  comparison to `'tree'` alone is exactly the shape that silently drops the catalog out of
+  a gate it belongs in. **Every other comparison is dispatch and is deliberately allowed**:
+  `=== 'board'`, `=== 'roadmap'`, `=== 'deliverables'`, `=== 'iteration'` and the two
+  `=== 'catalog'` (`render/emptyStates.ts`, `render/projections.ts`) each ask what ONE
+  projection does, which is not a question any predicate here answers and which a ban could
+  only permit through an exemption list that goes stale — the sorting is in
+  [[The projection predicate has no lint rule behind it]], measured with an AST sweep
+  rather than a grep. What the rule does NOT see is a `switch (projection)` with a
+  `case 'tree'`, or a projection copied into a differently named local first; the claim is
+  "no bare `projection === 'tree'`", not "nothing compares to `'tree'`". It is also
+  spread into each `no-restricted-syntax` block by hand, because two flat-config blocks
+  matching one file override rather than merge — so a NEW block under `src/` that omits it
+  loses it, exactly as it would lose the write boundary. Not routing through the
   module has a real cost, which is what makes it worth using rather than only naming: a
   projection added beside `'tree'` rather than as one, wherever a comparison bypasses the
   module, fails silently and differently — no column fitting, no refit on resize, the fit
@@ -1181,9 +1190,10 @@ free of runtime code so imports stay cycle-free.
   previous `ScrollAnchor.content` — never on a same-content refresh, whatever
   `scrollLeft` happens to be: a data update mid-session must not yank the view back to
   now.
-- The board- and roadmap-mode CSS guards both keep the tree's stale `pbl-hide-meta` off a
-  card's rollup; the columns need no such guard, because a card projection resets the
-  verdict rather than carrying a class. The fit is the tree's alone either way.
+- Neither the board nor the roadmap needs a CSS guard for the tree's rollup any more:
+  both used to carry one against a stale `pbl-hide-meta`, and there is no class to be
+  stale since 2026-09-02 — a card projection resets the verdict, exactly as the columns
+  always did. The fit is the tree's alone either way.
 
 ## Lifecycle
 
