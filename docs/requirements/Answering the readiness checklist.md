@@ -84,8 +84,10 @@ membership [[The scope of a release as a tree]] resolves.
 
 ## Where it lives
 
-The criteria are evaluated in the new `src/domain/` module beside the summary's figures, from
-the model in `src/domain/model.ts`, reading `src/domain/dependencies.ts` for the edges. Every
+The criteria are evaluated in `src/domain/releaseReadiness.ts`, beside the summary's figures
+— over the population `releaseScope` (`src/domain/releases.ts`) already resolved out of the
+model in `src/domain/model.ts`, rather than a second walk of it — reading
+`src/domain/dependencies.ts` for the edges. Every
 key and every value list is declared in `src/domain/viewOptions.ts`, checked for consistency
 in `src/domain/settingsConsistency.ts`, and the checklist is drawn by the release view's
 render module in `src/view/render/`.
