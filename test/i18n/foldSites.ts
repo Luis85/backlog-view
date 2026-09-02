@@ -161,7 +161,7 @@ export const FOLD_SITES: FoldSite[] = [
 	{ file: 'src/i18n/locale.ts', text: 'name.toLowerCase()', kind: 'identity', why: 'matches a shipped catalog name against the wanted language tag' },
 	{ file: 'src/i18n/locale.ts', text: 'name.toLowerCase()', kind: 'identity', why: 'matches a shipped catalog name against the wanted tag base language' },
 	{ file: 'src/i18n/locale.ts', text: 'tag.toLowerCase()', kind: 'identity', why: 'canonicalizes a language TAG for catalog lookup; a tag case is convention, and folding it with a locale would be circular' },
-	{ file: 'src/i18n/t.ts', text: "value.toLocaleLowerCase(active.requested)", kind: 'matching', why: 'foldForMatch — the one fold in src/ whose job is matching, and the helper every matching site is meant to call' },
+	{ file: 'src/i18n/t.ts', text: "value.normalize('NFC').toLocaleLowerCase(active.fold)", kind: 'matching', why: 'foldForMatch — the one fold in src/ whose job is matching, and the helper every matching site is meant to call. Takes active.fold rather than active.requested: a MATCHING fold wants the locale only where lowercasing really differs by language, which is the Turkic tailoring and nothing else' },
 	{ file: 'src/storage/frontmatter.ts', text: 'leaving.toLowerCase()', kind: 'identity', why: 'the state being left, in the match that decides whether a write moves anything' },
 	{ file: 'src/storage/frontmatter.ts', text: 'state.toLowerCase()', kind: 'identity', why: 'the state being written, in that same match' },
 	{ file: 'src/ui/prompts.ts', text: 'foldForMatch(file.path)', kind: 'matching', why: 'the haystack of the folder suggest — a path the suggest list draws' },

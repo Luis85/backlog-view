@@ -304,24 +304,32 @@ describe('collation, folding and numbers follow the requested locale', () => {
 		expect(foldForMatch('I')).toBe('i');
 	});
 
-	it('folds an accented capital I to the same thing as its lowercase, in every locale', () => {
-		// Lowercasing a soft-dotted letter KEEPS its dot above when an accent follows —
-		// always in Lithuanian, and in every locale but Turkish for `İ`. Correct casing,
-		// wrong for matching: the query no longer meets the title it was typed from.
-		// Found by review (Codex, PR #251).
-		// `Į́` is why the class is `\p{Soft_Dotted}` and not `[ij]` — Unicode's own
-		// `More_Above` context names the property, and an ASCII pair covers neither
-		// Lithuanian's own `į` nor `ị`.
-		for (const locale of ['lt', 'en', 'tr']) {
+	it('folds an accented capital to the same thing as its lowercase, in every locale', () => {
+		// Lithuanian's casing ADDS a dot above a soft-dotted letter before an accent, so
+		// `Ì` lowercases to `i̇̀` while `ì` stays `ì`. Right for display, wrong for
+		// matching: the query stops meeting the title it was typed from. `J̇` is the pair
+		// that refuses the tempting fix — strip the added dot and an author's OWN dot goes
+		// with it. Found by review (Codex, PR #251).
+		for (const locale of ['lt', 'lt-LT', 'en', 'tr']) {
 			setLocale(locale);
 			expect(foldForMatch('Ì')).toBe(foldForMatch('ì'));
-			expect(foldForMatch('İ')).toBe(foldForMatch('i'));
 			expect(foldForMatch('Į́')).toBe(foldForMatch('į́'));
 			expect(foldForMatch('J̈')).toBe(foldForMatch('j̈'));
+			expect(foldForMatch('J̇')).toBe(foldForMatch('j̇'));
+			// Canonically equivalent spellings of one string: decomposed `I` + U+0307
+			// against precomposed `İ`. Both `normalize('NFC')` calls are load-bearing.
+			expect(foldForMatch('\u0049\u0307')).toBe(foldForMatch('\u0130'));
+			expect(foldForMatch('\u0049\u0300')).toBe(foldForMatch('\u00CC'));
 		}
-		// And the distinction that made the fold locale-aware still holds.
-		setLocale('tr');
-		expect(foldForMatch('I')).not.toBe(foldForMatch('i'));
+		// And the tailoring that made the fold locale-aware at all still holds — in every
+		// spelling of the two languages that have it, and in no other language.
+		for (const turkic of ['tr', 'tr-TR', 'az', 'az-Latn-AZ']) {
+			setLocale(turkic);
+			expect(foldForMatch('I')).toBe(foldForMatch('ı'));
+			expect(foldForMatch('I')).not.toBe(foldForMatch('i'));
+		}
+		setLocale('lt');
+		expect(foldForMatch('I')).toBe(foldForMatch('i'));
 	});
 
 	it('formats a bare number with the SAME formatter a sentence uses', () => {

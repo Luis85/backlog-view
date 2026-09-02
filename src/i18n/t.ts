@@ -136,6 +136,24 @@ function grammarFor(locale: string): Grammar {
 }
 
 /**
+ * The locale a MATCHING fold may be taken in — the requested one only where lowercasing
+ * really differs by language, and the root locale (`und`) everywhere else.
+ *
+ * Unicode's own model, taken rather than invented: case FOLDING is locale-independent
+ * apart from one Turkic tailoring, while case MAPPING carries several more. Turkish and
+ * Azerbaijani are the tailoring — `I` lowercases to `ı`, which is the whole reason this
+ * fold takes a locale at all. Lithuanian is the case that made the distinction matter: its
+ * mapping adds a dot above `i`/`j` before an accent, which is right for display and wrong
+ * for deciding whether two strings are the same word.
+ *
+ * A language subtag test rather than a list of full codes, so `tr-TR` and `az-Latn-AZ`
+ * answer the same as `tr` and `az`. Found by review (Codex, PR #251).
+ */
+function foldLocale(requested: string): string {
+	return /^(tr|az)\b/i.test(requested) ? requested : 'und';
+}
+
+/**
  * The resolved locale and the formatters that follow from it. Built once rather than per
  * call: `t()` runs inside render loops, and an `Intl` constructor there would be a cost
  * with no observable benefit — Obsidian needs a restart to change its language, so this
@@ -155,6 +173,7 @@ function activate(code: string, catalogs: Record<string, Catalog>): {
 	numberScientific: Intl.NumberFormat;
 	collator: Intl.Collator;
 	requested: string;
+	fold: string;
 } {
 	const name = resolveCatalog(code, Object.keys(catalogs));
 	// The ONE answer to "which locale does presentation use", taken once and shared by the
@@ -194,6 +213,7 @@ function activate(code: string, catalogs: Record<string, Catalog>): {
 		}),
 		collator: new Intl.Collator(requested),
 		requested,
+		fold: foldLocale(requested),
 	};
 }
 
@@ -278,24 +298,26 @@ export function compareText(a: string, b: string): number {
  * key — and folding those with a locale corrupts vaults. `test/i18n/foldSites.ts`
  * classifies all of them and the suite holds the split.
  *
- * Lowercasing alone is not a case-INSENSITIVE form, which is the second half of this and
- * the one review caught (Codex, PR #251). Lowercasing keeps a soft-dotted letter's dot
- * above when an accent follows it — always in Lithuanian (`Ì` → `i̇̀`, while `ì` stays
- * `ì`), and in every locale but Turkish for `İ` (→ `i̇`, which `i` then misses). Both are
- * correct CASING and wrong for matching, so the dot is dropped after the fold and the
- * result recomposed: `Ì` and `ì` meet at `ì` again, while Turkish keeps the distinction
- * that made this locale-aware at all (`I` → `ı`, `i` → `i`). Unicode says the same thing
- * by having case FOLDING carry no Lithuanian tailoring.
+ * **The locale it takes is `fold`, not `requested`**, and that is the whole of what three
+ * review rounds cost (Codex, PR #251). Lowercasing is correct CASING and is not a
+ * case-INSENSITIVE form: Lithuanian's tailoring ADDS a dot above a soft-dotted letter when
+ * an accent follows, so `Ì` lowercases to `i̇̀` while `ì` stays `ì` and a query stops
+ * meeting the title it was typed from. `foldLocale` is where that is answered, and
+ * `.normalize('NFC')` is the other half: canonically equivalent spellings of one string
+ * are one string to a reader, so a decomposed `I` + `U+0307` has to meet a precomposed
+ * `İ`, and it does not without it. **Before** the fold and not after, which is the
+ * narrower claim the suite can actually hold: a trailing one changed nothing for any
+ * single code point in the first three planes under any of the three locales this fold
+ * asks for, so it would have been a line no test could fail.
  *
- * **`\p{Soft_Dotted}` rather than `[ij]`**, which is the same review's next round: the
- * class is the one Unicode's own `More_Above` context names, so `Į́` and `ị̈` are covered
- * by the property rather than by whoever remembers to add a letter. An ASCII pair reads as
- * the whole set only because the two worked examples are spelled with it.
+ * Two shapes were tried and are worse. Stripping the added dot back off (`[ij]`, then
+ * `\p{Soft_Dotted}`) cannot tell a tailoring's dot from one an author WROTE, so it united
+ * `Ì`/`ì` at the price of splitting `J̇`/`j̇`. `Intl.Collator` with `sensitivity: 'base'`
+ * answers a different question entirely: every call site asks `.includes(needle)` about a
+ * SUBSTRING, and a collator compares whole strings.
  */
-const SOFT_DOTTED_DOT = /(\p{Soft_Dotted})\u0307/gu;
-
 export function foldForMatch(value: string): string {
-	return value.toLocaleLowerCase(active.requested).replace(SOFT_DOTTED_DOT, '$1').normalize('NFC');
+	return value.normalize('NFC').toLocaleLowerCase(active.fold);
 }
 
 /**
