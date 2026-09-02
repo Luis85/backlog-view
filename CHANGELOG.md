@@ -26,6 +26,8 @@ See [RELEASING.md](RELEASING.md) for how this file is kept in step with a releas
 
 ### Added
 
+- The toolbar's **Expand all** and **Collapse all** now fold and open the resource bands on
+  the roadmap's resources axis, so a long roster is one press rather than one chevron each.
 - `npm run check` has a sixth step, `lint:md`, gating the Markdown in `docs/` and the
   root documents.
 - **My work**, a fourth Bases view (`product-my-work`): one person's work as a backlog tree,

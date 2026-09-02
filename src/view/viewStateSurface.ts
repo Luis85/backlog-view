@@ -142,6 +142,10 @@ export abstract class ViewStateSurface extends BasesView {
 		this.ui.setLaneCollapsed(identity, collapsed);
 	}
 
+	setLanesCollapsed(identities: string[], collapsed: boolean): void {
+		this.ui.setLanesCollapsed(identities, collapsed);
+	}
+
 	columnCollapsed(scope: ColumnScope, value: string | null, autoCollapse: boolean): boolean {
 		return this.ui.columnCollapsed(scope, value, autoCollapse);
 	}
