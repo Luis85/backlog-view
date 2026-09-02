@@ -28,7 +28,10 @@ const MOVING: ManualSection = {
 			term: 'Between two rows',
 			text:
 				'Places the item as their sibling. If those rows have a different parent, it is ' +
-				'reparented as well as ranked — the fastest way to move and rank in one gesture.',
+				'reparented as well as ranked — the fastest way to move and rank in one gesture. ' +
+				'Between two rows of a FOCUSED view it means rank alone: those rows are one rung ' +
+				'of the tree rather than one parent\'s children, so the drop writes the order and ' +
+				'leaves the parent exactly as it was.',
 		},
 		{ term: 'Onto a row', text: 'Makes the item a child of that row.' },
 		{

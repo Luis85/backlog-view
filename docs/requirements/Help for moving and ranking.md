@@ -45,7 +45,12 @@ lands, the three ways to make the same move, and where `order` comes from.
    child. The drop indicator is named as the cue that says which is about to happen.
 2. It notes that a between-drop is a *reorder* only when the item is already in that
    group — drop it between two rows under a different parent and it is reparented as well
-   as ranked, which is the fastest way to move and rank in one gesture.
+   as ranked, which is the fastest way to move and rank in one gesture. **A FOCUSED view
+   is the exception, and the section states it in the same breath**: the focus rows are one
+   rung of the tree rather than one parent's children, so `dropTargetFor`'s focus branch
+   restates `dragged.parent` and marks the target `parentUnchanged` — the drop writes the
+   rank and nothing else. Left unqualified the entry promises the opposite of the gesture
+   this epic added, which is what it did until 2026-09-02.
 3. It lists the same moves without a mouse: <kbd>Alt</kbd>+arrows to move, indent and
    outdent in the tree, and the context menu's move up / down / to top / to bottom /
    indent / outdent.
@@ -113,7 +118,8 @@ lands, the three ways to make the same move, and where `order` comes from.
 - The between-versus-onto distinction is stated first, with the drop indicator named as
   the cue to read, and **between** is described as sibling placement rather than as
   reordering: `siblingPosition` takes the hovered row's parent, so a cross-parent
-  between-drop reparents as well as ranks.
+  between-drop reparents as well as ranks — with the focused view named as the one place
+  it does not, since there the same gesture writes the rank alone.
 - Every move is listed in all three forms — drag, keyboard, menu — so the section doubles
   as the keyboard reference at the moment someone wants it.
 - The section names every state where a drop is deliberately unavailable, so an absent
