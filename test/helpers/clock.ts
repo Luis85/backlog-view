@@ -21,10 +21,24 @@ import { beforeEach, vi } from 'vitest';
  * **Only `Date` is faked.** Nothing in `src/` reads a time finer than a date, and faking
  * the timers wholesale would strand every test that awaits a real one.
  *
+ * **The ZONE is pinned beside the instant, and it has to be.** Freezing the instant does
+ * not freeze the civil date, which is the thing those four tests actually read: `dateStamp`
+ * (`src/domain/noteFields.ts`) reads `getFullYear`/`getMonth`/`getDate`, all LOCAL, so at
+ * UTC+13/UTC+14 — Pacific/Auckland in DST, Pacific/Kiritimati — a midday-UTC instant on the
+ * 31st is already the 1st, and the freeze produced the very mismatch it exists to remove.
+ * CI runs UTC, so nothing was red there; a contributor in NZ would have met it alone. This
+ * repository has shipped a defect only one PLATFORM could see, and this is the same shape
+ * one axis over.
+ *
+ * Assigned BEFORE the freeze, and before anything constructs a `Date`: Node re-reads
+ * `process.env.TZ` on the next `Date` operation, so the order is what makes it hold.
+ *
  * The day itself is the last one this suite passed CI on, and it is arbitrary in every
  * other respect. Move it and the four tests above must be re-derived, which is the cost
  * that made it worth pinning rather than following the clock.
  */
+process.env.TZ = 'UTC';
+
 const FROZEN_TODAY = new Date('2026-08-31T12:00:00.000Z');
 
 vi.useFakeTimers({ toFake: ['Date'], now: FROZEN_TODAY });
