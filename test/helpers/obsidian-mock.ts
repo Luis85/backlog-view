@@ -51,18 +51,40 @@ export function normalizePath(path: string): string {
 		.join('/');
 }
 
+/**
+ * A member the real Obsidian type carries and this double does not implement.
+ *
+ * **The reason it THROWS rather than being `declare`d.** A `declare` emits nothing, so it
+ * is a bet that `src/` never reads the member — and reading one answers `undefined`, which
+ * fails wherever that lands, possibly a truthiness test that quietly answers no. That bet
+ * has been lost once already: `groupedData` was declared on `FakeQueryResult`,
+ * `detectIgnoredGrouping` read it, and every test in the suite saw `undefined` while the
+ * three that needed a real value cast past the double to plant one.
+ *
+ * Stated as a getter on the PROTOTYPE, so it costs nothing until it is read and stays
+ * invisible to a spread, to `JSON.stringify` and to the own-property walk vitest prints a
+ * diff with. That is the whole design: the bet is unchanged, and losing it is now loud in
+ * the one place a reader is standing.
+ */
+export function unimplemented(owner: string, member: string): never {
+	throw new Error(`${owner}.${member} is not implemented by the test double`);
+}
+
 export class TFolder {
 	path = '';
 	name = '';
-	/**
-	 * Members the app's `TFolder` carries and nothing here reads. DECLARED, not assigned:
-	 * no runtime cost, and a fake folder stays assignable where the real type is asked for.
-	 * A `declare` is a bet that `src/` never reads the member — see `FakeQueryResult` in
-	 * `vault.ts` for the one time that bet was lost, and what it looked like.
-	 */
-	declare children: TAbstractFile[];
-	declare vault: RealVault;
-	declare parent: RealTFolder | null;
+
+	/** Members the app's `TFolder` carries and nothing in `src/` reads — see
+	 *  {@link unimplemented}, which is where the reasoning for all seven of them is. */
+	get children(): TAbstractFile[] {
+		return unimplemented('TFolder', 'children');
+	}
+	get vault(): RealVault {
+		return unimplemented('TFolder', 'vault');
+	}
+	get parent(): RealTFolder | null {
+		return unimplemented('TFolder', 'parent');
+	}
 
 	isRoot(): boolean {
 		return this.path === '/';
@@ -78,13 +100,11 @@ export class TFile {
 	name = '';
 	parent!: TFolder | null;
 	stat: { mtime: number; ctime: number; size: number };
-	/**
-	 * The app's `TFile` carries a back-reference to its vault. Nothing in the fake reads
-	 * it, so it is DECLARED rather than assigned — no runtime cost, and a fake file stays
-	 * assignable where a module asks for the real type. Reading one answers `undefined`, not
-	 * an error; the bet is that `src/` never does.
-	 */
-	declare vault: RealVault;
+	/** The app's `TFile` carries a back-reference to its vault, and nothing here reads it —
+	 *  see {@link unimplemented}. */
+	get vault(): RealVault {
+		return unimplemented('TFile', 'vault');
+	}
 
 	constructor(path: string, mtime = 0) {
 		this.stat = { mtime, ctime: mtime, size: 0 };
