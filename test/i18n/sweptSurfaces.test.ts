@@ -1,8 +1,6 @@
 // @vitest-environment jsdom
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { en } from '../../src/i18n/en';
-import { Catalog, setLocale } from '../../src/i18n/t';
-import { resetLocale } from '../helpers/locale';
+import { beforeEach, describe, expect, it } from 'vitest';
+import { Catalog } from '../../src/i18n/t';
 import {
 	AbsencePromptModal,
 	FolderPromptModal,
@@ -18,7 +16,7 @@ import { installObsidianDom } from '../helpers/dom';
 import { Modal, Notice } from '../helpers/obsidian-mock';
 import { fakeApp, FakeVault } from '../helpers/vault';
 import { flush, makeView, useViewHarness } from '../helpers/view';
-import { MARK, markedCatalog } from './fixtures';
+import { MARK, marked, markedCatalog, useMarkedLocale } from './fixtures';
 
 installObsidianDom();
 useViewHarness();
@@ -90,17 +88,12 @@ const SWEPT = [
 
 const xx: Catalog = markedCatalog(SWEPT);
 
-/** What that key renders as under the fixture — the assertion's own single source. */
-const marked = (key: (typeof SWEPT)[number]): string => MARK + en[key];
-
+useMarkedLocale(xx);
 beforeEach(() => {
 	document.body.empty();
 	Modal.forget();
 	Notice.reset();
-	setLocale('xx', { xx });
 });
-// Resolution is module state by design (once, at load), so each test puts it back.
-afterEach(() => resetLocale());
 
 /** The `.setting-item-name` of every row a dialog drew, in order. */
 const rowNames = (el: HTMLElement): string[] =>
