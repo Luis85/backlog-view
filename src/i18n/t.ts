@@ -49,13 +49,23 @@ declare const process: { env: { NODE_ENV?: string } };
  * hand-rolled marked catalogs it caught are now one `markedCatalog()` in
  * `test/i18n/fixtures.ts`. Found by review (Codex, PR #151).
  */
-type Forms = Partial<Record<Intl.LDMLPluralRule, string>> & { other: string };
-type Entry = string | Forms;
+export type Forms = Partial<Record<Intl.LDMLPluralRule, string>> & { other: string };
+export type Entry = string | Forms;
 
 /** The shape every catalog has. English is the source; see `en.ts`. */
 export type Catalog = Record<string, Entry>;
 
+/**
+ * `Messages` and `Args` below stay private on purpose, and the two suppressions are the
+ * only ones this rule has here. Both are DERIVATION machinery, not a contract: `Messages`
+ * is the English object's own type, so exporting it would publish every key's literal text
+ * as API and let a caller depend on a sentence; `Args` is a tuple type nobody can usefully
+ * write, since the whole point of it is that `t()` computes it from the key. What a caller
+ * names is `MessageKey`, and it is exported. Everything else this rule reported on
+ * 2026-09-02 was a narrowing a caller could legitimately name, and is exported now.
+ */
 type Messages = typeof en;
+// fallow-ignore-next-line private-type-leak
 export type MessageKey = keyof Messages;
 
 /** Every form of an entry, as a union — one string, or all the plural forms. */
@@ -211,6 +221,7 @@ export function activeLocale(): { catalog: string; numbers: string } {
  * A key the active catalog does not carry renders the English text — never the key and
  * never an empty string, because a gap in a translation must not read as a broken view.
  */
+// fallow-ignore-next-line private-type-leak
 export function t<K extends MessageKey>(key: K, ...args: Args<K>): string {
 	const values = (args as [Values?])[0];
 	const own = active.messages[key];

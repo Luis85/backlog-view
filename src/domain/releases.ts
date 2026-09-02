@@ -645,7 +645,7 @@ export function releaseIndex(
 const UNRESOLVED = Symbol('unresolved membership');
 
 /** What the live read below needs — one field `BacklogSettings` also spells. */
-interface LiveKeys {
+export interface LiveKeys {
 	typeKey: string;
 }
 

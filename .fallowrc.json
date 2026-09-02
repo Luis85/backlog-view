@@ -5,9 +5,7 @@
 		"test/harness/page.ts",
 		"test/harness/estimation.ts",
 		"test/harness/release.ts",
-		"test/harness/mywork.ts",
-		"scripts/vitest.clock.mts",
-		"test/helpers/shiftClock.ts"
+		"test/harness/mywork.ts"
 	],
 	"dynamicallyLoaded": [
 		"styles/**/*.css",
