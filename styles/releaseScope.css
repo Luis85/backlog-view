@@ -232,13 +232,13 @@ button.pbl-twisty-leaf {
 	cursor: default;
 }
 
-/* One column for the chip, so a row with no state leaves a gap rather than sliding its
-   neighbours left. Anchored at its end, like `.pbl-meta-col` beside it. */
+/* One cell for the chip, anchored at its end: shrinkable to the chip's own icon, never the
+   fixed 92px that truncated the value it reserved room for. `styles/mywork.css` says why. */
 .pbl-rel-statecol {
-	flex: 0 0 auto;
+	flex: 0 1 auto;
 	display: flex;
 	justify-content: flex-end;
-	inline-size: 92px;
+	min-inline-size: 22px;
 }
 
 /* One strip, one denominator. `flex-wrap` because a narrow pane must drop the sentence

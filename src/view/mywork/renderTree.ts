@@ -244,10 +244,19 @@ function drawRow(view: MyWorkView, treeEl: HTMLElement, row: ScopeRow, place: Ro
 	// row by itself (`src/view/CLAUDE.md`'s own measured reason).
 	setTooltip(titleEl, row.item.title);
 
+	// Before the spacer, and that is where it MOVED to on 2026-09-01: beside the title it
+	// is about, and never the row's LAST child. Drawn after the state column, the marker is
+	// what a pane too narrow for the whole row loses first — `.pbl-tree` hides its own
+	// horizontal overflow, so the marker goes invisible rather than cut while the column
+	// beside it keeps its room. Task 10 measured exactly that at 280px and 320px and
+	// reported it rather than fixing it; a marker drawn ahead of the column cannot be the
+	// element that leaves, at any width and any depth, which is the answer that needs no
+	// cutoff tuned to one fixture's titles.
+	drawNextMarker(rowEl, place.next);
+
 	rowEl.createDiv({ cls: 'pbl-row-spacer' });
 
 	drawStateChip(rowEl, row);
-	drawNextMarker(rowEl, place.next);
 	return rowEl;
 }
 
@@ -311,6 +320,12 @@ function drawStateChip(rowEl: HTMLElement, row: ScopeRow): void {
 	});
 	drawIcon(chipEl.createSpan({ cls: 'pbl-state-icon' }), reading.done ? 'circle-check' : 'circle');
 	chipEl.createSpan({ cls: 'pbl-state-text', text: reading.value });
+	// The value in full, because the chip itself often cannot show it: `.pbl-state-chip`
+	// caps at 140px in every projection, and this view's own narrow rule clips the chip to
+	// its icon. Set unconditionally and measured by nothing — `.pbl-row` carries
+	// `content-visibility: auto`, and the title beside it is tooltipped on the same terms
+	// for the same reason (`src/view/CLAUDE.md`).
+	setTooltip(chipEl, reading.value);
 }
 
 /** What to do next — the first unfinished member in plan order (`nextAssigned`), marked

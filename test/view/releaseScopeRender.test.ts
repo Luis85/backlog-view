@@ -613,10 +613,16 @@ describe('the scope screen’s own two affordances', () => {
 		expect(done.classList.contains('pbl-state-done')).toBe(true);
 		expect(done.querySelector('.pbl-state-icon')?.getAttribute('data-icon')).toBe('circle-check');
 		expect(done.textContent).toBe('Done');
+		// And the value in words on the chip itself, for the widths where the chip cannot
+		// show it: `.pbl-state-chip` caps at 140px in every projection, and this column
+		// ellipsises the chip once the row runs short of room. The my-work tree's own chip
+		// carries it for the same reason.
+		expect(done.getAttribute('data-tooltip')).toBe('Done');
 
 		const open = containerEl.querySelector('.pbl-row[data-path="M2.md"] .pbl-state-chip')!;
 		expect(open.classList.contains('pbl-state-done')).toBe(false);
 		expect(open.querySelector('.pbl-state-icon')?.getAttribute('data-icon')).toBe('circle');
+		expect(open.getAttribute('data-tooltip')).toBe('Doing');
 		// Static on both: this view writes nothing, so neither chip may look editable.
 		expect(done.classList.contains('pbl-state-static')).toBe(true);
 		expect(open.classList.contains('pbl-state-static')).toBe(true);

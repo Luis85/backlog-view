@@ -4,14 +4,31 @@
    context ancestor dimmed the way the release scope's own tree dims one, one column for
    the static state chip, and the "what is next" marker beside the title, below.
 
-   Position in `styles/index.css`'s import list is NOT load-bearing: every selector here
-   is `.pbl-mw-*`, a vocabulary no other partial declares, and this file re-targets
-   nothing another partial writes — the row itself (`.pbl-row`, `tree.css`), the
-   disclosure (`button.pbl-twisty`, `releaseScope.css`), the spacer
-   (`.pbl-row-spacer`, `propertyColumns.css`) and the state chip's own base rules
-   (`.pbl-state-chip`, `.pbl-state-static`, …, `columns.css`) are all used here exactly as
-   drawn, with no property in common with anything declared here.
+   Position in `styles/index.css`'s import list is NOT load-bearing, and since 2026-09-01
+   that is a claim about SPECIFICITY rather than about a disjoint vocabulary. Two rules
+   here re-target a selector another partial owns, and both are written as
+   `.pbl-mw-view <selector>` — (0,2,0) against the bare class's (0,1,0), so each wins from
+   any position in that list: `user-select` on `.pbl-row` (`tree.css`), and `display` on
+   `.pbl-state-text` inside the narrow block (`columns.css`, which declares only that
+   element's `overflow`/`text-overflow`). Everything else here is `.pbl-mw-*`, a vocabulary
+   no other partial declares — the disclosure (`button.pbl-twisty`, `releaseScope.css`),
+   the spacer (`.pbl-row-spacer`, `propertyColumns.css`) and the state chip's own base
+   rules (`.pbl-state-chip`, `.pbl-state-static`, …, `columns.css`) are used here exactly
+   as drawn. Write an UNPREFIXED rule over another partial's selector and this paragraph
+   is what contradicts you.
    ========================================================================== */
+
+/* A tree that DRAGS nothing may not keep the tree's own `user-select: none` —
+   `releaseScope.css`'s own correction, owed here for the identical reason. `.pbl-row`
+   earns that `none` in the backlog tree by dragging its rows; this screen reads and opens,
+   and an unstated property does not "stay" at the browser default but resolves from
+   whichever rule wins the cascade, which was `tree.css`'s. What it cost: a reader could
+   not select a title to copy it, and `renderTree.ts`'s own drag-select guard on the row
+   click (`getSelection()?.isCollapsed === false`) could never once be true — a guard that
+   reads as protection and protects nothing. */
+.pbl-mw-view .pbl-row {
+	user-select: auto;
+}
 
 /* The toolbar bar itself (`toolbar.ts`) — `.pbl-rel-toolbar`'s own shape
    (`releaseScope.css`), under this view's own class rather than shared with it: two
@@ -70,19 +87,54 @@ button.pbl-mw-toggle-on {
 	opacity: 0.62;
 }
 
-/* One column for the chip, so a row with no state leaves a gap rather than sliding its
-   neighbours left — `.pbl-rel-statecol`'s own reason, narrower here: this tree draws no
-   rollup beside it, so the column need not reserve room for one. */
+/* The chip's own end-anchored cell. It was a fixed `inline-size: 92px` until 2026-09-01,
+   and both of that reservation's jobs had gone: the row is anchored at its END (the spacer
+   before it takes every spare pixel), so nothing slides when a row draws no chip, and the
+   Next marker it used to align — the one thing that WAS drawn after it — now sits beside
+   the title instead. What the number cost was real. It is narrower than
+   `.pbl-state-chip`'s own 140px cap, so a shrinkable chip inside it was truncated at every
+   pane width: `In progress` read `In progr…` in a 1000px pane, with nothing to save the
+   room for. Content-sized and shrinkable, the chip shows its value in full where there is
+   room and ellipsises where there is not, instead of holding 92px it cannot fill. */
 .pbl-mw-statecol {
-	flex: 0 0 auto;
+	flex: 0 1 auto;
 	display: flex;
 	justify-content: flex-end;
-	inline-size: 92px;
+	/* The floor is the chip's own icon — 22px, its border box with the text hidden,
+	   measured in the harness rather than derived from the tokens it is made of. Without
+	   it the column shrinks with the row while the chip inside cannot go below its icon,
+	   so the chip overflowed its own column and was clipped to a sliver: 8px of chip at
+	   280px of pane, which is worse than either showing the state or dropping it. With it
+	   the row degrades in one order at every width — the title gives way first (it shrinks
+	   proportionally more, and this view floors it at nothing, below), then the chip's own
+	   text ellipsises, then the chip is its icon and nothing further is taken. */
+	min-inline-size: 22px;
 }
 
-/* What to do next: a small pill in the accent, past the state chip at the row's end —
-   never a second chip shape, because this states a fact about ORDER rather than about
-   state and earns its own look for it. */
+/* …but a row with no state reserves nothing: the column is empty exactly when
+   `drawStateChip` drew no chip (`renderTree.ts` creates the cell unconditionally and
+   fills it only for a readable, non-context row), and a floor under an empty box is the
+   fixed reservation this rule replaced, one fifth of its old size. */
+.pbl-mw-statecol:empty {
+	min-inline-size: 0;
+}
+
+/* The title is what yields, at EVERY width. `tree.css` gives `.pbl-title` a
+   `min-width: 60px` floor that every projection shares; this pane is the one that is
+   docked at 240px, where 60px of title is the difference between a chip that fits and one
+   clipped against the pane's edge. Losing title characters costs least here — the row
+   still opens the note, the badge still says what it is, and the title is tooltipped in
+   full — so it is the term that pays. `0` rather than a smaller floor on purpose: a
+   number would be this fixture's depth and title lengths again. Scoped to `.pbl-mw-view`,
+   so no other projection's floor moves. */
+.pbl-mw-view .pbl-title {
+	min-width: 0;
+}
+
+/* What to do next: a small pill in the accent, drawn immediately after the title it is
+   about (`renderTree.ts` puts it before the row's spacer, and says why) — never a second
+   chip shape, because this states a fact about ORDER rather than about state and earns its
+   own look for it. */
 .pbl-mw-next {
 	flex: 0 0 auto;
 	padding: 1px var(--size-4-1);
@@ -103,33 +155,81 @@ button.pbl-mw-toggle-on {
 	container-type: inline-size;
 }
 
-/* Below this width the title and the Next marker are what the panel exists to answer,
-   and the state chip is decoration it can no longer afford. **The COLUMN is hidden, not
-   only the chip inside it** — `.pbl-mw-statecol` reserves `inline-size: 92px` above
-   whether or not it holds a chip, so hiding `.pbl-state-chip` alone would leave that 92px
-   squeezing the title regardless (the confirmed finding this rule closes). The toolbar
-   wraps its own controls rather than clipping them, `toolbarFit.css`'s narrow answer for
-   the header bar applied here to this pane's own bar. */
+/* Below this width the title and the Next marker are what the panel exists to answer, and
+   the chip's WORDS are what it can no longer afford. **The column is not dropped, and that
+   changed on 2026-09-01 with the reason it was**: the rule read `.pbl-mw-statecol
+   { display: none }` while the column reserved a fixed 92px whether or not it held a chip,
+   so hiding the chip alone left that reservation squeezing the title and fixed nothing
+   (the confirmed finding it closed). The column is content-sized now, so an icon-only chip
+   costs about a fifth of what the reservation did — and keeps the answer that dropping it
+   lost: with no chip at all, a finished row and an unfinished one are the same row, and
+   the only way left to tell them apart is turning hide-done on. `circle-check` against
+   `circle` still says which; the chip's own tooltip (`renderTree.ts`) still says the
+   value in words. The toolbar wraps its own controls rather than clipping them,
+   `toolbarFit.css`'s narrow answer for the header bar applied here to this pane's own
+   bar. */
 @container (max-width: 260px) {
-	.pbl-mw-view .pbl-mw-statecol {
-		display: none;
+	.pbl-mw-view .pbl-state-text {
+		/* `.pbl-sr-only`'s own declarations (`board.css`), not `display: none`, and the
+		   difference is what a screen reader hears. A row is a `treeitem` with no
+		   `aria-label`, so its accessible name is derived from its CONTENT — the type, the
+		   title and the state chip's words. `display: none` takes an element out of the
+		   accessibility tree, so the row would have announced its state in a wide pane and
+		   not in a narrow one, which is the pane's width deciding what a blind reader is
+		   told. Copied rather than shared: the class is applied in TS and this is a width
+		   the stylesheet alone knows about. */
+		position: absolute;
+		width: 1px;
+		height: 1px;
+		padding: 0;
+		margin: -1px;
+		overflow: hidden;
+		clip-path: inset(50%);
+		white-space: nowrap;
+		border: 0;
 	}
 
 	.pbl-mw-view .pbl-mw-toolbar {
 		flex-wrap: wrap;
 	}
 
-	/* The title yields to the Next marker here, and only here. `tree.css` gives
-	   `.pbl-title` a `min-width: 60px` floor that every projection shares, so below about
-	   260px the title stops shrinking, the marker is pushed past the pane edge, and
-	   `.pbl-tree`'s `overflow-x: hidden` makes it invisible rather than cut — measured at
-	   240px, 17px outside the pane. Losing the marker loses this view's headline answer;
-	   losing title characters does not, since the row still opens the note and the tree
-	   still says what the row IS through its type badge. `0` rather than a smaller floor
-	   on purpose: a number here would be this fixture's depth and title lengths again,
-	   which is the mistake the 260px cutoff already documents. Scoped to `.pbl-mw-view`,
-	   inside the narrow block, so no other projection's floor moves. */
-	.pbl-mw-view .pbl-title {
-		min-width: 0;
+	/* The cheapest width on the row, and the only one that grows with DEPTH: every level
+	   costs `tree.css`'s own 24px step, so Ada's PBIs under an Epic and a Feature start
+	   48px in before a glyph is drawn. Halved here — enough that a level still reads as a
+	   level beside its badge, and 24px back at this fixture's depth, which is what keeps the
+	   chip inside the pane at 240px rather than clipped against its edge. Set on the TREE
+	   rather than on the view: a rule inside `@container` resolves against the container's
+	   own ancestor, so `.pbl-mw-view` written here never matches the element the query is
+	   about — the declaration landed nowhere and the rows did not move (measured in the
+	   harness, which is what caught it). `.pbl-row` reads `var(--pbl-indent, 24px)` and
+	   nothing in this view publishes one of its own, so the tree is where it inherits from. */
+	.pbl-mw-view .pbl-mw-tree {
+		--pbl-indent: 10px;
+	}
+
+	/* **And CAPPED at two levels, because a smaller step only moves the width it fails
+	   at.** Indent is the one term on the row that grows without bound: halving it buys a
+	   fixed 12px per level and the next level spends it again, so the row that runs out of
+	   pane is always just one deeper. Measured in the harness at 200px before this cap: a
+	   depth-3 row carrying the Next marker sat 11px past the tree's edge, and an unmarked
+	   depth-5 row was within 5px of it — `.pbl-tree` hides its own horizontal overflow, so
+	   both would have lost the trailing state icon rather than showing it cut.
+
+	   **The marked row is the one that fails first, not the deepest one** (review, PR #239,
+	   which reported the depth and inferred the rest): the marker is ~36px that never
+	   shrinks, so a deep row without it has room to spare. A fixture three levels deep with
+	   the marker higher up draws clean, which is why this went unseen.
+
+	   The cap is stated in LEVELS rather than pixels — `2 * var(--pbl-indent)` — so it
+	   cannot drift from the step above it, and so this carries no second number tuned to
+	   one fixture's depth, which is the mistake the 260px cutoff already records. Two
+	   levels is what a 200px pane can afford: the first two still read as nesting, and
+	   below that the badge and the fold state say where a row sits. The formula restates
+	   `tree.css`'s own, which is the cost of scoping the override to this pane rather than
+	   changing the step every projection shares. */
+	.pbl-mw-view .pbl-row {
+		padding-inline-start: calc(
+			var(--size-4-1) + min(var(--pbl-depth, 0) * var(--pbl-indent, 24px), 2 * var(--pbl-indent, 24px))
+		);
 	}
 }
