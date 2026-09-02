@@ -1,6 +1,8 @@
 import { setTooltip } from 'obsidian';
 import { t } from '../../i18n/t';
 import { ReleaseCriterion, ReleaseReadiness } from '../../domain/releaseReadiness';
+import { ReleaseSettings } from '../../domain/releaseOptions';
+import { BacklogSettings } from '../../domain/settings';
 
 /**
  * The readiness chip row, and the figures that join the summary strip beside the bar
@@ -23,7 +25,12 @@ const CRITERION_NAME: Record<ReleaseCriterion['key'], () => string> = {
 	risk: () => t('release.scope.readinessRisk'),
 };
 
-export function drawReadiness(headerEl: HTMLElement, readiness: ReleaseReadiness): void {
+export function drawReadiness(
+	headerEl: HTMLElement,
+	readiness: ReleaseReadiness,
+	settings: ReleaseSettings,
+	planSettings: BacklogSettings,
+): void {
 	// Withheld whole for a release with no members, `drawSummary`'s own rule: three verdicts
 	// beside an empty state that already says the release is empty says it twice and worse.
 	//
@@ -38,7 +45,7 @@ export function drawReadiness(headerEl: HTMLElement, readiness: ReleaseReadiness
 		drawCollapsed(rowEl, unconfigured);
 		return;
 	}
-	for (const criterion of readiness.criteria) drawChip(rowEl, criterion);
+	for (const criterion of readiness.criteria) drawChip(rowEl, criterion, settings, planSettings);
 }
 
 /**
@@ -65,14 +72,71 @@ function drawCollapsed(rowEl: HTMLElement, unconfigured: ReleaseCriterion[]): vo
 	chipEl.createSpan({ cls: 'pbl-sr-only', text: names });
 }
 
-function drawChip(rowEl: HTMLElement, criterion: ReleaseCriterion): void {
+/**
+ * **The chip says WHICH property decided it**, which is main flow step 5 of
+ * `docs/requirements/Summing up a release.md` — "every figure names its property and
+ * vocabulary where there is one" — and which this row shipped without: the tooltip repeated
+ * the criterion name the chip already draws, so two vaults binding different properties drew
+ * identical chips. Found by a review bot on the pull request that added the row.
+ *
+ * **Hidden text AND the tooltip, from one string.** `setTooltip` on a static unfocusable div
+ * reaches a pointer alone — the objection {@link drawCollapsed} already answers this way, and
+ * `drawSummary`'s progress provenance before it. An `aria-label` is refused for that
+ * function's reason: it would REPLACE the count the chip draws, trading one gap for a worse
+ * one. Nothing is added to the chip's visible width, which also keeps the row's wrapping
+ * exactly where it was measured.
+ *
+ * An unconfigured criterion gets NO provenance: there is no property to name, and a sentence
+ * naming an empty one is the "unconfigured reads as nothing" defect this increment is about.
+ */
+function drawChip(
+	rowEl: HTMLElement,
+	criterion: ReleaseCriterion,
+	settings: ReleaseSettings,
+	planSettings: BacklogSettings,
+): void {
 	const name = CRITERION_NAME[criterion.key]();
 	const chipEl = rowEl.createDiv({
 		cls: `pbl-state-chip pbl-state-static pbl-rel-crit pbl-rel-crit-${verdictClass(criterion.verdict)}`,
 		text: chipText(criterion, name),
 	});
 	chipEl.dataset.criterion = criterion.key;
-	setTooltip(chipEl, name);
+	const provenance = criterion.verdict === 'unconfigured' ? '' : criterionProvenance(criterion.key, settings, planSettings);
+	setTooltip(chipEl, provenance === '' ? name : `${name}. ${provenance}`);
+	if (provenance !== '') chipEl.createSpan({ cls: 'pbl-sr-only', text: provenance });
+}
+
+/**
+ * One sentence per criterion, because the three do not read the same SHAPE of input — see
+ * the catalog entries' own comment. The property is spelled as the frontmatter KEY rather
+ * than the config's `note.`-prefixed id, since a reader who acts on this goes and edits
+ * frontmatter.
+ */
+function criterionProvenance(
+	key: ReleaseCriterion['key'],
+	settings: ReleaseSettings,
+	planSettings: BacklogSettings,
+): string {
+	if (key === 'estimated') return t('release.scope.provenanceEstimate', { property: settings.estimateKey });
+	if (key === 'blocked') {
+		// What CLEARS a prerequisite is the plan's own state key, not a sixth option — the
+		// rule `releaseReadiness.ts` states. So the sentence names both, or it names a
+		// property whose clearing nobody can find.
+		return t('release.scope.provenanceDependsOn', { property: settings.dependsOnKey, state: planSettings.stateKey });
+	}
+	// **Both vocabularies unconditionally, and no empty-list branch beside them.** A risk
+	// criterion with either list empty is UNCONFIGURED (`releaseReadiness.ts`'s own rule,
+	// three conditions ORed), and an unconfigured criterion is returned above without
+	// provenance — so a "no addressed values" sentence here would be a guard against a state
+	// the domain refuses to produce. It was written, and the test for it failed by drawing
+	// nothing at all; that is the evidence, and the branch is gone rather than reachable-
+	// looking. A verdict cannot be reconciled from the critical list alone anyway: a member
+	// holding an addressed value clears, and the critical list does not say why.
+	return t('release.scope.provenanceRisk', {
+		property: settings.riskKey,
+		critical: settings.criticalRiskValues,
+		addressed: settings.addressedRiskValues,
+	});
 }
 
 function chipText(criterion: ReleaseCriterion, name: string): string {
@@ -116,7 +180,11 @@ function verdictClass(verdict: ReleaseCriterion['verdict']): string {
  * All three read the same key, so all three are absent together — the count included. A
  * `2 unestimated` beside `Effort is not configured` contradicts itself.
  */
-export function drawReadinessFigures(sumEl: HTMLElement, readiness: ReleaseReadiness): void {
+export function drawReadinessFigures(
+	sumEl: HTMLElement,
+	readiness: ReleaseReadiness,
+	settings: ReleaseSettings,
+): void {
 	const total = readiness.estimatedEffort.value;
 	const done = readiness.completedEffort.value;
 	if (total === null) {
@@ -136,6 +204,11 @@ export function drawReadinessFigures(sumEl: HTMLElement, readiness: ReleaseReadi
 			text: t('release.scope.unestimated', { count: readiness.unestimated.value }),
 		});
 	}
+	// Step 5 again, for the figures rather than the chips. All three read ONE key, which is
+	// why one sentence covers them — the reason `estimateKey` is one option and not three.
+	// Hidden text only: `drawSummary` already owns the strip's tooltip for the progress
+	// figure, and overwriting it would trade this provenance for that one.
+	sumEl.createSpan({ cls: 'pbl-sr-only', text: t('release.scope.provenanceEstimate', { property: settings.estimateKey }) });
 }
 
 function drawEffort(sumEl: HTMLElement, total: number, done: number | null): void {

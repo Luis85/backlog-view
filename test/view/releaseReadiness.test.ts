@@ -118,6 +118,48 @@ describe("a release's readiness on screen", () => {
 		expect(containerEl.querySelector('.pbl-rel-ready')).toBeNull();
 	});
 
+	it('names the property and vocabulary behind every readiness figure', () => {
+		// `Summing up a release` main flow step 5: every figure names its property and
+		// vocabulary where there is one. The chips and the effort figures shipped without it,
+		// found by a review bot on the pull request that added them.
+		//
+		// Asserted on the HIDDEN text rather than the tooltip, and the choice is the point:
+		// `setTooltip` on a static unfocusable div reaches a pointer alone, which is the
+		// objection this module already answers for the collapsed chip. The tooltip is set
+		// too, from the identical string.
+		const { containerEl } = openScope(CONFIGURED);
+		const said = [...containerEl.querySelectorAll('.pbl-rel-ready .pbl-sr-only, .pbl-rel-summary .pbl-sr-only')]
+			.map((el) => el.textContent)
+			.join(' | ');
+		// The KEYS, not the config's `note.`-prefixed property ids — a reader goes and edits
+		// frontmatter, which carries the bare key.
+		expect(said).toContain('Estimates read effort.');
+		expect(said).toContain('Prerequisites read dependsOn');
+		expect(said).toContain('Risk reads risk.');
+		// Both vocabularies, because a verdict cannot be reconciled from the critical list
+		// alone: a member holding `Mitigated` clears, and nothing on screen said why.
+		expect(said).toContain('Critical: Critical.');
+		expect(said).toContain('Addressed: Mitigated.');
+	});
+
+	it('names no property for a criterion that is not configured', () => {
+		// An unconfigured criterion has no property to name, and a sentence naming an empty
+		// one is the "unconfigured reads as nothing, never as empty" defect this increment is
+		// about — asked of the provenance sentence rather than of a figure.
+		//
+		// Clearing the ADDRESSED list is what makes it unconfigured: `releaseReadiness.ts`
+		// requires the key and both vocabularies, so a half-written risk configuration has no
+		// verdict and therefore nothing to explain. Written first as "names the critical list
+		// alone", which failed by drawing nothing at all — which is how the unreachable
+		// branch behind it was found and deleted.
+		const { containerEl } = openScope({ ...CONFIGURED, addressedRiskValues: '' });
+		const said = [...containerEl.querySelectorAll('.pbl-rel-ready .pbl-sr-only')].map((el) => el.textContent).join(' | ');
+		expect(said).not.toContain('Risk reads');
+		// The two that ARE configured still say what they read.
+		expect(said).toContain('Estimates read effort.');
+		expect(said).toContain('Prerequisites read dependsOn');
+	});
+
 	it('plans no write while the screen renders', () => {
 		// The category check on the CALL, not a list of the paths somebody thought of: this
 		// whole increment is a read, and the next render path added must not be able to

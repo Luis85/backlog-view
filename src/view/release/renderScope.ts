@@ -16,6 +16,7 @@ import { wireScopeCreate } from './scopeCreate';
 import { drawReleaseActions } from './releaseClose';
 import { drawReadiness, drawReadinessFigures } from './renderReadiness';
 import { releaseReadiness, ReleaseReadiness } from '../../domain/releaseReadiness';
+import { ReleaseSettings } from '../../domain/releaseOptions';
 import { RELEASE_FOLD } from '../viewState';
 
 /**
@@ -202,9 +203,9 @@ function drawHeader(
 	// prevent. `view.settings` is this view's own `ReleaseSettings`, the same object the
 	// model was built from, for `planSettings`' own reason above.
 	const readiness = releaseReadiness(view.app, scope, view.settings, planSettings);
-	drawSummary(footEl, release, scope.members, planSettings, readiness);
+	drawSummary(footEl, release, scope.members, readiness, { plan: planSettings, release: view.settings });
 	drawReleaseActions(view, footEl, release, scope, planSettings);
-	drawReadiness(headerEl, readiness);
+	drawReadiness(headerEl, readiness, view.settings, planSettings);
 }
 
 /**
@@ -468,12 +469,22 @@ function drawDescription(view: ReleaseView, headerEl: HTMLElement, release: Rele
  * live-vault question, the same one `src/view/CLAUDE.md`'s resize-grip section leaves open
  * for a `role="separator"`.
  */
+/** The two settings bags this strip reads, as one argument. Not a shape anybody wanted:
+ *  the readiness provenance needed a sixth parameter and `max-params` (5) refused it, and
+ *  the alternatives were worse — taking the whole `ReleaseScope` reintroduces a nullable
+ *  `release` this caller has already resolved, and an unreachable null guard beside it is
+ *  the thing this module just deleted one of. */
+interface SummarySettings {
+	plan: BacklogSettings;
+	release: ReleaseSettings;
+}
+
 function drawSummary(
 	headerEl: HTMLElement,
 	release: ReleaseRow,
 	members: number,
-	planSettings: BacklogSettings,
 	readiness: ReleaseReadiness,
+	settings: SummarySettings,
 ): void {
 	if (release.members.unconfigured || members === 0) return;
 	const sumEl = headerEl.createDiv({ cls: 'pbl-rel-summary' });
@@ -484,7 +495,7 @@ function drawSummary(
 		// key rather than the state workflow, so a release with an estimate key bound and no
 		// workflow that can say done would otherwise lose readable figures along with the one
 		// that really is unreadable.
-		drawReadinessFigures(sumEl, readiness);
+		drawReadinessFigures(sumEl, readiness, settings.release);
 		return;
 	}
 	const done = release.done.value;
@@ -493,7 +504,7 @@ function drawSummary(
 	barEl.createDiv({ cls: 'pbl-rel-bar-fill' }).setCssProps({ '--pbl-rel-fill': `${pct}%` });
 	sumEl.createSpan({ cls: 'pbl-rel-pct', text: t('release.scope.percent', { pct }) });
 	sumEl.createSpan({ cls: 'pbl-rel-figure', text: t('column.rollupTooltip', { done, count: members }) });
-	const provenance = progressProvenance(release.workflows, planSettings);
+	const provenance = progressProvenance(release.workflows, settings.plan);
 	setTooltip(sumEl, provenance);
 	// Plain visually-hidden content, not `aria-describedby` — `sumEl` is a role-less,
 	// unfocusable `<div>`, and a description only reliably reaches assistive tech on a
@@ -502,7 +513,7 @@ function drawSummary(
 	// No `aria-hidden` either: with no description to double against, this text is meant to
 	// be read exactly once, as ordinary content of the strip.
 	sumEl.createSpan({ cls: 'pbl-sr-only', text: provenance });
-	drawReadinessFigures(sumEl, readiness);
+	drawReadinessFigures(sumEl, readiness, settings.release);
 }
 
 /**

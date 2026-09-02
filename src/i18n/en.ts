@@ -2022,6 +2022,23 @@ export const en = {
 	'release.scope.effortUnconfigured': 'Effort is not configured',
 	'release.scope.unestimated': '{count} unestimated',
 	/**
+	 * Main flow step 5 of `docs/requirements/Summing up a release.md` — "every figure names
+	 * its property and vocabulary where there is one" — asked of the readiness figures, which
+	 * shipped without it. `{property}` is a frontmatter KEY and `{values}` a vault's own
+	 * vocabulary: both are DATA and reach the sentence as parameters, never as catalog text.
+	 *
+	 * Four sentences and not one, because the criteria do not read the same SHAPE of input:
+	 * the estimate is a property alone, the dependency is a property whose clearing comes
+	 * from the state workflow that already has its own provenance sentence, and the risk is a
+	 * property with two vocabularies judged against it. One parameterised sentence covering
+	 * all three would have to name an empty vocabulary for the first, which is the
+	 * "unconfigured reads as nothing" defect the whole increment is about.
+	 */
+	'release.scope.provenanceEstimate': 'Estimates read {property}.',
+	'release.scope.provenanceDependsOn': 'Prerequisites read {property}, cleared by {state}.',
+	'release.scope.provenanceRisk': 'Risk reads {property}. Critical: {critical}. Addressed: {addressed}.',
+
+	/**
 	 * The summary strip's own label for the progress figure, read into
 	 * `release.figureUnconfigured` (no workflow to name — see
 	 * `release.scope.progressUnconfigured`'s own comment) or into that key itself when
