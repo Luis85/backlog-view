@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 import { describe, expect, it, vi } from 'vitest';
+import { withLocale } from '../helpers/locale';
 import { FakeVault } from '../helpers/vault';
 import { makeView, useViewHarness } from '../helpers/view';
 import { gridDrag, overlayOf } from '../helpers/dnd';
@@ -47,9 +48,13 @@ describe('the two-tier header', () => {
 		// Month zoom, the default: years above months.
 		expect(superLabels(containerEl).length).toBeGreaterThan(0);
 		expect(superLabels(containerEl).every((l) => /^\d{4}$/.test(l))).toBe(true);
-		view.setZoom('week');
-		// Week zoom: months above weeks, carrying the year the weeks do not.
-		expect(superLabels(containerEl).some((l) => /^[A-Z][a-z]{2} \d{4}$/.test(l))).toBe(true);
+		// Week zoom: months above weeks, carrying the year the weeks do not. Pinned to
+		// English because the month's SPELLING follows the reader's locale now — the tier
+		// it lands on is what this asserts, not the word.
+		withLocale('en', () => {
+			view.setZoom('week');
+			expect(superLabels(containerEl).some((l) => /^[A-Z][a-z]{2} \d{4}$/.test(l))).toBe(true);
+		});
 	});
 
 	// Both tiers get the same total from TS. That is NOT the same claim as the drawn

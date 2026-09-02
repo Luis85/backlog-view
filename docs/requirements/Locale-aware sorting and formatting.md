@@ -2,9 +2,9 @@
 type: PBI
 parent: "[[Multilang]]"
 order: 90
-status: Active
+status: Done
 started: ""
-finished: ""
+finished: 2026-09-02
 horizon: ""
 start: ""
 due: ""
@@ -429,23 +429,44 @@ or the guard has to be remembered eleven times.
   weaker statement than a test and is written as one.
 
   **Checked by** `test/i18n/localeSorting.test.ts` — "leaves every rank and every Bases result position byte-identical"
-- **Met, vacuously, and deliberately left that way.** Dates, if any are ever rendered, use
-  `obsidian.moment`, which Obsidian has already configured, rather than a second date stack.
-  Nothing in `src/` renders a date through any date library: `domain/timeline.ts` does its
-  own civil-date arithmetic on year/month/day triples and `formatCivil` writes `2026-08-01`,
-  which is the register's own stable format rather than a localized one. No date stack was
-  added to meet this, and none should be.
-- **NOT met — the one criterion left open, and why this note is still `Active`.** The
-  roadmap's dated axis draws its header from `MONTH_LABELS` in `src/domain/timeline.ts`, a
-  hard-coded `['Jan', 'Feb', …]` array. Every reader sees English month names whatever their
-  locale, which is exactly the class of defect this note exists for — a rendering the locale
-  changes even though no string is being translated. The root `CLAUDE.md` already assigns it
-  here, calling it "a formatting question that follows the USER's locale through `Intl`", and
-  the fix is `Intl.DateTimeFormat` on the requested locale beside `compareText` and
-  `formatNumber` rather than a catalog key per month: a month name is data presentation, and
-  a twelve-key catalog list would make it grammar and freeze it at the shipped catalogs.
-  Found while closing this note out, by reading the guide's own classification against the
-  code rather than trusting it.
+- **Met, and no longer vacuously — corrected 2026-09-02.** This said "nothing in `src/`
+  renders a date through any date library", and the roadmap's header now does: four
+  `Intl.DateTimeFormat` objects in `src/i18n/t.ts`. What the criterion actually asks is
+  that no second date STACK is added, and none was — `Intl` is the platform's, the same
+  place `Intl.Collator` and `Intl.NumberFormat` already come from, and it needs neither a
+  dependency nor `obsidian.moment`. `domain/timeline.ts` still does its own civil-date
+  arithmetic on year/month/day triples, and `formatCivil` still writes `2026-08-01`, which
+  is the register's own stable format rather than a localized one. Were a date to want a
+  reader's own long form, `obsidian.moment` is what Obsidian has already configured — but
+  nothing wants one, and adding a date stack for the header would have been the wrong
+  answer to a question `Intl` answers.
+- **Met 2026-09-02 — the criterion this note was left `Active` for.** The roadmap's dated
+  axis drew its header from `MONTH_LABELS` in `src/domain/timeline.ts`, a hard-coded
+  `['Jan', 'Feb', …]` array, so every reader saw English month names whatever their locale
+  — exactly the class of defect this note exists for, a rendering the locale changes even
+  though no string is being translated. All four header shapes now go through `formatDate`
+  in `src/i18n/t.ts`, one `Intl.DateTimeFormat` per style built per `setLocale` beside
+  `compareText` and `formatNumber`, on the REQUESTED locale. No catalog key: a month name
+  is data presentation, and twelve keys would make it grammar and freeze it at the shipped
+  catalogs.
+
+  **The label is formatted WHOLE, never assembled.** The week cell hands `Intl` the day and
+  the month together, because their order is the locale's — `en` writes `Jun 29`, `en-GB`
+  `29 Jun`, `ja` `6月29日` — so English readers see a changed cell too. Two options are
+  pinned rather than defaulted: `timeZone: 'UTC'`, because a civil date is handed over as
+  `Date.UTC` and reading it back in the host's zone names the previous day everywhere west
+  of Greenwich; and `calendar: 'gregory'`, because the grid IS Gregorian and `fa-IR` would
+  otherwise draw Persian month names over it.
+
+  **Two labels are NOTATION and stay spelled in `domain/timeline.ts`, which is a decision.**
+  `Q3` has no `Intl` field to ask — CLDR carries quarter names, ECMA-402 exposes none — so
+  the choice was that or the catalog key this criterion refuses for months. The bare year
+  goes through `Intl` for its digits (`۲۰۲۶` in Persian) but never through `formatNumber`,
+  which would group it as `2,026`.
+
+  **Checked by** `test/i18n/timelineLabels.test.ts` — "draws nothing but the locale’s own calendar vocabulary, at every zoom"
+
+  **Checked by** `test/i18n/timelineLabels.test.ts` — "labels a Gregorian grid in the Gregorian calendar, whatever the locale prefers"
 
 ## Where it lives
 
@@ -467,9 +488,12 @@ renderers. The identity folds that must not change are everywhere — `src/domai
 was on that list for as long as this note has existed and folds nowhere today, which is
 what the enumeration is for: it has no row, so naming it here was a claim the table
 refuses.
-`src/domain/timeline.ts` holds the month names this note still owes.
+`src/domain/timeline.ts` is the fourth reader of the requested locale: its header labels go
+through `formatDate`, and `Q3` and the notation decision behind it are stated at
+`cellLabel`.
 
-Tests: `test/i18n/foldSites.test.ts` (the classification against the tree),
+Tests: `test/i18n/timelineLabels.test.ts` (the dated axis's header, in four locales and
+two time zones), `test/i18n/foldSites.test.ts` (the classification against the tree),
 `test/i18n/localeFolds.test.ts` (what each half DOES in Turkish),
 `test/i18n/localeSorting.test.ts` (collation is presentation only),
 `test/i18n/locale.test.ts` (validation and the two-locale split), plus
