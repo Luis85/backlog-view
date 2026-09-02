@@ -56,10 +56,22 @@ date that reads as inside the window today and stops being so once the clock lea
 
 ## The fix
 
-Both tests plant their own dates as offsets from `TODAY` (`start: day(0)`, `due: day(9)`,
-the absence at `day(3)`–`day(5)`), which is the shape and the spacing the fixed days had.
-`absenceVault()` (`test/helpers/resources.ts`) keeps its fixed dates: other tests assert
-those exact days, and only these two have the window's own width as their subject.
+Both tests PIN THE CLOCK — `vi.setSystemTime(new Date('2026-08-05T12:00:00Z'))`, and
+`setSystemTime` alone so only `Date` is mocked and the view's own timers still run — which
+puts today back beside the fixed dates the fixtures already name.
+
+**Fixed twice, independently, and the merge is why this paragraph reads as it does.** The
+my-work branch found it first and planted the dates as offsets from `TODAY` instead;
+`main` reached it separately (`39b1035`) and pinned the clock. Both close the defect and
+the two collided on merge. `main`'s won, on the ground that it is merged and shipped, that
+a test whose subject is a WIDTH is better off deterministic than merely relative, and that
+one idiom for one problem is worth more than whichever idiom is marginally better — a
+suite carrying both would leave the next reader guessing which is the rule here. The
+offsets are gone; only this record of them remains.
+
+`absenceVault()` (`test/helpers/resources.ts`) keeps its fixed dates under either fix:
+other tests assert those exact days, and only these two have the window's own width as
+their subject.
 
 ## What it says about the suite
 

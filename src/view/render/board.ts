@@ -213,7 +213,7 @@ export function renderRequirementsBoard(ctx: RowContext, boardEl: HTMLElement, d
 	return renderBoard(ctx, boardEl, dnd, board, {
 		scope: 'board',
 		move: (item, col) => void host.performBoardMove(item, col.state),
-		undeclaredColumn: (state) => t('board.undeclaredColumn', { state }),
+		undeclaredColumn: (state) => t('board.undeclaredColumn', { state, statesOption: t('option.stateValues') }),
 		drawEmpty: (h, aside, root) => {
 			const m = h.model;
 			if (!m) return;
@@ -257,7 +257,8 @@ export function renderDeliverablesBoard(ctx: RowContext, boardEl: HTMLElement, d
 	return renderBoard(ctx, boardEl, dnd, board, {
 		scope: 'deliverables',
 		move: (item, col) => void host.performDeliverablesBoardMove(item, col.state),
-		undeclaredColumn: (state) => t('board.undeclaredDeliverableColumn', { state }),
+		undeclaredColumn: (state) =>
+			t('board.undeclaredDeliverableColumn', { state, statesOption: t('option.deliverableStateValues') }),
 		drawEmpty: (h, aside, root) => {
 			const m = h.model;
 			if (!m) return;

@@ -1,6 +1,15 @@
 import { getLanguage } from 'obsidian';
 import { en } from './en';
 import { intlLocale, resolveCatalog, SOURCE_LOCALE } from './locale';
+import { PSEUDO_LOCALE, pseudoCatalog } from './pseudo';
+
+/**
+ * The bundler's own constant, the one every entry already defines — see the `define` in
+ * `scripts/esbuild.config.mjs`, `scripts/harness.mjs` and Node's own value under vitest.
+ * Declared rather than imported because `src/` is typed without Node, and a build-time
+ * literal is what lets the production bundle drop the pseudo catalog entirely.
+ */
+declare const process: { env: { NODE_ENV?: string } };
 
 /**
  * The lookup. One function answers "what does this key say", and it is total: every key
@@ -78,8 +87,27 @@ type Values = Record<string, string | number | readonly string[]>;
  * Every catalog that ships. One entry in this round, deliberately — see
  * `docs/requirements/English ships alone.md`. A second language is one file beside `en`
  * and one row here, and nothing else anywhere.
+ *
+ * Exported so the completeness check reads the REGISTRY rather than a list of its own:
+ * a language added here is checked against English without a test edit, which is what
+ * makes "nothing else anywhere" true rather than merely intended.
+ *
+ * The pseudo-locale is NOT a language and is added to that one row rather than beside it:
+ * a development build carries it so a layout can be looked at in something that is not
+ * English, and the production `define` folds the ternary to `SHIPPED`, which leaves
+ * `pseudo.ts` unreferenced and tree-shaken out of the release. That is what "ships in no
+ * release" is, mechanically — not a flag somebody has to remember to turn off.
+ *
+ * **`SHIPPED` is named rather than spelled in both arms, and that is the whole point of
+ * it.** Written as two object literals, a real catalog added to one arm alone either
+ * ships unchecked (the suite reads the development arm) or is checked and unreleasable —
+ * and "one row" would have become two edits that must agree, which is the promise this
+ * comment makes. Found by review (Codex, PR #240).
  */
-const CATALOGS: Record<string, Catalog> = { [SOURCE_LOCALE]: en };
+const SHIPPED: Record<string, Catalog> = { [SOURCE_LOCALE]: en };
+
+export const CATALOGS: Record<string, Catalog> =
+	process.env.NODE_ENV === 'production' ? SHIPPED : { ...SHIPPED, [PSEUDO_LOCALE]: pseudoCatalog(en) };
 
 /**
  * Everything about a locale that decides GRAMMAR: which plural form a count selects, and
@@ -139,9 +167,37 @@ export function setLocale(code: string, catalogs: Record<string, Catalog> = CATA
 	active = activate(code, catalogs);
 }
 
-/** The one call `main.ts` makes: Obsidian's language, applied. */
+/**
+ * The one call `main.ts` makes: Obsidian's language, applied.
+ *
+ * One override comes ahead of it in a DEVELOPMENT build, and it is a knob rather than a
+ * setting: Obsidian offers no way to ask for a language it does not itself ship, so the
+ * pseudo-locale above would be unreachable from the `npm run test-build` vault without
+ * it. Set `localStorage['product-backlog-locale'] = 'en-x-pseudo'` in the console and
+ * reload. It is deliberately not a view option and not a command — nothing writes it and
+ * nothing lists it.
+ *
+ * **It is behind the same `define` as the catalog it exists for, and that is the
+ * correction rather than symmetry for its own sake.** This said "in a release build any
+ * value resolves to a shipped catalog, so the worst it can do is nothing", and that was
+ * a guarantee written ahead of what the code does: the catalog falls back, but `activate`
+ * gives `Intl` the REQUESTED code, so a key left behind in a vault would have given a
+ * German reader English number formatting off a production build until they cleared it by
+ * hand. A development knob that survives into a release is not a development knob. Found
+ * by review (Codex, PR #240).
+ */
 export function initLocale(): void {
-	setLocale(getLanguage());
+	setLocale(process.env.NODE_ENV === 'production' ? getLanguage() : (localeOverride() ?? getLanguage()));
+}
+
+function localeOverride(): string | null {
+	try {
+		return window.localStorage.getItem('product-backlog-locale');
+	} catch {
+		// A vault with storage denied is a vault that reads its own language, not one
+		// that fails to render.
+		return null;
+	}
 }
 
 /** Which catalog is being read, and which locale `Intl` was given. */

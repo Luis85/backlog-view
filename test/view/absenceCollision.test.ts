@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { FakeVault } from '../helpers/vault';
 import { useViewHarness } from '../helpers/view';
 import { laneRoadmap, rowFor } from '../helpers/roadmap';
@@ -318,23 +318,14 @@ describe('what a bar SAYS it costs to cross an absence', () => {
 		// on a track shorter than twice the reserve" construction, reused here rather than
 		// re-derived. The `.pbl-sr-only` sentence in `noteAbsenceClash` is written
 		// unconditionally either way, so nothing is lost with the visible half.
-		// `absenceVault()`'s own shape, with its dates OFFSET from the real clock rather than
-		// fixed at August 2026 — the repair of 2026-09-01, the same one `legend.test.ts` needed:
-		// the construction this test reuses is "a NEAR-TERM backlog at quarter zoom", and fixed
-		// dates stop being near-term as the clock moves past them, growing the window until the
-		// track clears twice the reserve and the label is drawn after all. The shared fixture
-		// keeps its fixed dates (other tests assert those exact days); only this test, whose
-		// subject is the window's own width, plants its own.
-		const vault = new FakeVault();
-		vault.addFile('Alice.md', { frontmatter: { type: 'Resource' } });
-		const day = (offset: number): string => formatCivil(addDays(TODAY, offset));
-		vault.addFile('Work.md', {
-			frontmatter: { type: 'Epic', order: 10, assignee: 'Alice', start: day(0), due: day(9) },
-		});
-		vault.addFile(ALICE_AWAY_PATH, {
-			frontmatter: { type: 'Absence', assignee: 'Alice', start: day(3), due: day(5) },
-		});
-		const harness = laneRoadmap(vault);
+		// The clock is PINNED, and that is the defect this line fixes rather than a style:
+		// `timelineWindow` pads its span to include today, so a fixture dated in a fixed
+		// month gets a wider window every day that passes — and the width this test is
+		// about is the one thing that drops the label. It passed for a fortnight and then
+		// failed on the calendar. `setSystemTime` alone, so only `Date` is mocked and the
+		// view's own timers still run.
+		vi.setSystemTime(new Date('2026-08-05T12:00:00Z'));
+		const harness = laneRoadmap(absenceVault());
 		harness.view.setZoom('quarter');
 		const row = rowFor(harness.containerEl, 'Work');
 
