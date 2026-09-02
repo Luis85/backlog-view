@@ -11,7 +11,7 @@ import {
 	resolvedDeliverableStateKey,
 	resolvedTestStateKey,
 } from './optionalProperties';
-import { rankBetween } from './rankArithmetic';
+import { placeRun } from './rankArithmetic';
 import { ItemWrite } from './writePlan';
 
 /**
@@ -139,16 +139,17 @@ function missingKeyStubs(item: BacklogItem, settings: BacklogSettings): Optional
 }
 
 /**
- * The gaps in one item's properties, or null when it has none. `nextOrder` is asked
- * only when the rank is the gap, so an item that needs no order does not spend a
- * number from the population-wide sequence — and it may answer null, which leaves the
- * rank a gap rather than filling it with a number the sequence could not clear.
+ * The gaps in one item's properties, or null when it has none. `order` is the rank
+ * `allocateRanks` already decided for this position — a number, or null both for an item
+ * that needs none (it has one already) and for a blank the allocation refused, which
+ * leaves the rank a gap rather than filling it with a number nothing could clear. The
+ * two are told apart here by `item.order`, so a refused blank cannot pick up a number
+ * some other row was allocated.
  */
-function initWriteFor(item: BacklogItem, settings: BacklogSettings, nextOrder: () => number | null): ItemWrite | null {
+function initWriteFor(item: BacklogItem, settings: BacklogSettings, order: number | null): ItemWrite | null {
 	const write: ItemWrite = { file: item.file };
 	let needed = false;
 	if (item.order === null) {
-		const order = nextOrder();
 		// A refused rank is not a refused WRITE: the type and the stubs are unaffected by
 		// how big somebody's `order` is, and withholding them too would be a second failure
 		// caused by the first.
@@ -191,16 +192,23 @@ function initWriteFor(item: BacklogItem, settings: BacklogSettings, nextOrder: (
  * needs covering: a board column and a roadmap bucket sort by the Base's own `entryIndex`,
  * so no rank this writes can move a card in one.
  *
+ * **The unit of placement is a RUN, not a row** — a maximal sequence of consecutive blanks
+ * with nothing between them that raises the floor, spread evenly across one interval by
+ * `placeRun` (`allocateRanks` below states the rule). One interval per run rather than one
+ * per row is what the guarantee costs and what it buys: the numbers inside a run are not
+ * the ones a row-at-a-time walk would produce, and the bound below is asked once of the
+ * whole group.
+ *
  * **Bounded against the rows it can COLLIDE with, not against every row drawn later**, and
  * the two halves of the guarantee reach that differently:
  *
- * - Above: the floor is the running maximum over everything drawn so far, so a rank clears
- *   every earlier one whether or not the two are ever compared. Left global deliberately —
- *   it is also what keeps every rank handed out increasing along the walk and landing in a
- *   gap no existing rank occupies, and a narrower floor buys a lower number at the price of
- *   both. The sibling half of the guarantee needs nothing else: an unranked row sorts LAST
- *   in its group (`compareSiblings`), so every ranked sibling is drawn before the blank and
- *   is already under the floor.
+ * - Above: the floor is the running maximum over everything drawn above the RUN, so every
+ *   rank in it clears every earlier one whether or not the two are ever compared. Left
+ *   global deliberately — it is also what keeps every rank handed out increasing along the
+ *   walk and landing in a gap no existing rank occupies, and a narrower floor buys a lower
+ *   number at the price of both. The sibling half of the guarantee needs nothing else: an
+ *   unranked row sorts LAST in its group (`compareSiblings`), so every ranked sibling is
+ *   drawn before the blank and is already under the floor.
  * - Below: only rows that could share a FOCUS list with the blank (`focusKey`) bound the
  *   ceiling. A row at another level is never `inRankOrder`'s peer, but it CAN be
  *   `compareSiblings`' peer by sharing the blank's parent — and that is not a hole in the
@@ -214,16 +222,27 @@ function initWriteFor(item: BacklogItem, settings: BacklogSettings, nextOrder: (
  *   blank's sibling group too (`isPoisoned`), because a `compareSiblings` peer at another
  *   level — sharing a parent rather than a focus key — draws adjacent to it just the same
  *   and would otherwise be ranked ahead of it once the sibling itself stayed blank.
+ *   **Still asked of the ROW, which is what decides where a run ends**: a run carries ONE
+ *   ceiling, so a blank whose own ceiling differs starts a new one rather than joining and
+ *   dragging the group down to the lower of the two. Bounding a whole run by its members'
+ *   minimum would be sound but over-refuses, and visibly: a blank Epic drawn immediately
+ *   above a blank Feature whose own level is ranked below it fits perfectly well on its own
+ *   and would be refused for its neighbour's ceiling. Two members sharing a focus key
+ *   necessarily agree anyway, because a ranked row of that key drawn between them would
+ *   have ended the run at the floor.
  * - Below, second bound: the smallest rank in the vault ABOVE the floor, whatever level it
  *   is at. Not part of the guarantee — it is what keeps the value in a free gap, so the
  *   backfill can never mint the duplicate rank that `dropPlacement` reads as a legacy
  *   sibling-scoped vault. A rank at or under the floor needs no bound of its own, since
  *   every value handed out is strictly above the floor and cannot land on one.
  *
- * **When no such rank exists the blank keeps none**, which is the same fail-closed rule
- * the other two places a rank is produced already keep. It is reachable and ordinary: a
- * row drawn later under a different parent can hold a LOWER rank than the row drawn
- * before this one, and then no number is both above the first and below the second.
+ * **When no such rank exists the whole RUN keeps none**, which is the same fail-closed rule
+ * the other two places a rank is produced already keep, taken at the unit that is placed.
+ * It is reachable and ordinary: a row drawn later under a different parent can hold a
+ * LOWER rank than the row drawn before this one, and then no number is both above the
+ * first and below the second. Refusing the run whole rather than the members that will
+ * not fit is deliberate — a part-ranked group is the state Seed exists to repair, and
+ * every member is counted, so the notice's number stays true.
  *
  * **That refusal is COUNTED and returned, which is why this answers a plan rather than an
  * array.** Reduced to a null inside the walk it left the caller unable to tell "nothing was
@@ -242,11 +261,6 @@ function initWriteFor(item: BacklogItem, settings: BacklogSettings, nextOrder: (
  * `test/view/backfillFocusOrder.test.ts`.
  */
 export function computeInitWrites(model: BacklogModel, settings: BacklogSettings): { writes: ItemWrite[]; unplaceable: number } {
-	const writes: ItemWrite[] = [];
-	// Counted where the refusal happens rather than re-derived afterwards: `nextOrder` is
-	// asked exactly once per blank rank, so a second pass would be a second idea of which
-	// rows are blank.
-	let unplaceable = 0;
 	// The DRAWN sequence — DFS preorder over the real tree, context rows included, because
 	// one is on screen and a rank that ignored it would move a row the user can see.
 	const drawn: BacklogItem[] = [];
@@ -257,14 +271,39 @@ export function computeInitWrites(model: BacklogModel, settings: BacklogSettings
 		}
 	};
 	collect(model.realRoots);
-	// `ceilings[i]` is the SMALLEST rank drawn after position i BY A ROW THAT COULD BE
-	// ORDERED AGAINST IT — the value a blank there must stay below to keep its place.
-	// **Read off what is drawn LATER, not off the next rank above the floor**, and that
-	// distinction is the whole of the fix this replaced: the two agree while a subtree's
-	// ranks run upward with the screen, and part company exactly when a later-drawn row
-	// under a DIFFERENT parent holds a lower rank. Every fixture that missed this bug
-	// stayed inside one increasing run. One backward pass, keeping the lowest rank seen
-	// per focus key, because the answer for a row is a suffix minimum over its own key.
+	// Every rank in the vault, ascending. `above` walks it forwards only, which is sound
+	// because the floor never falls; what it skips are the ranks at or under the floor,
+	// which no value handed out can land on anyway.
+	const occupied = model.ranked.map((item) => item.order).filter((order): order is number => order !== null);
+	// **Two passes, and they cannot be one.** A run is placed by its COUNT, which is not
+	// known until the run has ended, so the arithmetic has to finish before the first write
+	// is built. Interleaved — a lazy `nextOrder()` per row, raising the floor to the number
+	// it had just handed out — consecutive blanks under one ceiling BISECTED the remaining
+	// interval, and `roundOrder`'s six-decimal grid ran out after about thirty of them.
+	const { ranks, unplaceable } = allocateRanks(drawn, ceilingsOf(drawn), occupied);
+	const writes: ItemWrite[] = [];
+	for (let i = 0; i < drawn.length; i++) {
+		const item = drawn[i];
+		// Ancestors pulled in from outside the filter are context, not results — the
+		// backfill must not write properties into notes the base excluded.
+		if (item.outsideFilter) continue;
+		const write = initWriteFor(item, settings, ranks[i]);
+		if (write) writes.push(write);
+	}
+	return { writes, unplaceable };
+}
+
+/**
+ * `ceilings[i]` is the SMALLEST rank drawn after position i BY A ROW THAT COULD BE
+ * ORDERED AGAINST IT — the value a blank there must stay below to keep its place.
+ * **Read off what is drawn LATER, not off the next rank above the floor**, and that
+ * distinction is the whole of the fix this replaced: the two agree while a subtree's
+ * ranks run upward with the screen, and part company exactly when a later-drawn row
+ * under a DIFFERENT parent holds a lower rank. Every fixture that missed this bug
+ * stayed inside one increasing run. One backward pass, keeping the lowest rank seen
+ * per focus key, because the answer for a row is a suffix minimum over its own key.
+ */
+function ceilingsOf(drawn: BacklogItem[]): (number | null)[] {
 	const ceilings: (number | null)[] = new Array<number | null>(drawn.length).fill(null);
 	const lowestLater = new Map<number, number>();
 	for (let i = drawn.length - 1; i >= 0; i--) {
@@ -273,19 +312,35 @@ export function computeInitWrites(model: BacklogModel, settings: BacklogSettings
 		const order = drawn[i].order;
 		if (order !== null) lowestLater.set(key, Math.min(order, lowestLater.get(key) ?? Infinity));
 	}
-	// Every rank in the vault, ascending. `above` walks it forwards only, which is sound
-	// because the floor never falls; what it skips are the ranks at or under the floor,
-	// which no value handed out can land on anyway.
-	const occupied = model.ranked.map((item) => item.order).filter((order): order is number => order !== null);
-	let above = 0;
-	// The HIGHEST rank drawn above the current row — a real one, or one this walk has just
-	// handed out. The highest and not the last: a subtree can end on a row ranked below its
-	// own parent, and a blank after it must clear everything above it. Being a running
-	// maximum also makes the values handed out increase along the walk, so two blanks never
-	// invert each other, and — with `occupied` below — every value lands in a gap no
-	// existing rank occupies: above every rank drawn earlier, below the next one above it.
-	let floor: number | null = null;
-	let ceiling: number | null = null;
+	return ceilings;
+}
+
+/**
+ * The rank for each drawn position — null both where the row needs none and where the
+ * placement was refused — with the blanks left without one counted.
+ *
+ * **The unit of placement is a RUN**: a maximal sequence of consecutive drawn positions
+ * that need a rank, under one floor and one ceiling. All of a run's members are spread
+ * evenly across that one interval by `placeRun`, the arithmetic every placement in this
+ * plugin shares, rather than each bisecting what the row before it left.
+ *
+ * A row that already HOLDS a rank ends the run and then raises the floor, in that order:
+ * the run belongs below whatever is drawn next. A blank with a DIFFERENT ceiling ends it
+ * too, without raising anything — one run is spread across one interval, and a member
+ * bounded by somebody else's lower ceiling would be refused for a collision it cannot have.
+ * An unranked context row constrains nothing and does neither, for the same reason
+ * `anchoredOrder` skips one as an anchor. A poisoned row is refused on its own and is NOT a
+ * run member — it takes no number, so it raises nothing — which is why poison is asked per
+ * row as the walk reaches it, AFTER the split above may have flushed the run that poisons
+ * it, and cannot be worked out in advance.
+ */
+function allocateRanks(
+	drawn: BacklogItem[],
+	ceilings: (number | null)[],
+	occupied: number[],
+): { ranks: (number | null)[]; unplaceable: number } {
+	const ranks: (number | null)[] = new Array<number | null>(drawn.length).fill(null);
+	let unplaceable = 0;
 	// **A refusal poisons the rest of the walk in both populations two blanks can share.**
 	// A blank left blank sorts LAST, so a later blank that takes a number ranks itself
 	// ahead of the row just refused and MOVES it — and "later blank" means one compared
@@ -297,36 +352,59 @@ export function computeInitWrites(model: BacklogModel, settings: BacklogSettings
 	// root group), and the two are never `SameValueZero`-equal to each other, so `.has`
 	// on either shape answers only its own question.
 	const poisoned = new Set<number | BacklogItem | null>();
-	const nextOrder = (item: BacklogItem): number | null => {
+	// The HIGHEST rank drawn above the pending run — a real one, or one this walk has just
+	// handed out. The highest and not the last: a subtree can end on a row ranked below its
+	// own parent, and a blank after it must clear everything above it. Being a running
+	// maximum also makes the values handed out increase along the walk, so two blanks never
+	// invert each other, and — with `occupied` below — every value lands in a gap no
+	// existing rank occupies: above every rank drawn earlier, below the next one above it.
+	let floor: number | null = null;
+	let above = 0;
+	let run: number[] = [];
+	// The one ceiling the whole run is placed under — every member's own, because a row
+	// carrying a different one starts a new run instead of joining this.
+	let runCeiling: number | null = null;
+	const flush = () => {
+		if (run.length === 0) return;
 		while (above < occupied.length && occupied[above] <= (floor ?? -Infinity)) above++;
-		const placed = rankBetween(floor, lowerOf(ceiling, occupied[above] ?? null));
-		if ('refusal' in placed) {
-			unplaceable++;
-			poisoned.add(focusKey(item)).add(item.parent);
-			return null;
+		const placed = placeRun(run.length, floor, lowerOf(runCeiling, occupied[above] ?? null));
+		// **The WHOLE run is refused, never part of it.** A half-ranked group is the state
+		// the register already complains about, and every member is counted so the notice's
+		// number stays true.
+		if (placed === null) {
+			unplaceable += run.length;
+			for (const idx of run) poisoned.add(focusKey(drawn[idx])).add(drawn[idx].parent);
+		} else {
+			run.forEach((idx, k) => (ranks[idx] = placed[k]));
+			floor = placed[placed.length - 1];
 		}
-		floor = placed.order;
-		return placed.order;
+		run = [];
+		runCeiling = null;
 	};
 	for (let i = 0; i < drawn.length; i++) {
 		const item = drawn[i];
-		// An unranked context row constrains nothing and is skipped here for the same reason
-		// `anchoredOrder` skips it as an anchor.
-		if (item.order !== null) floor = Math.max(item.order, floor ?? item.order);
-		// Ancestors pulled in from outside the filter are context, not results — the
-		// backfill must not write properties into notes the base excluded.
+		if (item.order !== null) {
+			flush();
+			floor = Math.max(item.order, floor ?? item.order);
+			continue;
+		}
 		if (item.outsideFilter) continue;
-		// A poisoned key OR a poisoned sibling group is spelled as a ceiling BELOW
-		// everything, which is the truth of it: there is no room above a row that was left
-		// with no number at all, in either population it could be compared in. Both arms of
-		// `rankBetween` refuse it — `midpoint` is not strictly between, and `edgeRank`
-		// cannot get under `-Infinity` — so the row is counted and left blank like the one
-		// that poisoned it.
-		ceiling = isPoisoned(poisoned, item) ? -Infinity : ceilings[i];
-		const write = initWriteFor(item, settings, () => nextOrder(item));
-		if (write) writes.push(write);
+		// One run, one ceiling — and flushed BEFORE the poison question below, so a row that
+		// the refusal of the run just ended has poisoned is seen as poisoned.
+		if (run.length > 0 && ceilings[i] !== runCeiling) flush();
+		// A poisoned key OR a poisoned sibling group has no room above it at all — there is
+		// none above a row left with no number — so the row is counted and left blank like
+		// the one that poisoned it, and poisons in turn.
+		if (isPoisoned(poisoned, item)) {
+			unplaceable++;
+			poisoned.add(focusKey(item)).add(item.parent);
+			continue;
+		}
+		run.push(i);
+		runCeiling = ceilings[i];
 	}
-	return { writes, unplaceable };
+	flush();
+	return { ranks, unplaceable };
 }
 
 /** The smaller of two ranks, either of which may be absent. */

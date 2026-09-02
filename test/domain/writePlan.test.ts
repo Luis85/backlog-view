@@ -473,8 +473,11 @@ describe('computeInitWrites', () => {
 		expect(drawn(after)).toEqual(before);
 		// The mechanism, stated: each blank lands BETWEEN the ranks drawn either side of it,
 		// so Epic A's two children stay inside the 10..20 gap instead of being pushed past
-		// Epic B to the end of the population.
-		expect(orders).toEqual([10, 15, 17.5, 20, 1020, 2020]);
+		// Epic B to the end of the population — and the two of them SHARE that gap evenly
+		// (thirds of 10..20) rather than the second halving what the first left. Bisecting
+		// per row read 15 then 17.5 here, which is the same order and runs out of grid after
+		// about thirty rows; `test/domain/rankBackfillRuns.test.ts` is where that bound is.
+		expect(orders).toEqual([10, 13.333333, 16.666667, 20, 1020, 2020]);
 	});
 });
 
