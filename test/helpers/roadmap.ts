@@ -42,6 +42,58 @@ export function horizonVault(): FakeVault {
 }
 
 /**
+ * The marker row's own fixture: an epic spanning the window, plus whichever markers the
+ * case needs — `'milestone'` for a dated `Milestone`, `'iteration'` for a dated
+ * `Iteration`, both for the mixed row that has to name what it actually draws.
+ *
+ * Here rather than in a suite, and that is the point rather than tidiness. It was
+ * byte-identical in `iterationBars.test.ts` and `markerLabels.test.ts`, copied on a stated
+ * rule — no `test/view/*.test.ts` file imports another's fixtures. The rule is right and
+ * this keeps it: a HELPER is what more than one suite shares, so neither file reaches into
+ * the other. Two copies of one vault are two vaults free to drift while both claim to
+ * describe the marker row, which is the reason `countingVault` above gives for itself.
+ */
+export function markerVault(kinds: ('milestone' | 'iteration')[]): FakeVault {
+	const vault = new FakeVault();
+	vault.addFile('An epic.md', { frontmatter: { type: 'Epic', order: 1, start: '2026-09-01', due: '2026-10-15' } });
+	if (kinds.includes('milestone')) {
+		vault.addFile('Ship 1.0.md', { frontmatter: { type: 'Milestone', order: 10, due: '2026-09-30' } });
+	}
+	if (kinds.includes('iteration')) {
+		vault.addFile('Sprint 12.md', {
+			frontmatter: { type: 'Iteration', order: 20, start: '2026-09-07', due: '2026-09-20' },
+		});
+	}
+	return vault;
+}
+
+/** The three keys a marker fixture needs bound — both date ends and the iteration link.
+ *  File-private: `datedAxis` is the only thing that ever spreads it, and an export nothing
+ *  imports is what `npm run analyze` calls dead. */
+const MARKER_OPTIONS = {
+	startProperty: 'note.start',
+	targetProperty: 'note.due',
+	iterationProperty: 'note.iteration',
+};
+
+/**
+ * `markerVault` mounted on the dated axis, which is where a marker draws at all.
+ *
+ * The vault rides back beside the harness's own fields because `Harness` does not carry
+ * one, and a case asserting on `writeLog` needs it — cheaper than every caller keeping the
+ * vault it just passed in.
+ */
+export function datedAxis(
+	vault: FakeVault,
+	extra: Record<string, unknown> = {},
+): Harness & { vault: FakeVault } {
+	const harness = makeView(vault, { ...MARKER_OPTIONS, ...extra }, { base: 'Plan.base' });
+	harness.view.setProjection('roadmap');
+	harness.view.setAxisPick('dates');
+	return { ...harness, vault };
+}
+
+/**
  * One long-spanning item (so the dated axis's window has enough days to pan across)
  * beside several undated epics (so the shelf renders a band with real content) — the
  * fixture the frame's scroll-box and zoom-anchor tests share.

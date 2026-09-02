@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { describe, expect, it } from 'vitest';
-import { FakeVault } from '../helpers/vault';
-import { makeView, useViewHarness } from '../helpers/view';
+import { useViewHarness } from '../helpers/view';
+import { datedAxis, markerVault } from '../helpers/roadmap';
 
 useViewHarness();
 
@@ -11,32 +11,6 @@ useViewHarness();
  * both) instead of a fixed "Milestone" word. Split out of `roadmap.test.ts`, which
  * is already near the per-file test line budget (`test/CLAUDE.md`).
  */
-const MARKER_OPTIONS = {
-	startProperty: 'note.start',
-	targetProperty: 'note.due',
-	iterationProperty: 'note.iteration',
-};
-
-function markerVault(kinds: ('milestone' | 'iteration')[]): FakeVault {
-	const vault = new FakeVault();
-	vault.addFile('An epic.md', { frontmatter: { type: 'Epic', order: 1, start: '2026-09-01', due: '2026-10-15' } });
-	if (kinds.includes('milestone')) {
-		vault.addFile('Ship 1.0.md', { frontmatter: { type: 'Milestone', order: 10, due: '2026-09-30' } });
-	}
-	if (kinds.includes('iteration')) {
-		vault.addFile('Sprint 12.md', {
-			frontmatter: { type: 'Iteration', order: 20, start: '2026-09-07', due: '2026-09-20' },
-		});
-	}
-	return vault;
-}
-
-function datedAxis(vault: FakeVault, extra: Record<string, unknown> = {}) {
-	const harness = makeView(vault, { ...MARKER_OPTIONS, ...extra }, { base: 'Plan.base' });
-	harness.view.setProjection('roadmap');
-	harness.view.setAxisPick('dates');
-	return harness;
-}
 
 describe('the marker surfaces name what is drawn', () => {
 	const caption = (el: HTMLElement) => el.querySelector('.pbl-lane-head .pbl-lane-name')?.textContent;
