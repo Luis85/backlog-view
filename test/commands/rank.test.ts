@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { respaceRanksCommand, seedRanksCommand } from '../../src/commands/rank';
 import { FileView, Modal, Notice } from '../helpers/obsidian-mock';
 import { flush, makeView, refresh, useViewHarness } from '../helpers/view';
-import { FakeVault } from '../helpers/vault';
+import { FakeVault, setResults } from '../helpers/vault';
 
 /**
  * The two whole-population rewrites, driven through the REAL view: both reach the vault
@@ -430,6 +430,29 @@ describe('the seed and respace rank commands', () => {
 	// [[Ranking at the focused level]] states the rule; the drag path kept it through
 	// `reportRefusal` and the commands did not, because a wedged or empty plan answers
 	// before the gate is ever reached.
+	it('names the configuration instead when it breaks while the dialog is open', () => {
+		// The same rule as the test below, one moment later. `.base` edits arrive from a
+		// vault sync, so the options can start coherent and collide under an open dialog —
+		// and if the population has become empty or wedged in the same window, the
+		// rank-specific notice fires and returns before `applySafely` is ever reached, so
+		// the gate never gets to report the conflict that is actually blocking the remedy
+		// the notice recommends. Asked BEFORE the plan for exactly that reason.
+		const vault = crossedVault();
+		const { view, config } = makeView(vault, {}, { base: 'Backlog.base' });
+		vault.activeView = vault.leaves[vault.leaves.length - 1].view;
+
+		expect(respaceRanksCommand(vault.app, false)).toBe(true);
+		config.set('stateProperty', 'note.type');
+		setResults(view, []);
+		Notice.messages.length = 0;
+		confirm();
+
+		expect(vault.writeLog).toEqual([]);
+		expect(Notice.messages).toEqual([
+			'Fix the view options first: the type and state properties share the key "type".',
+		]);
+	});
+
 	it('names the configuration instead, when that is what blocks every remedy', () => {
 		const vault = new FakeVault();
 		vault.addFile('Epic A.md', { frontmatter: { type: 'Epic', order: 2 } });

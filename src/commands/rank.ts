@@ -80,6 +80,14 @@ function plannedWrites(model: BacklogModel, plan: Spread): ItemWrite[] | null {
  * **And the recomputed batch is checked against the sentence that was agreed to.** A
  * refreshed model can need a caveat the dialog never showed, and applying then keeps a
  * promise the data no longer supports — see the recheck below.
+ *
+ * **And the configuration is re-asked, ahead of the plan.** `rankCommand` asked it once,
+ * before the dialog; a `.base` edit arrives from a vault sync like any other change, so
+ * the options can start coherent and collide underneath. Nothing is written wrongly
+ * without this — `applySafely` refuses for the conflict — but the gate is only reached by
+ * a plan that HAS writes: an empty or wedged population says its own rank-specific
+ * sentence and returns first, sending the user to a remedy the options are blocking. So
+ * the order matters and is the whole of the fix.
  */
 async function applyRank(
 	app: App,
@@ -91,6 +99,14 @@ async function applyRank(
 	const live: LiveBacklogView | null = activeBacklogView(app);
 	if (live === null || live !== opened || live.model === null) {
 		new Notice(t('rank.viewGone'));
+		return;
+	}
+	// Before `plannedWrites`, never after it — see the paragraph above. The same key
+	// `rankCommand` reports, because it is the same condition and a second sentence for it
+	// would be a second thing to keep in step.
+	const problems = configProblems(live.settings);
+	if (problems.length > 0) {
+		new Notice(t('config.fixFirst', { problem: problems[0] }));
 		return;
 	}
 	const planned = plannedWrites(live.model, plan);
