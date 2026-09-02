@@ -52,14 +52,15 @@ export function inRankOrder(rows: BacklogItem[], ranked: BacklogItem[]): Backlog
  * false for a subtree that is perfectly seeded, and the fallback then writes a rank
  * another row holds. `dropPlacement` reads the tie at the drop site instead.
  *
- * **The one write-side caller that may ask is the one asking about the WHOLE list too**,
- * and it decides nothing: `Respace ranks` (`commands/rank.ts`) rewrites the whole
- * population and its confirmation promises to keep the order on screen, which is only
- * true while every drawn list is sorted by rank. Every drawn list is a SUBSET of this
- * population, so distinct here means none of them is falling back and the promise holds;
- * false means one may be, and the sentence says so rather than the command refusing. A
- * whole-population question ahead of a whole-population rewrite is the shape the ban is
- * about the absence of — see ADR 0033, which recorded the ban before this caller existed.
+ * **Nothing on the write side asks it, and the one thing that did was wrong to.**
+ * `Respace ranks` (`commands/rank.ts`) rewrites the whole population and its confirmation
+ * promises to keep the order on screen; it asked this of `model.ranked` and read the
+ * answer as "some drawn list is falling back". That direction is sound — every drawn list
+ * is a SUBSET of the population, so distinct here means none of them is falling back — but
+ * the converse is not, and the sentence asserts present fact: ranks that collide ACROSS
+ * focus levels while staying distinct WITHIN each one make the population non-distinct
+ * with no list falling back at all. The confirmation reads `model.focusInTreeOrder`
+ * instead, which is this predicate asked of the ONE list `inRankOrder` is called for.
  *
  * Distinctness is the test because it is exactly what makes a global rank a global ORDER.
  * Ties (and absent ranks) mean the number is not yet answering the question. Self-healing:

@@ -3,7 +3,7 @@ import { Absence } from './absences';
 import { inferFolderParent } from './folderNotes';
 import { DependencyNode, resolveDependencies } from './dependencies';
 import { createItems, namedTargets, RawItem, RawStore, ResourceNote } from './readItems';
-import { inRankOrder, rankedItems } from './rankOrder';
+import { distinctlyRanked, inRankOrder, rankedItems } from './rankOrder';
 import {
 	childLevelIndex,
 	EXTRA_TYPE_RANK,
@@ -206,6 +206,19 @@ export interface BacklogModel {
 	catalog: ProjectionPopulation;
 	/** True when a focus level restricts the rendered tree. */
 	focused: boolean;
+	/**
+	 * True when the focus level's own list is drawn in TREE order rather than in rank
+	 * order — `inRankOrder`'s guard against scrambling an unmigrated vault, reported
+	 * rather than left for a reader to re-derive.
+	 *
+	 * **The only list in this plugin that can fall back**, because `inRankOrder` has one
+	 * caller and it is the `focusRoots` line below; with no focus level nothing calls it
+	 * at all and this is false. Asked of the whole POPULATION instead — every rendered
+	 * list is a subset of it — the answer is sound in one direction only: ranks that
+	 * collide across focus levels while staying distinct within each one make the
+	 * population non-distinct while no list falls back.
+	 */
+	focusInTreeOrder: boolean;
 	/** Distinct state values in the result set: open states first, then done, both alphabetical. */
 	observedStates: string[];
 	/** Distinct horizon values in the result set, in first-seen order — the buckets it mints. */
@@ -358,7 +371,7 @@ export function buildModel(app: App, entries: BasesEntry[], settings: BacklogSet
 	// focus level narrows — right for the catalog, which is never focused, and wrong for
 	// the plan, where it would make what a Set state or Set horizon menu can reach depend
 	// on which subtree happens to be focused.
-	return { ...plan, ...rest, focused };
+	return { ...plan, ...rest, focused, focusInTreeOrder: focused && !distinctlyRanked(focusRoots) };
 }
 
 /**

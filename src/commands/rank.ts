@@ -3,7 +3,6 @@ import { t } from '../i18n/t';
 import { BacklogModel } from '../domain/model';
 import { computeRespaceWrites, computeSeedWrites, SpreadResult } from '../domain/rankSpread';
 import { ItemWrite } from '../domain/writePlan';
-import { distinctlyRanked } from '../domain/rankOrder';
 import { configProblems } from '../domain/settingsConsistency';
 import { openConfirm } from '../ui/confirmDialog';
 import { activeBacklogView, LiveBacklogView } from '../view/registry';
@@ -200,12 +199,18 @@ function rankCommand(
  * rendered order to preserve. Told, the user decides; that is the one thing neither of the
  * other two answers allows.
  *
- * Asked of the whole population, which is the only place this predicate is sound on the
- * write side: every rendered list is a subset of it, so distinct here means none of them
- * is falling back. See `distinctlyRanked`'s own note on why a PLACEMENT may not ask it.
+ * **Asked of the list that can actually fall back, and of nothing wider.** `inRankOrder`
+ * has one caller — the focus level's own roots — so `model.focusInTreeOrder` is the whole
+ * question, and it is false whenever no focus level is set. Asked of the POPULATION
+ * instead, the sentence was sound in one direction only and stated a false fact in the
+ * other: ranks that collide ACROSS focus levels while staying distinct WITHIN each one
+ * leave every rendered list in rank order, and respacing then moves nothing on screen.
+ * Sibling order is safe either way — `compareSiblings` and `ranked` share one rule (order
+ * ascending, null last, ties by `entryIndex`), so writing ranks in `ranked` order keeps
+ * every sibling sequence.
  */
 function respaceCaveat(model: BacklogModel): string | undefined {
-	return distinctlyRanked(model.ranked) ? undefined : t('rank.respaceReorders');
+	return model.focusInTreeOrder ? t('rank.respaceReorders') : undefined;
 }
 
 export function seedRanksCommand(app: App, checking: boolean): boolean {

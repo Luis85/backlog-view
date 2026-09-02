@@ -40,8 +40,9 @@ export function computeSeedWrites(model: BacklogModel): SpreadResult {
  * ranking decision, which is what makes it the answer to a spent gap and to a tie — and
  * what makes it, not the seed, the one an implementer reaches for.
  *
- * **"The order already on screen" only while the population is distinctly ranked**, and
- * that is why the confirmation asks (`distinctlyRanked`, `rankOrder.ts`). A list whose own
+ * **"The order already on screen" only while the focused list is distinctly ranked**, and
+ * that is why the confirmation asks (`model.focusInTreeOrder`, which is `distinctlyRanked`
+ * in `rankOrder.ts` asked of the one list that can fall back). A list whose own
  * rows are not distinctly ranked is DRAWN in tree order — `inRankOrder`'s guard against
  * scrambling an unmigrated vault — and `model.ranked` is the global rank sort, a different
  * sequence: focus rows drawn `A1(10), A2(20), B1(10)` respace to `A1, B1, A2`, distinctly

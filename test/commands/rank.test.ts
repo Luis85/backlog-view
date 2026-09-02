@@ -25,9 +25,12 @@ function confirm(): void {
 	Modal.lastOpened?.contentEl.querySelector<HTMLElement>('.mod-cta')?.click();
 }
 
-/** A view over a small tree, open in the leaf the workspace calls active. */
-function openBacklog(vault: FakeVault, base = 'Backlog.base', only?: string[]) {
-	const harness = makeView(vault, {}, { base, only });
+/** A view over a small tree, open in the leaf the workspace calls active. `focus` is
+ *  what makes a respace caveat possible at all: `inRankOrder` is reached for the focus
+ *  level's own roots and nowhere else, so an unfocused view has no list that can fall
+ *  back to tree order. */
+function openBacklog(vault: FakeVault, base = 'Backlog.base', only?: string[], focus?: string) {
+	const harness = makeView(vault, {}, { base, only, focus });
 	vault.activeView = vault.leaves[vault.leaves.length - 1].view;
 	return harness;
 }
@@ -109,7 +112,7 @@ describe('the seed and respace rank commands', () => {
 		// are in now" is not what would happen.
 		const vault = crossedVault();
 		vault.addFile('B1.md', { frontmatter: { type: 'Feature', order: 100 }, parentLink: 'Epic B' });
-		openBacklog(vault);
+		openBacklog(vault, 'Backlog.base', undefined, 'Feature');
 
 		respaceRanksCommand(vault.app, false);
 
@@ -130,6 +133,38 @@ describe('the seed and respace rank commands', () => {
 		expect(Modal.lastOpened?.contentEl.textContent).not.toContain('Some lists are drawn in tree order');
 	});
 
+	it('says nothing when the colliding ranks sit in different focus levels', () => {
+		// The POPULATION is not distinctly ranked — each Epic shares its number with a
+		// Feature — and no rendered list falls back for it: the focused Feature list holds
+		// 10 and 20. Nothing is drawn in tree order, so the caveat would state a fact that
+		// is false, and respacing changes nothing a user can see.
+		const vault = new FakeVault();
+		vault.addFile('Epic A.md', { frontmatter: { type: 'Epic', order: 10 } });
+		vault.addFile('A1.md', { frontmatter: { type: 'Feature', order: 10 }, parentLink: 'Epic A' });
+		vault.addFile('Epic B.md', { frontmatter: { type: 'Epic', order: 20 } });
+		vault.addFile('B1.md', { frontmatter: { type: 'Feature', order: 20 }, parentLink: 'Epic B' });
+		openBacklog(vault, 'Backlog.base', undefined, 'Feature');
+
+		respaceRanksCommand(vault.app, false);
+
+		expect(Modal.lastOpened?.contentEl.textContent).toContain('Rewrite the ranks of 4 notes');
+		expect(Modal.lastOpened?.contentEl.textContent).not.toContain('Some lists are drawn in tree order');
+	});
+
+	it('says nothing with no focus level set, where no list can fall back at all', () => {
+		// The same duplicate the focused case above warns about, in a view that is not
+		// focused: `inRankOrder` is never called, every list is in tree order already and
+		// respace cannot move a row out of its sibling group. The warning is unconditionally
+		// false in this mode.
+		const vault = crossedVault();
+		vault.addFile('B1.md', { frontmatter: { type: 'Feature', order: 100 }, parentLink: 'Epic B' });
+		openBacklog(vault);
+
+		respaceRanksCommand(vault.app, false);
+
+		expect(Modal.lastOpened?.contentEl.textContent).not.toContain('Some lists are drawn in tree order');
+	});
+
 	it('writes nothing when the population stopped matching the caveat the dialog showed', async () => {
 		// Distinct ranks when the dialog opened, so it promised to keep the order on screen
 		// and showed no caveat. A sync then gives `Epic B`'s child the rank `A1` already
@@ -137,7 +172,7 @@ describe('the seed and respace rank commands', () => {
 		// write the rank order instead — the one thing the sentence they agreed to said
 		// would not happen.
 		const vault = crossedVault();
-		const { view } = openBacklog(vault);
+		const { view } = openBacklog(vault, 'Backlog.base', undefined, 'Feature');
 
 		respaceRanksCommand(vault.app, false);
 		expect(Modal.lastOpened?.contentEl.textContent).not.toContain('Some lists are drawn in tree order');
@@ -158,7 +193,7 @@ describe('the seed and respace rank commands', () => {
 		// Refusing here would send the user back through a dialog saying less.
 		const vault = crossedVault();
 		vault.addFile('B1.md', { frontmatter: { type: 'Feature', order: 100 }, parentLink: 'Epic B' });
-		const { view } = openBacklog(vault);
+		const { view } = openBacklog(vault, 'Backlog.base', undefined, 'Feature');
 
 		respaceRanksCommand(vault.app, false);
 		expect(Modal.lastOpened?.contentEl.textContent).toContain('Some lists are drawn in tree order');

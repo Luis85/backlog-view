@@ -111,10 +111,16 @@ row's own exclusion.
   predicate has that shape of hole, so narrowing it was abandoned rather than repaired.
   `distinctlyRanked` stays in `src/domain/rankOrder.ts` for the question that genuinely is
   about a whole list: sorting is all-or-nothing, so one missing rank leaves the list with no
-  defined order. That is the read side, and one caller on the write side that shares the
-  shape — `Respace ranks` asks it of the whole population to decide whether its
-  confirmation may promise to keep the order on screen. It gates no arithmetic and refuses
-  nothing; a PLACEMENT still may not ask it, for the reason above.
+  defined order. **That is the read side, and it is the ONLY side** — the whole-population
+  question a write-side caller was allowed here was itself wrong, and not for the reason the
+  ban above gives. `Respace ranks` asked `distinctlyRanked(model.ranked)` to decide whether
+  its confirmation may promise to keep the order on screen. Sound one way — every rendered
+  list is a subset of the population, so distinct here means none of them falls back — and
+  false the other, which is what the sentence actually asserts: ranks that collide ACROSS
+  focus levels while staying distinct WITHIN each one make the population non-distinct with
+  no list falling back at all, and unfocused there is no `inRankOrder` call to fall back in.
+  The caveat reads `model.focusInTreeOrder` instead — this same predicate, asked of the ONE
+  list `inRankOrder` is called for. A PLACEMENT still may not ask it, for the reason above.
 - **A gate on the fallback's ENTRY cannot vouch for its ANSWER, so the answer is checked
   too.** Both numbers the fallback can produce — a midpoint between two peers, an edge rank
   one spacing past the outermost one — are functions of the peer values alone, while the
