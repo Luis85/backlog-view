@@ -56,3 +56,14 @@ resetLocale();
 export function num(value: number): string {
 	return new Intl.NumberFormat(intlLocale(TEST_LOCALE)).format(value);
 }
+
+/**
+ * `num()`'s sibling for the one caller that must NOT go through the default three-
+ * fraction-digit cap — `formatNumber(value, true)`, the estimation table's confidence
+ * and effort cells, which show a value the user typed rather than a count this plugin
+ * computed. Same reason `num()` exists: an expectation spelling `3.142` for `3.14159`
+ * would be pinning `Intl`'s default rounding rather than what the cell promises.
+ */
+export function numPrecise(value: number): string {
+	return new Intl.NumberFormat(intlLocale(TEST_LOCALE), { maximumFractionDigits: 20 }).format(value);
+}

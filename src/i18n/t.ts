@@ -141,6 +141,7 @@ function activate(code: string, catalogs: Record<string, Catalog>): {
 	grammar: Grammar;
 	source: Grammar;
 	number: Intl.NumberFormat;
+	numberPrecise: Intl.NumberFormat;
 	collator: Intl.Collator;
 	requested: string;
 } {
@@ -156,6 +157,12 @@ function activate(code: string, catalogs: Record<string, Catalog>): {
 		grammar: grammarFor(name),
 		source: grammarFor(SOURCE_LOCALE),
 		number: new Intl.NumberFormat(requested),
+		// `formatNumber(value, true)`'s own formatter, built once beside the other one for
+		// the reason stated there: a VALUE someone typed (estimation's confidence and
+		// effort) rather than a COUNT this plugin computed. `maximumFractionDigits: 20` is
+		// "big enough that no number this app stores gets cut", not a meaningful precision
+		// bound of its own — a JS number has nowhere near that many significant digits.
+		numberPrecise: new Intl.NumberFormat(requested, { maximumFractionDigits: 20 }),
 		collator: new Intl.Collator(requested),
 		requested,
 	};
@@ -250,9 +257,16 @@ export function foldForMatch(value: string): string {
  * A bare number shown to a person, in the REQUESTED locale — presentation, like collation.
  * The SAME formatter `t()` gives a `{count}` parameter, so a count outside a sentence and
  * one inside it cannot disagree; they did, at a thousand, which is what this exists for.
+ *
+ * `precise`, for the one shape of number this default formatter is wrong for: a VALUE
+ * someone TYPED rather than a count this plugin computed. `Intl.NumberFormat`'s default
+ * caps at three fraction digits, silently rounding `3.14159` to `3.142` — fine for a
+ * count, which is never that precise, and wrong for the estimation view's confidence and
+ * effort cells, whose whole promise is showing back the number the user entered. `true`
+ * asks the same locale's grouping and decimal separator with no such cap.
  */
-export function formatNumber(value: number): string {
-	return active.number.format(value);
+export function formatNumber(value: number, precise = false): string {
+	return (precise ? active.numberPrecise : active.number).format(value);
 }
 
 /**

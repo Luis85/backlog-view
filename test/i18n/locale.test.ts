@@ -312,4 +312,17 @@ describe('collation, folding and numbers follow the requested locale', () => {
 		expect(formatNumber(12345)).toBe('12.345');
 		expect(t('count.items', { count: 12345 })).toBe('12.345 items');
 	});
+
+	it('caps a bare number at three fraction digits by default, and not when asked to be precise', () => {
+		// The default is right for a COUNT, which is never this precise. `precise` is for
+		// a VALUE someone typed — the estimation view's confidence and effort cells — where
+		// the same cap would silently round what the user entered.
+		setLocale('en');
+		expect(formatNumber(3.14159)).toBe('3.142');
+		expect(formatNumber(3.14159, true)).toBe('3.14159');
+		// Still the SAME locale's separators either way — `precise` changes the
+		// fraction-digit cap, not which formatter's locale is asked.
+		setLocale('de', { en: sparse });
+		expect(formatNumber(3.14159, true)).toBe('3,14159');
+	});
 });

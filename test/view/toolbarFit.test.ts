@@ -5,6 +5,7 @@ import { Menu } from '../helpers/obsidian-mock';
 import { syncBusy } from '../../src/view/render/toolbar';
 import { syncToolbarFit } from '../../src/view/render/toolbarFit';
 import { fixture, makeView, refresh, treeOf, useViewHarness } from '../helpers/view';
+import { num } from '../helpers/locale';
 
 useViewHarness();
 
@@ -667,6 +668,14 @@ describe('the toolbar fit ladder', () => {
 		expect(label()?.textContent).toBe('Updating');
 		expect(done()?.textContent).toBe('340');
 		expect(done()?.style.getPropertyValue('--pbl-busy-digits')).toBe('3ch');
+
+		// A grouping separator is a CHARACTER the reservation has to hold too, not only a
+		// digit: `String(1234).length` is 4, but a locale that groups (`1,234`, `1.234`)
+		// draws 5 characters, and a reservation sized off the raw digit count would clip
+		// the row's right edge the moment a batch crosses this boundary.
+		syncBusy(bar, { done: 1, total: 1234 }, false, true);
+		expect(done()?.textContent).toBe(num(1));
+		expect(done()?.style.getPropertyValue('--pbl-busy-digits')).toBe(`${num(1234).length}ch`);
 
 		// A single-file write is over before it could be read, so it carries no count at
 		// all — and the label wears the ellipsis instead, which is the only thing left
