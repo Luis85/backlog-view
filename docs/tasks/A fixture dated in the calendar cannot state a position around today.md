@@ -75,6 +75,30 @@ window — a failure that appeared only at +1460, behind the two it was fixing.
 `vi.useFakeTimers({ toFake: ['Date'] })` before it is reversed, and `Date` alone keeps the
 view's own timers running.
 
+## The instrument was lying, and a review caught it
+
+Both findings on this change were Codex's, and both were right.
+
+**The shift did not survive a bare pin.** `shiftClock.ts` replaced `Date` once, when the
+setup file was evaluated. A test that pins with a bare `vi.setSystemTime` replaces it for
+good — the harness's `vi.useRealTimers()` does not put the shift back — so every test after
+one, in `absenceCollision.test.ts` and `legend.test.ts`, ran at the pinned 2026 date while
+`npm run clock` reported a clean whole-suite probe. Measured in both directions: after a
+bare pin the next test read `2026-08-05` where the run had asked for `2029-09-01`, and
+reads the shifted date now. The shift is re-installed in a `beforeEach`, so a file-local
+pin still wins for its own test and nothing inherits it.
+
+**And the first fix to `i18n/projections.test.ts` broke the test's premise.**
+`countingVault` fixes `Work` at 2026-08-01 → 2026-08-10, so an absence derived from today
+stops intersecting it: `fromToday(3)` drew no days-lost pair and no away flag at all, and
+the remainder assertion still passed, because a string that is never rendered contributes
+no unmarked text. **The test went quiet instead of red** — measured at 1 → 0 for both
+marks. It is pinned now, with the absence back inside `Work`'s span; deriving it needs
+`Work` derived too, and that is a shared fixture other suites assert exact dates against.
+
+That is twice in one change that a fixture made "calendar-independent" stopped asking its
+question, which is the same defect this task is about, committed while fixing it.
+
 ## The instrument is committed now
 
 `npm run clock` — `PBL_SHIFT_DAYS=1460 npm run clock` — runs the whole suite with `Date`
@@ -89,7 +113,8 @@ under it.
 ## Acceptance criteria
 
 - `npm run check` passes whole, no coverage floor moved.
-- The suite passes at **+0, +180, +1095 and +1460 days**: 4554 tests, all four.
+- The suite passes at **+0, +180, +1095 and +1460 days**: 4562 tests, all four — measured
+  with the corrected instrument, after the leak below was closed.
 - No test loses a question: every change is a fixture's spelling, not an assertion.
 
 ## Outcome
@@ -101,14 +126,17 @@ Headroom measured, not asserted:
 | +180 | pass | pass |
 | +1095 | 8 failed | pass |
 | +1460 | 2 failed | pass |
-| +1825 | — | 69 failed, 19 files |
+| +1825 | — | 67 failed, 17 files |
 
 Roughly four years of headroom where there was under three.
 
 ## What is left
 
 **The +1825 wall is a different and much larger population**, and this note claims nothing
-about it: 69 tests across 19 files, including six this change already touched. They are the
+about it: 67 tests across 17 files, including some this change already touched. Both that
+figure and the table above were re-measured with the CORRECTED instrument — the first
+readings were taken while the shift was leaking past every bare pin, so they described a
+run that had quietly skipped part of what it claimed to cover. They are the
 roadmap suites' everyday `2026-08-…` fixtures and `absenceVault()`'s own dates — spans that
 sit near today rather than at the window's edges, and that the window happily grows to fit
 until today is five years past them. Fixing that is not this shape repeated; it is a

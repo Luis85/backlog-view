@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { Catalog } from '../../src/i18n/t';
 import { BOARD_WORKFLOW, boardVault, expandColumns, makeBoard } from '../helpers/board';
 import { installObsidianDom } from '../helpers/dom';
@@ -8,7 +8,7 @@ import { makeMyWorkView, myWorkVault } from '../helpers/mywork';
 import { horizonVault, laneRoadmap, makeRoadmap, roadmapView } from '../helpers/roadmap';
 import { makeReleaseView, RELEASE_CONFIG, releaseVault, scopeVault } from '../helpers/release';
 import { countingVault, resourceVault } from '../helpers/resources';
-import { beyondPlan, fromToday } from '../helpers/window';
+import { beyondPlan } from '../helpers/window';
 import { FakeVault } from '../helpers/vault';
 import { clickExpandAll, fixture, makeView, treeOf } from '../helpers/view';
 import { MARK, markedCatalog, useMarkedLocale } from './fixtures';
@@ -233,12 +233,19 @@ describe('a lane with absences reads its own words from the catalog', () => {
 	it('leaves nothing but dates, names and titles unmarked when a bar crosses an absence', () => {
 		// One absence inside the bar's span, one ahead of today: the first draws the
 		// days-lost pair on the bar, the second the away pill on the lane's lead.
-		// Derived: 'Later' pushes the plan past `MAX_TIMELINE_DAYS`, so the window clamps
-		// around today — and then "inside the bar's span" and "ahead of today" are both
-		// positions relative to today rather than dates. Typed as 2026 and 2099 they were
-		// both true when written and the first stopped being so as the clock advanced.
+		//
+		// PINNED rather than derived, and the first attempt here got that wrong. `Work` is
+		// fixed at 2026-08-01 → 2026-08-10 inside `countingVault`, so an absence derived from
+		// today stops INTERSECTING it — `fromToday(3)` drew no days-lost pair and no away
+		// flag at all, and the remainder assertion still passed, because a string that is
+		// never rendered contributes no unmarked text. The test went quiet instead of red.
+		// (Codex, PR #243.) Deriving the absence needs `Work` derived too, which is a shared
+		// fixture other suites assert exact dates against; pinning is the smaller answer, and
+		// this test's subject is catalogue coverage rather than the calendar.
+		vi.useFakeTimers({ toFake: ['Date'] });
+		vi.setSystemTime(new Date('2026-08-05T12:00:00Z'));
 		const vault = countingVault([
-			{ title: 'Away', start: fromToday(3), target: fromToday(5) },
+			{ title: 'Away', start: '2026-08-04', target: '2026-08-06' },
 			{ title: 'Later', start: beyondPlan(), target: beyondPlan(4) },
 		]);
 		// A MARKER too: its diamond carries the only copy of the span sentence, since it

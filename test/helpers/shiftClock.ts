@@ -11,6 +11,8 @@
  * that names an explicit date still gets exactly that date, which is the whole point — the
  * fixture stays put while today moves under it.
  */
+import { beforeEach } from 'vitest';
+
 const DAYS = Number(process.env.PBL_SHIFT_DAYS ?? '0');
 const DELTA = DAYS * 86_400_000;
 const REAL = Date;
@@ -26,4 +28,21 @@ class Shifted extends REAL {
 	}
 }
 
-globalThis.Date = Shifted as unknown as DateConstructor;
+function installShift(): void {
+	globalThis.Date = Shifted as unknown as DateConstructor;
+}
+
+installShift();
+
+/**
+ * Re-installed before EVERY test, not once when this file is evaluated — and that is a
+ * correction rather than belt-and-braces. A test that pins with a bare `vi.setSystemTime`
+ * replaces `Date` for good: the harness's `vi.useRealTimers()` does not put the shift back,
+ * so every test after it in that file ran at the pinned 2026 date while `npm run clock`
+ * reported a clean whole-suite probe. Measured in both directions — after a bare pin the
+ * next test read 2026-08-05 rather than the shifted date, and reads the shifted date now.
+ *
+ * A file-local `beforeEach` still wins, being registered later and so running after this
+ * one, which is what lets a test that MEANS to pin its clock still do so. (Codex, PR #243.)
+ */
+beforeEach(installShift);
