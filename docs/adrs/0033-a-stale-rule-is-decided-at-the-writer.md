@@ -67,17 +67,25 @@ a use case's batch is composed.
 
 ## Consequences
 
-**`Proposed`, not `Accepted`, until [[Dates ride the release join]] lands.** This README
-defines `Accepted` as "in force — the code follows it", and no code follows this yet. Worse
-for the stronger reading: the decision is not even true of one example named above, since
-`computeReleaseWrites` still returns an empty plan from the captured membership and
-[[Joining a release dates the work]] 6c concedes that no writer check runs in that race —
-[[A pick compared against the model reads as a no-op]] owns moving all three planners and is
-its own increment. **That increment is what accepts this record**, not
-[[Dates ride the release join]] — which for one commit claimed the flip as its own definition
-of done, and would have set `Accepted` on a decision one of its own examples still violated.
-Recorded after two rounds of review (Codex, PR #242) read the status against this README's
-own vocabulary, and then read the task against this paragraph.
+**`Proposed`, not `Accepted`: the decision is PARTIALLY implemented, and
+[[A pick compared against the model reads as a no-op]] is the gate.** Since
+[[Dates ride the release join]] landed (2026-09-02), code does follow this record — the
+release join carries both candidates unfiltered and `plannedAxis`/`suppressedAxis` decide
+emptiness, ordering and the join test against the live note. What is not yet true is the
+record's own reach: `computeReleaseWrites` still returns an empty plan from the CAPTURED
+membership, so where another view moves the item first there is no writer check to run at
+all, and [[Joining a release dates the work]] 6c concedes exactly that. `docs/adrs/README.md`
+defines `Accepted` as "in force — the code follows it", and a decision one of its own named
+examples still violates is not in force.
+
+So the increment that moves the last stale planner is the one that accepts this record —
+that is [[A pick compared against the model reads as a no-op]], which owns all three, and
+never [[Dates ride the release join]], which for one commit claimed the flip as its own
+definition of done. This paragraph said "until [[Dates ride the release join]] lands" and
+"no code follows this yet" until 2026-09-02; both stopped being true the moment that task
+landed, while the verdict they were arguing for did not change. Corrected in the pull
+request that made them stale (Codex, PR #242), after two earlier rounds read the status
+against the README's vocabulary and then read the task against this paragraph.
 
 **The plan no longer fully describes the write.** Reading `computeReleaseWrites` alone no
 longer tells you what lands on disk, and the flag is the only thing linking the two halves.
