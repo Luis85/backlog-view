@@ -3,7 +3,7 @@ import { t } from '../../i18n/t';
 import { BacklogViewHost } from '../host';
 import { inCatalog, isIterationType, isMarkerType, mayHoldField } from '../../domain/itemTypes';
 import { BacklogItem, inPlan } from '../../domain/model';
-import { sameValue } from '../../domain/noteFields';
+import { sameValue, todayCivil } from '../../domain/noteFields';
 import { NamedTarget, namedTargets, ResourceNote } from '../../domain/readItems';
 import {
 	computeAssigneeWrites,
@@ -391,11 +391,12 @@ export function canSetRelease(host: BacklogViewHost, item: BacklogItem): boolean
  * Set release's entries — every release in the model, then the way back out of one.
  *
  * `addIterationItems`' shape with its narrowing removed rather than copied: that menu asks
- * the plan's LINK component alone because a re-pick there re-syncs the sprint's dates, and
- * this plan has ONE component (`computeReleaseWrites` copies no timeframe), so the
- * register's unnarrowed rule applies — an entry is checked exactly when picking it would
- * write nothing. Asked of the PLAN either way, never by a comparison written beside the
- * plan and expected to agree with it.
+ * the plan's LINK component alone because a re-pick there re-syncs the sprint's dates. This
+ * plan carries two dates of its own now ([[Joining a release dates the work]]), and the
+ * register's unnarrowed rule still applies — an entry is checked exactly when picking it
+ * would write nothing — because the dates ride the JOIN and only the join: extension 2a
+ * makes an unchanged link plan nothing at all, dates included. Asked of the PLAN either
+ * way, never by a comparison written beside the plan and expected to agree with it.
  *
  * `No release` is unconditional, always the last entry, and checked exactly like every
  * other one — when `computeReleaseWrites(item, null, …)` is empty, which is precisely a
@@ -408,7 +409,9 @@ export function canSetRelease(host: BacklogViewHost, item: BacklogItem): boolean
  * the plan and not about who applies it.
  */
 export function addReleaseItems(host: BacklogViewHost, menu: Menu, item: BacklogItem): void {
-	const writes = (target: BacklogItem | null): ItemWrite[] => computeReleaseWrites(item, target, host.settings);
+	// One reading of the clock for the whole menu, passed in because `domain/` reads none.
+	const today = todayCivil();
+	const writes = (target: BacklogItem | null): ItemWrite[] => computeReleaseWrites(item, target, host.settings, today);
 	const targets = releaseTargets(host);
 	for (const target of targets) {
 		menu.addItem((si) => {

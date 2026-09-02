@@ -79,8 +79,42 @@ hand-edit could always produce anyway and which the shelf/context-row rendering 
 knows how to show. The cost is a plan-time promise ("what's offered is what's in the
 filter") not holding for the width of one open menu, not data loss.
 
+## A second consequence, since 2026-09-02: the target supplies a VALUE now
+
+The paragraph above says nothing silently corrupts the note. That was true while the
+captured target contributed only a LINK — a valid one, resolving to a real file. It stopped
+being true with [[Joining a release dates the work]], and the claim is corrected here rather
+than left standing (Codex, PR #242).
+
+`computeReleaseWrites` now reads `release.releaseDate` off the same captured `BacklogItem`
+and carries it as the item's due. So a target whose date is edited while the submenu sits
+open contributes a deadline **no note states any more**, written onto the item and offered
+as its schedule. That is a value nobody chose, not merely a link the current filter would
+not have offered.
+
+It is the same mechanism and the same window — an entry closing over a `BacklogItem` the
+model built — reached through a different field, which is why it is recorded here rather
+than as a note of its own.
+
+**The obvious cheap fix does not fully close it.** `releaseDate` is read from
+`app.metadataCache.getFileCache(file)?.frontmatter` (`readItems.ts`), so re-reading the cache
+at the writer consults the SAME source the model already read: it narrows the window from
+"since the model was built" to "since the cache caught up", and closes nothing against an
+edit the cache has not indexed yet. A truly live read means opening the release note's own
+frontmatter while writing the item's, which is a second note in one write and a pattern this
+directory does not have.
+
+**Not fixed in the PR that created it, deliberately.** [ADR 0033](../adrs/0033-a-stale-rule-is-decided-at-the-writer.md)
+assigns "a date off another note" to the planner as a value it contributes, and its
+`## Revisit when` defers this whole class to the day Bases can correlate a pass with a
+write. Deciding otherwise is a change to that ADR and to
+[[Joining a release dates the work]] 6c, whose window is scoped to the ITEM's note — a
+specification change, not an implementation detail to settle inside the PR that exposed it.
+
 ## Acceptance criteria
 
 None; recorded so the trade-off is re-decided knowingly rather than rediscovered. If it is
 taken up, fix it once in `WriteGate`/`applySafely` for both `release` and `iteration`
-target fields together, not as two separate patches.
+target fields together, not as two separate patches. The value half above is a separate
+question from the filter half and may want a separate answer: one asks whether the target is
+still offerable, the other whether what it SAYS is still current.

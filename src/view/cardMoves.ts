@@ -20,7 +20,7 @@ import {
 	ScheduleGesture,
 	SchedulePlan,
 } from '../domain/writePlan';
-import { todayStamp } from '../domain/noteFields';
+import { todayCivil, todayStamp } from '../domain/noteFields';
 import { WriteOutcome } from '../storage/frontmatter';
 import { BacklogViewHost } from './host';
 import { bucketLabel, bucketOf, bucketRepresentative, IterationBucket } from '../domain/board';
@@ -167,7 +167,7 @@ export class CardMoveController {
 	 */
 	async performReleaseMove(item: BacklogItem, target: BacklogItem | null): Promise<boolean> {
 		const name = target ? target.title : null;
-		return this.applyCardMove(item, computeReleaseWrites(item, target, this.host.settings), () =>
+		return this.applyCardMove(item, computeReleaseWrites(item, target, this.host.settings, todayCivil()), () =>
 			announceReleaseMove(item.title, name),
 		);
 	}

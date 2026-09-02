@@ -7,7 +7,8 @@ priority: P2
 area: verification
 cadence: release
 created: 2026-08-30
-source: the 0.10.0 release review; the creation gesture added 2026-08-25, unrun
+source: the 0.10.0 release review; the creation gesture added 2026-08-25, unrun; the
+  date-writing steps from [[Joining a release dates the work]], 2026-09-02
 started: ""
 finished: ""
 horizon: ""
@@ -29,8 +30,24 @@ A verification to run.
 Neither has been seen in Obsidian, and three of the questions below are about a **real
 vault's** shape rather than about the code.
 
+[[Joining a release dates the work]] then made `Set release` write two dates beside the
+membership, and the last four steps below are its live-vault half: the plugin's own tests
+run against `FakeVault`, so what a real `processFrontMatter` does to a date — and what the
+roadmap does with it afterwards — is unanswered here by construction.
+
 **Preconditions** — as [[Release view registration and options]], plus a second vault, or a
-second base, whose backlog home folder is **not** `docs`.
+second base, whose backlog home folder is **not** `docs`. For the date steps: the start and
+target properties bound on the backlog view, the roadmap on its dated axis, and a release
+carrying a target date of **today or later**.
+
+That last clause is load-bearing rather than tidiness. A release whose date has passed is a
+legitimate vault and a case this feature handles on purpose — [[Joining a release dates the
+work]] 4b suppresses the start, because today would fall after the due — so the next two
+steps would see ONE key and an endpoint where they say two keys and a bar, and a walker
+following them literally would record a failure against an implementation doing exactly what
+it should. The past-release case is checked twice already: by the third date step below, and
+by `test/storage/releaseWrite.test.ts`. Added 2026-09-02 after review found the setup could
+fail correct code (Codex, PR #242).
 
 ## How to check
 
@@ -71,6 +88,23 @@ second base, whose backlog home folder is **not** `docs`.
   is drawn on no backlog projection and is offered by no New menu, so this view is the only
   place a release is visible. A vault that used to see its releases as tree rows will not.
   Open both views in a vault holding releases and check that nothing reads as data lost.
+- **What a date looks like on disk after a join.** Put an item with neither date into a
+  release and open the note. Obsidian's own serializer wrote both keys: confirm the spelling
+  is a plain civil date and not a quoted string, a timestamp or a list, and that no other
+  key moved. `mergeDate` and `setOwn` are checked against a stand-in vault only.
+- **That the bar appears without a manual refresh.** Same gesture with the roadmap open on
+  its dated axis: the item should leave the shelf and draw between the two dates on the
+  write's own refresh. Then undo, and confirm both keys AND the membership go back together
+  — one batch, one undo, which is the guarantee the whole use case rests on.
+- **A note whose dates the plugin must not touch.** Give an item a due of its own, then join
+  it to a release with a different date: the typed value stands. Then give an item a start
+  LATER than the release's date and no due, and join it: no due is written, and the item does
+  not land on the roadmap's shelf as a reversed span.
+- **The race, by hand.** Open an item's note in a second pane. Open `Set release` on its row
+  in the first, type a due into the note while the submenu sits open, then pick the release.
+  The typed value must survive. This is the one step that cannot be faked in jsdom at all,
+  and the defect it guards against is silent — see
+  [ADR 0033](../../adrs/0033-a-stale-rule-is-decided-at-the-writer.md).
 - **Bind the membership property apart in the two views on purpose, once.** No code may
   compare them, and a mismatch looks exactly like a vault nobody has assigned yet: every
   scope empty, nothing unresolved, no warning. See what the two screens say — that is the
@@ -80,6 +114,8 @@ second base, whose backlog home folder is **not** `docs`.
 
 - A release can be made and populated from a fresh vault, and every question above has a
   recorded answer rather than an assumption.
+- The four date steps are answered against a real vault, and a date the reader typed is
+  still there afterwards.
 
 ## Outcome
 
