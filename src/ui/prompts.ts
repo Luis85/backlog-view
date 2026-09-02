@@ -83,7 +83,7 @@ export abstract class PromptModal<O extends Closable> extends Modal {
 }
 
 /** What a refusable prompt needs of its options, whatever else it also asks for. */
-interface Refusable<T> {
+export interface Refusable<T> {
 	description: string;
 	/**
 	 * Refuse the entry with a reason, keeping the prompt open and the values in place.
