@@ -1,5 +1,5 @@
 import { App } from 'obsidian';
-import { ownValue } from './noteFields';
+import { ownValue, readString, sameValue } from './noteFields';
 import { ownWorkflowKind, ownWorkflowReading, WorkflowKind, workflowStateInfo } from './board';
 import { ReleaseFigure, ReleaseScope } from './releases';
 import { ReleaseSettings } from './releaseOptions';
@@ -169,12 +169,13 @@ export function releaseReadiness(
 	// Each criterion is computed once and reused: the figure beside it IS its outstanding
 	// count, so a second call here would be the second walk this module exists to avoid.
 	const blocked = blockedCriterion(members, settings, planSettings);
+	const risk = riskCriterion(app, members, settings);
 	return {
 		members: members.length,
-		criteria: [estimateCriterion(app, members, settings), blocked],
+		criteria: [estimateCriterion(app, members, settings), blocked, risk],
 		...effortFigures(app, members, settings, planSettings),
 		blocked: figureFrom(blocked),
-		criticalRisks: UNCONFIGURED,
+		criticalRisks: figureFrom(risk),
 	};
 }
 
@@ -320,4 +321,98 @@ function effortFigures(
 
 function estimateOf(app: App, item: BacklogItem, settings: ReleaseSettings): unknown {
 	return ownValue(app.metadataCache.getFileCache(item.file)?.frontmatter, settings.estimateKey);
+}
+
+/**
+ * **Absence is an answer here**, and this is the exception this criterion is most often got
+ * backwards. It asks whether CRITICAL risks are addressed, so a member clears it by being
+ * **not critical, or addressed** — a `Low` is not an outstanding critical risk, and neither
+ * is a missing value. Reading it as "addressed or nothing" fails a release for every
+ * ordinary low and medium risk in it, and demands a synthetic value on risk-free items
+ * besides, which is the plugin inventing data to satisfy its own check. Only a critical
+ * value that is not among the addressed ones costs the criterion an item, which is what the
+ * criterion's own name says.
+ *
+ * **A key is half of a criterion; the other half is which values clear it** — and this
+ * criterion reads TWO vocabularies, so a key bound with either list empty is unconfigured,
+ * the same answer as no key at all. `docs/requirements/Release readiness.md` names both:
+ * critical risks "names which risk values are critical AND which values count as addressed".
+ * An earlier draft of this comment argued that an empty addressed list is a true reading
+ * rather than a missing one — that a vault with no word for "addressed" simply has every
+ * critical value outstanding. It contradicted this criterion's own test, and the test is the
+ * one that matches the register: with no way to say a risk has been dealt with, "3 of 3
+ * outstanding" is a configuration nobody finished, reported as a finding about the release.
+ *
+ * **Absence and unreadability are different answers, and the filter used to collapse them.**
+ * A member with NOTHING where this looks clears the criterion — that is the exception above.
+ * A member whose risk property holds an object, or a list of them, has a value the reader
+ * cannot interpret: dropping those entries leaves an empty list indistinguishable from an
+ * absent one, so malformed critical-risk data would make a release look ready. A present but
+ * unreadable value costs the member the criterion and is reported in `unreadable`, which is
+ * what 5a asks. Raised by a review bot against a draft that filtered and forgot.
+ */
+function riskCriterion(app: App, members: BacklogItem[], settings: ReleaseSettings): ReleaseCriterion {
+	// BOTH vocabularies, not just the critical one — see this function's own docblock.
+	if (
+		settings.riskKey === '' ||
+		settings.criticalRiskValues.length === 0 ||
+		settings.addressedRiskValues.length === 0
+	) {
+		return unconfiguredCriterion('risk');
+	}
+	let cleared = 0;
+	let outstanding = 0;
+	let unreadable = 0;
+	for (const item of members) {
+		const reading = riskValuesOf(app, item, settings);
+		if (reading.unreadable) {
+			// A value the reader cannot interpret is not an absent one — see the docblock.
+			unreadable += 1;
+			outstanding += 1;
+			continue;
+		}
+		// Counted ONCE per member however many values it holds — the acceptance criterion.
+		const values = reading.values;
+		const exposed = values.some(
+			(value) =>
+				settings.criticalRiskValues.some((critical) => sameValue(value, critical)) &&
+				!values.some((held) => settings.addressedRiskValues.some((ok) => sameValue(held, ok))),
+		);
+		if (exposed) outstanding += 1;
+		else cleared += 1;
+	}
+	return { key: 'risk', verdict: verdictOf(cleared, outstanding), cleared, outstanding, unreadable };
+}
+
+/**
+ * A member's risk values, and whether the property held something this reader refuses.
+ * `undefined` and `null` are ABSENCE and read as no values with `unreadable` false; anything
+ * else that yields no readable string — an object, a list of them, an empty string — is a
+ * value somebody wrote that this reader cannot use.
+ */
+function riskValuesOf(
+	app: App,
+	item: BacklogItem,
+	settings: ReleaseSettings,
+): { values: string[]; unreadable: boolean } {
+	const raw = ownValue(app.metadataCache.getFileCache(item.file)?.frontmatter, settings.riskKey);
+	if (raw === undefined || raw === null) return { values: [], unreadable: false };
+	const entries: unknown[] = Array.isArray(raw) ? raw : [raw];
+	const values: string[] = [];
+	// **ANY rejected entry, not only a list where every entry was rejected.** A mixed list
+	// like `['Low', { level: 'Critical' }]` keeps its `Low` and would otherwise read as a
+	// clean, clearing value while the entry nobody could read might be the unaddressed
+	// critical risk. Counting the survivors is the version that reports a release ready on
+	// the strength of the half of a list that happened to parse.
+	let rejected = false;
+	for (const entry of entries) {
+		const text = readString(entry);
+		if (text === null) rejected = true;
+		else values.push(text);
+	}
+	// An empty LIST is absence, not a refusal: `risk: []` says the same thing as no key, the
+	// reading `dependsOn` already takes for an edge list nothing wrote. An empty STRING is
+	// not — `readString` refuses it, so it arrives here as a rejected entry, which is the
+	// register's own rule for a value somebody wrote and no reader will guess at.
+	return { values, unreadable: rejected };
 }

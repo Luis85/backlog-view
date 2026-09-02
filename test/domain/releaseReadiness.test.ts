@@ -419,3 +419,134 @@ describe('the blocked predicate', () => {
 		expect(criterion?.cleared).toBe(0);
 	});
 });
+
+/** One member carrying three risk values, one of them critical and unaddressed. */
+function multiRiskVault(): FakeVault {
+	const vault = new FakeVault();
+	vault.addFile('R.md', { frontmatter: { type: 'Release', version: '1.0.0' } });
+	vault.addFile('E.md', { frontmatter: { type: 'Epic' } });
+	vault.addFile('M1.md', {
+		frontmatter: { type: 'PBI', parent: 'E', order: 1, release: '[[R]]', risk: ['Low', 'High', 'Medium'] },
+	});
+	return vault;
+}
+
+/** One member at `Low`, one carrying no risk key at all. Neither is an outstanding
+ *  CRITICAL risk, so both clear. */
+function lowAndBlankRiskVault(): FakeVault {
+	const vault = new FakeVault();
+	vault.addFile('R.md', { frontmatter: { type: 'Release', version: '1.0.0' } });
+	vault.addFile('E.md', { frontmatter: { type: 'Epic' } });
+	vault.addFile('M1.md', { frontmatter: { type: 'PBI', parent: 'E', order: 1, release: '[[R]]', risk: 'Low' } });
+	vault.addFile('M2.md', { frontmatter: { type: 'PBI', parent: 'E', order: 2, release: '[[R]]' } });
+	return vault;
+}
+
+/** `Critical` and `Mitigated` in the ONE list — a member carrying several values is
+ *  exactly the case the counted-once assertion is about. */
+function addressedRiskVault(): FakeVault {
+	const vault = new FakeVault();
+	vault.addFile('R.md', { frontmatter: { type: 'Release', version: '1.0.0' } });
+	vault.addFile('E.md', { frontmatter: { type: 'Epic' } });
+	vault.addFile('M1.md', {
+		frontmatter: { type: 'PBI', parent: 'E', order: 1, release: '[[R]]', risk: ['Critical', 'Mitigated'] },
+	});
+	return vault;
+}
+
+/** A member whose risk property holds a value no reader can interpret. */
+function malformedRiskVault(): FakeVault {
+	const vault = new FakeVault();
+	vault.addFile('R.md', { frontmatter: { type: 'Release', version: '1.0.0' } });
+	vault.addFile('E.md', { frontmatter: { type: 'Epic' } });
+	vault.addFile('M1.md', {
+		frontmatter: { type: 'PBI', parent: 'E', order: 1, release: '[[R]]', risk: { level: 'Critical' } },
+	});
+	return vault;
+}
+
+/** A PARTLY readable list: the `Low` survives, the object does not. */
+function mixedRiskVault(): FakeVault {
+	const vault = new FakeVault();
+	vault.addFile('R.md', { frontmatter: { type: 'Release', version: '1.0.0' } });
+	vault.addFile('E.md', { frontmatter: { type: 'Epic' } });
+	vault.addFile('M1.md', {
+		frontmatter: { type: 'PBI', parent: 'E', order: 1, release: '[[R]]', risk: ['Low', { level: 'Critical' }] },
+	});
+	return vault;
+}
+
+/** The members of `multiRiskVault`, under a `Critical` Epic that is NOT in the release. */
+function contextRiskVault(): FakeVault {
+	const vault = multiRiskVault();
+	vault.addFile('E.md', { frontmatter: { type: 'Epic', risk: 'Critical' } });
+	return vault;
+}
+
+describe('the critical risk predicate', () => {
+	const RISK = { riskKey: 'risk', criticalRiskValues: ['High', 'Critical'], addressedRiskValues: ['Mitigated'] };
+
+	it('counts a member with three risk values at most once', () => {
+		const readiness = readinessOf(multiRiskVault(), 'R.md', RISK);
+		expect(readiness.criticalRisks).toEqual({ value: 1, invalid: false, unconfigured: false });
+	});
+
+	it('clears on a non-critical value AND on no value at all', () => {
+		// Absence is an answer here, and this is the exception most likely to be got
+		// backwards. The criterion asks whether CRITICAL risks are addressed: a `Low` is not
+		// an outstanding critical risk, and neither is a missing value. Reading it as
+		// "addressed or nothing" fails a release for every ordinary low and medium risk in
+		// it, and demands a synthetic value on risk-free items besides.
+		const readiness = readinessOf(lowAndBlankRiskVault(), 'R.md', RISK);
+		expect(readiness.criticalRisks).toEqual({ value: 0, invalid: false, unconfigured: false });
+		expect(readiness.criteria.find((c) => c.key === 'risk')?.verdict).toBe('satisfied');
+	});
+
+	it('clears a critical value that is addressed', () => {
+		const readiness = readinessOf(addressedRiskVault(), 'R.md', RISK);
+		expect(readiness.criticalRisks.value).toBe(0);
+	});
+
+	it('is unconfigured with no key, and unconfigured with a key but an empty vocabulary', () => {
+		// A key is half of a criterion; the other half is which values clear it. A key bound
+		// with no value list is unconfigured, not empty — the same answer as no key at all,
+		// and for the same reason.
+		expect(readinessOf(multiRiskVault(), 'R.md', {}).criticalRisks.unconfigured).toBe(true);
+		expect(readinessOf(multiRiskVault(), 'R.md', { riskKey: 'risk' }).criticalRisks.unconfigured).toBe(true);
+		// BOTH lists, in both directions: this criterion reads two vocabularies, and either
+		// one missing leaves it unable to answer. With no way to say a risk has been dealt
+		// with, "3 of 3 outstanding" is an unfinished configuration reported as a finding
+		// about the release.
+		expect(
+			readinessOf(multiRiskVault(), 'R.md', { riskKey: 'risk', criticalRiskValues: ['High'] })
+				.criticalRisks.unconfigured,
+		).toBe(true);
+		expect(
+			readinessOf(multiRiskVault(), 'R.md', { riskKey: 'risk', addressedRiskValues: ['Mitigated'] })
+				.criticalRisks.unconfigured,
+		).toBe(true);
+	});
+
+	it('counts a malformed risk value as unreadable, never as absent', () => {
+		// Absence clears this criterion; a value the reader cannot interpret must not. A
+		// filter that dropped unreadable entries left an empty list indistinguishable from
+		// no list, so malformed critical-risk data made a release look ready.
+		const criterion = readinessOf(malformedRiskVault(), 'R.md', RISK).criteria.find((c) => c.key === 'risk');
+		expect(criterion?.unreadable).toBe(1);
+		expect(criterion?.outstanding).toBe(1);
+	});
+
+	it('counts a PARTLY readable risk list as unreadable', () => {
+		// `['Low', { level: 'Critical' }]` keeps its `Low`, so counting only the survivors
+		// clears the member on the strength of the half of the list that happened to parse —
+		// while the entry nobody could read might be the unaddressed critical risk.
+		const criterion = readinessOf(mixedRiskVault(), 'R.md', RISK).criteria.find((c) => c.key === 'risk');
+		expect(criterion?.unreadable).toBe(1);
+		expect(criterion?.cleared).toBe(0);
+	});
+
+	it('counts no context ancestor, whatever risk it carries', () => {
+		const withContext = readinessOf(contextRiskVault(), 'R.md', RISK);
+		expect(withContext.criticalRisks).toEqual(readinessOf(multiRiskVault(), 'R.md', RISK).criticalRisks);
+	});
+});
