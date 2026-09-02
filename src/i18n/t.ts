@@ -163,6 +163,15 @@ function foldLocale(requested: string): string {
  * catalog does not carry is rendered from ENGLISH, and English's grammar has to come with
  * it — see `grammarOf`.
  */
+/** What every calendar formatter below fixes, whatever the locale asks for. See `activate`. */
+const CIVIL = { timeZone: 'UTC', calendar: 'gregory' } as const;
+
+/**
+ * The three calendar labels the roadmap's dated axis draws. Named by what they SAY rather
+ * than by their `Intl` options, so a call site picks a meaning and not a format.
+ */
+export type DateStyle = 'dayMonth' | 'month' | 'monthYear' | 'year';
+
 function activate(code: string, catalogs: Record<string, Catalog>): {
 	name: string;
 	messages: Catalog;
@@ -172,6 +181,7 @@ function activate(code: string, catalogs: Record<string, Catalog>): {
 	numberPrecise: Intl.NumberFormat;
 	numberScientific: Intl.NumberFormat;
 	collator: Intl.Collator;
+	dates: Record<DateStyle, Intl.DateTimeFormat>;
 	requested: string;
 	fold: string;
 } {
@@ -212,6 +222,27 @@ function activate(code: string, catalogs: Record<string, Catalog>): {
 			maximumSignificantDigits: 21,
 		}),
 		collator: new Intl.Collator(requested),
+		dates: {
+			// Three formats rather than one with the pieces joined at the call site, for
+			// the reason the whole module is built on: a date is not a month name with a
+			// day pasted beside it. `en-GB` writes `29 Jun`, `en-US` writes `Jun 29` and
+			// `ja` writes `6月29日` — an order no caller can produce from parts.
+			//
+			// `timeZone: 'UTC'` because the instant handed in is `Date.UTC` of a CIVIL
+			// date, and formatting it in the host's zone would name the day before it
+			// everywhere west of Greenwich — a roadmap cell headed `Jul` for August.
+			// `calendar: 'gregory'` because the grid it labels IS Gregorian:
+			// `domain/timeline.ts` steps Gregorian months, so a locale whose default
+			// calendar is not (`ar-SA`) would draw Hijri names over Gregorian cells.
+			dayMonth: new Intl.DateTimeFormat(requested, { day: 'numeric', month: 'short', ...CIVIL }),
+			month: new Intl.DateTimeFormat(requested, { month: 'short', ...CIVIL }),
+			monthYear: new Intl.DateTimeFormat(requested, { month: 'short', year: 'numeric', ...CIVIL }),
+			// A bare year is a calendar field and not a count — `formatNumber` would group
+			// it as `2,026`. It goes through `Intl` all the same, because the digits are
+			// the locale's: a Persian reader given `String(year)` reads `2026` over cells
+			// that spell every other number `۲۰۲۶`.
+			year: new Intl.DateTimeFormat(requested, { year: 'numeric', ...CIVIL }),
+		},
 		requested,
 		fold: foldLocale(requested),
 	};
@@ -406,6 +437,26 @@ function formatterFor(shown: number, precise: boolean): Intl.NumberFormat {
 export function formatNumber(value: number, precise = false): string {
 	const shown = withoutNegativeZero(value);
 	return formatterFor(shown, precise).format(shown);
+}
+
+/**
+ * A calendar label in the REQUESTED locale — presentation of the user's own plan, so it
+ * follows the user rather than the catalog, exactly as `compareText` and `formatNumber`
+ * do. A month name is FORMATTED, never translated: twelve catalog keys would make it
+ * grammar and freeze it at the languages this plugin happens to ship, while `Intl` already
+ * knows every locale a reader can set Obsidian to.
+ *
+ * Civil parts rather than a `Date`, and `month` is 1-12 as the vault writes it — this
+ * module sits below `domain/`, so it cannot name `CivilDate`, and a caller converting to
+ * a `Date` itself is a caller choosing a time zone. `Date.UTC` here with `timeZone: 'UTC'`
+ * on the formatters is the one pairing that survives a reader in Honolulu.
+ *
+ * One formatter per style per `setLocale`, built in `activate` — a `new Intl.DateTimeFormat`
+ * per cell is what the collator's own comment refuses, and the roadmap draws a header cell
+ * per week across the whole window.
+ */
+export function formatDate(style: DateStyle, year: number, month: number, day = 1): string {
+	return active.dates[style].format(Date.UTC(year, month - 1, day));
 }
 
 /**

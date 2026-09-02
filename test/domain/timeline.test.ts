@@ -1,5 +1,6 @@
-import { describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it } from 'vitest';
 import { CivilDate } from '../../src/domain/noteFields';
+import { setLocale } from '../../src/i18n/t';
 import {
 	addDays,
 	barGeometry,
@@ -22,6 +23,16 @@ import {
 	unionDays,
 	weekendOffsetDays,
 } from '../../src/domain/timeline';
+
+/**
+ * Every label assertion in this file names an English month to identify a CELL — the
+ * window's edges, a leap February, a clipped year. What that cell is CALLED in the
+ * reader's own locale is `test/i18n/timelineLabels.test.ts`'s subject, so this file pins
+ * the locale rather than rebuilding its expectations from `Intl`, which would assert the
+ * formatter against itself and say nothing about the window. A file-local hook wins over
+ * the suite-wide one, so CI's second (`PBL_TEST_LOCALE`) leg reads the same months here.
+ */
+beforeEach(() => setLocale('en'));
 
 const d = (year: number, month: number, day: number): CivilDate => ({ year, month, day });
 const TODAY = { year: 2026, month: 8, day: 4 };
@@ -335,8 +346,9 @@ describe('the header tiers', () => {
 		const window = timelineWindow([], d(2026, 8, 15));
 		expect(timelineCells(window, scaleFor('month')).map((c) => c.label)).toEqual(['Jul', 'Aug', 'Sep']);
 		expect(timelineCells(window, scaleFor('quarter')).map((c) => c.label)).toEqual(['Q3']);
-		// A week can straddle two months, so its label keeps naming both parts itself.
-		expect(timelineCells(window, scaleFor('week'))[0].label).toBe('29 Jun');
+		// A week can straddle two months, so its label keeps naming both parts itself —
+		// in the order the locale writes a date, which for `en` puts the month first.
+		expect(timelineCells(window, scaleFor('week'))[0].label).toBe('Jun 29');
 	});
 });
 

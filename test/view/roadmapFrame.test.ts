@@ -20,6 +20,7 @@ import {
 	timelineRowEls,
 } from '../helpers/roadmap';
 import { daysBetween, scaleFor } from '../../src/domain/timeline';
+import { withLocale } from '../helpers/locale';
 
 useViewHarness();
 
@@ -409,8 +410,13 @@ describe('the grid at each density', () => {
 
 		view.setZoom('quarter');
 		expect(cellLabels(containerEl).some((label) => /^Q[1-4]$/.test(label))).toBe(true);
-		view.setZoom('month');
-		expect(cellLabels(containerEl)).toContain('Aug');
+		// The month cell is named in the reader's own locale, so the English spelling this
+		// asserts is pinned rather than assumed — `test/i18n/timelineLabels.test.ts` is
+		// where WHICH words a locale gets is the subject.
+		withLocale('en', () => {
+			view.setZoom('month');
+			expect(cellLabels(containerEl)).toContain('Aug');
+		});
 	});
 });
 

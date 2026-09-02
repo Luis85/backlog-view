@@ -56,6 +56,10 @@ See [RELEASING.md](RELEASING.md) for how this file is kept in step with a releas
 
 - The sentences that tell you to set a view option now quote that option's own label, so a
   renamed option cannot leave the guidance pointing at a control you cannot find.
+- The roadmap's dated axis names its header cells in your own language — months, the day a
+  week starts on and the year above them — instead of always in English. English readers
+  see the day and month in their own order too (`Jun 29` where a British Obsidian shows
+  `29 Jun`); a quarter stays `Q3` everywhere.
 
 ### Fixed
 
