@@ -823,6 +823,13 @@ export const en = {
 	/** What a release is for, in the reader's own words, on the release note. */
 	'release.option.description': 'Release description property',
 	'release.option.releasedDate': 'Released date property',
+	'release.option.estimate': 'Estimate property',
+	'release.option.dependsOn': 'Prerequisites property',
+	'release.option.risk': 'Risk property',
+	'release.option.criticalRiskValues': 'Risk values that are critical',
+	'release.option.criticalRiskValuesHint': 'High, Critical',
+	'release.option.addressedRiskValues': 'Risk values that count as addressed',
+	'release.option.addressedRiskValuesHint': 'Mitigated, Accepted',
 	'release.option.folder': 'Release folder',
 	'mywork.option.group.model': 'Model',
 	'mywork.option.group.work': 'Work',
