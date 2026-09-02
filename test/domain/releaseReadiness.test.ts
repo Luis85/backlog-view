@@ -567,4 +567,26 @@ describe('the critical risk predicate', () => {
 		// The COUNT of unestimated members is still readable: nothing overflowed there.
 		expect(readiness.unestimated.value).toBe(0);
 	});
+
+	it('counts a prerequisite value it cannot read as unreadable, never as cleared', () => {
+		// `readLinkList` drops a non-string entry SILENTLY, so a malformed `dependsOn` leaves
+		// both `prerequisites` and `brokenPrerequisites` empty — indistinguishable, to this
+		// criterion, from a member that declares no dependencies at all. "No edges is
+		// resolved" then reports a member whose dependency data is garbage as CLEARED, which
+		// is the criterion promising a verdict it could not compute. Raised by a review bot.
+		const vault = new FakeVault();
+		vault.addFile('R.md', { frontmatter: { type: 'Release' } });
+		vault.addFile('Good.md', { frontmatter: { type: 'PBI', order: 1, release: '[[R]]' } });
+		vault.addFile('Bad.md', { frontmatter: { type: 'PBI', order: 2, release: '[[R]]', dependsOn: 123 } });
+		// A list whose readable half alone would clear it — the harder case, and the same
+		// rule the risk criterion keeps for a partly readable list.
+		vault.addFile('Half.md', {
+			frontmatter: { type: 'PBI', order: 3, release: '[[R]]', dependsOn: ['[[Good]]', { note: 'x' }] },
+		});
+		const criterion = blockedReadiness(vault).criteria.find((c) => c.key === 'blocked');
+		expect(criterion?.unreadable).toBe(2);
+		// `Good.md` declares nothing and still clears: absence is not malformation.
+		expect(criterion?.cleared).toBe(1);
+		expect(criterion?.outstanding).toBe(2);
+	});
 });

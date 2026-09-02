@@ -2051,7 +2051,7 @@ export const en = {
 	 * "unconfigured reads as nothing" defect the whole increment is about.
 	 */
 	'release.scope.provenanceEstimate': 'Estimates read {property}.',
-	'release.scope.provenanceDependsOn': 'Prerequisites read {property}, cleared by {state}.',
+	'release.scope.provenanceDependsOn': 'Prerequisites read {property}, each cleared by its own workflow. Configured: {workflows}.',
 	'release.scope.provenanceRisk': 'Risk reads {property}. Critical: {critical}. Addressed: {addressed}.',
 
 	/**
@@ -2112,6 +2112,10 @@ export const en = {
 	 */
 	'release.scope.workflowRequirements': 'Work',
 	'release.scope.workflowDeliverables': 'Deliverables',
+	/** The third workflow kind, which the progress figure's own pair never needs — a catalog
+	 *  note cannot be a release MEMBER — but a member's PREREQUISITE can be one, so the
+	 *  dependency provenance can have to name it. */
+	'release.scope.workflowTests': 'Test catalog',
 	/** No membership property is bound, so no scope can be read at all — the header's facts
 	 *  still stand and the way back is still there, but there is no tree and no count. */
 	'release.scope.noMembership.title': 'No membership property is mapped',

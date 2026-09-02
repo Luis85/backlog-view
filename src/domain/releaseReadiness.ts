@@ -109,6 +109,16 @@ const WORKFLOW_KINDS: WorkflowKind[] = ['requirements', 'deliverable', 'test'];
  * Raised by a review bot against the plan, and confirmed at `settingsResolve.ts`'s
  * `effectiveDoneValues` before it was taken.
  */
+/**
+ * The workflows that can clear a prerequisite in this vault — the same test `blockedCriterion`
+ * applies per prerequisite through `ownWorkflowKind`, asked of the configuration instead so a
+ * renderer can SAY what the criterion will consult. Exported because the alternative was the
+ * view naming `stateKey` alone, which is wrong for any prerequisite that is not ordinary work.
+ */
+export function clearingWorkflows(planSettings: BacklogSettings): WorkflowKind[] {
+	return WORKFLOW_KINDS.filter((kind) => workflowClears(kind, planSettings));
+}
+
 function workflowClears(kind: WorkflowKind, planSettings: BacklogSettings): boolean {
 	const info = workflowStateInfo(kind, planSettings);
 	return info.key !== '' && info.doneValues.length > 0;
@@ -176,7 +186,7 @@ export function releaseReadiness(
 	const members = scope.rows.filter((row) => !row.context).map((row) => row.item);
 	// Each criterion is computed once and reused: the figure beside it IS its outstanding
 	// count, so a second call here would be the second walk this module exists to avoid.
-	const blocked = blockedCriterion(members, settings, planSettings);
+	const blocked = blockedCriterion(app, members, settings, planSettings);
 	const risk = riskCriterion(app, members, settings);
 	return {
 		members: members.length,
@@ -232,6 +242,7 @@ function figureFrom(criterion: ReleaseCriterion): ReleaseFigure<number> {
  * criterion and is reported separately (extension 5a).
  */
 function blockedCriterion(
+	app: App,
 	members: BacklogItem[],
 	settings: ReleaseSettings,
 	planSettings: BacklogSettings,
@@ -246,7 +257,13 @@ function blockedCriterion(
 	let unreadable = 0;
 	for (const item of members) {
 		// Counted ONCE per member however many entries it holds — the acceptance criterion.
-		const broken = item.brokenPrerequisites.length > 0;
+		// `dropped` is the entries the READER threw away before the model ever saw them:
+		// `readLinkList` skips a non-string silently, so `dependsOn: 123` and a list holding
+		// an object leave both lists empty and would otherwise take the "no edges is
+		// resolved" path — a member whose dependency data is garbage reported as cleared.
+		// Same rule the risk criterion keeps for a partly readable list, and the same reason.
+		const dropped = unreadableEntries(app, item, settings);
+		const broken = dropped > 0 || item.brokenPrerequisites.length > 0;
 		// A prerequisite whose OWN workflow is unconfigured is unreadable, not unfinished:
 		// `ownWorkflowReading(...).done` is false for every item under an unbound key or an
 		// empty done list, so counting it as waiting would report a prerequisite in an
@@ -335,6 +352,26 @@ function effortFigures(
 		estimatedEffort: counted(estimated),
 		completedEffort: doneReadable ? counted(completed) : UNCONFIGURED,
 	};
+}
+
+/**
+ * How many entries this member's prerequisite property declares that the model never got.
+ *
+ * The raw value is re-read here rather than a signal being threaded out of `readLinkList`,
+ * which is shared with the parent link and every other link reader: widening that return
+ * type would change what four other callers see to answer a question only this criterion
+ * asks. An empty string and an empty list are ABSENT, not malformed — a member declaring
+ * nothing clears, which is the "no edges is resolved" rule this must not break.
+ */
+function unreadableEntries(app: App, item: BacklogItem, settings: ReleaseSettings): number {
+	const raw: unknown = ownValue(app.metadataCache.getFileCache(item.file)?.frontmatter, settings.dependsOnKey);
+	if (raw === undefined || raw === null) return 0;
+	const values: unknown[] = Array.isArray(raw) ? raw : [raw];
+	const declared = values.filter((value) => !(typeof value === 'string' && value.trim() === '')).length;
+	// What the model KEPT — resolved edges plus the ones it resolved and refused. Anything
+	// declared beyond that never reached it.
+	const read = item.prerequisites.length + item.brokenPrerequisites.length;
+	return Math.max(0, declared - read);
 }
 
 function estimateOf(app: App, item: BacklogItem, settings: ReleaseSettings): unknown {

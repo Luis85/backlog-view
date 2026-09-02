@@ -151,6 +151,24 @@ describe("a release's readiness on screen", () => {
 		expect(said).toContain('Addressed: Mitigated.');
 	});
 
+	it('does not attribute a prerequisite verdict to one workflow', () => {
+		// `blockedCriterion` clears each prerequisite through its OWN workflow
+		// (`ownWorkflowKind`), so a Deliverable prerequisite is decided by the deliverable
+		// done values and not by the plan's `stateKey`. The first version of this sentence
+		// named `stateKey` alone and was wrong for exactly that vault — a review bot caught
+		// it, on the commit that added the provenance.
+		//
+		// Naming the workflows rather than one key is `Summing up a release`'s own escape for
+		// a population spanning several: the progress figure already answers this way.
+		const { containerEl } = openScope({ ...CONFIGURED, deliverableStateProperty: 'note.dstatus', deliverableDoneValues: 'Shipped' });
+		const said = [...containerEl.querySelectorAll('.pbl-rel-ready .pbl-sr-only')].map((el) => el.textContent).join(' | ');
+		expect(said).toContain('Prerequisites read dependsOn');
+		expect(said).toContain('Deliverables');
+		// The bare "cleared by status" claim is gone: it was true only for a vault whose
+		// prerequisites are all ordinary work.
+		expect(said).not.toContain('cleared by status');
+	});
+
 	it('names no property for a criterion that is not configured', () => {
 		// An unconfigured criterion has no property to name, and a sentence naming an empty
 		// one is the "unconfigured reads as nothing, never as empty" defect this increment is

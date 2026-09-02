@@ -1,6 +1,7 @@
 import { setTooltip } from 'obsidian';
 import { t } from '../../i18n/t';
-import { ReleaseCriterion, ReleaseReadiness } from '../../domain/releaseReadiness';
+import { ReleaseCriterion, ReleaseReadiness, clearingWorkflows } from '../../domain/releaseReadiness';
+import { WorkflowKind } from '../../domain/board';
 import { ReleaseSettings } from '../../domain/releaseOptions';
 import { BacklogSettings } from '../../domain/settings';
 
@@ -112,6 +113,14 @@ function drawChip(
  * than the config's `note.`-prefixed id, since a reader who acts on this goes and edits
  * frontmatter.
  */
+/** A workflow kind's own translated name. All THREE, unlike `renderScope.ts`'s pair: a
+ *  catalog note cannot be a release member, but it can be a member's prerequisite. */
+function workflowName(kind: WorkflowKind): string {
+	if (kind === 'deliverable') return t('release.scope.workflowDeliverables');
+	if (kind === 'test') return t('release.scope.workflowTests');
+	return t('release.scope.workflowRequirements');
+}
+
 function criterionProvenance(
 	key: ReleaseCriterion['key'],
 	settings: ReleaseSettings,
@@ -119,10 +128,16 @@ function criterionProvenance(
 ): string {
 	if (key === 'estimated') return t('release.scope.provenanceEstimate', { property: settings.estimateKey });
 	if (key === 'blocked') {
-		// What CLEARS a prerequisite is the plan's own state key, not a sixth option — the
-		// rule `releaseReadiness.ts` states. So the sentence names both, or it names a
-		// property whose clearing nobody can find.
-		return t('release.scope.provenanceDependsOn', { property: settings.dependsOnKey, state: planSettings.stateKey });
+		// **The WORKFLOWS, never one key.** Each prerequisite is cleared by its OWN workflow
+		// (`ownWorkflowKind` in `blockedCriterion`), so a Deliverable prerequisite is decided
+		// by the deliverable done values — this sentence named `stateKey` alone until a review
+		// bot pointed out it was wrong for exactly that vault. Naming the workflows instead is
+		// `Summing up a release`'s own escape for a population spanning several of them, which
+		// the progress figure beside this already takes.
+		return t('release.scope.provenanceDependsOn', {
+			property: settings.dependsOnKey,
+			workflows: clearingWorkflows(planSettings).map(workflowName),
+		});
 	}
 	// **Both vocabularies unconditionally, and no empty-list branch beside them.** A risk
 	// criterion with either list empty is UNCONFIGURED (`releaseReadiness.ts`'s own rule,
