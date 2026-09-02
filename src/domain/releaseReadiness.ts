@@ -87,6 +87,9 @@ function verdictOf(cleared: number, outstanding: number): Verdict {
  * item: a figure gated on the key alone reports a measured-looking zero, and a criterion
  * gated on it reports every member of every release as blocked.
  */
+/** The three workflows a member — or a prerequisite — can read its done state through. */
+const WORKFLOW_KINDS: WorkflowKind[] = ['requirements', 'deliverable', 'test'];
+
 function workflowClears(kind: WorkflowKind, planSettings: BacklogSettings): boolean {
 	const info = workflowStateInfo(kind, planSettings);
 	return info.key !== '' && info.doneValues.length > 0;
@@ -152,13 +155,91 @@ export function releaseReadiness(
 	planSettings: BacklogSettings,
 ): ReleaseReadiness {
 	const members = scope.rows.filter((row) => !row.context).map((row) => row.item);
+	// Each criterion is computed once and reused: the figure beside it IS its outstanding
+	// count, so a second call here would be the second walk this module exists to avoid.
+	const blocked = blockedCriterion(members, settings, planSettings);
 	return {
 		members: members.length,
-		criteria: [estimateCriterion(app, members, settings)],
+		criteria: [estimateCriterion(app, members, settings), blocked],
 		...effortFigures(app, members, settings, planSettings),
-		blocked: UNCONFIGURED,
+		blocked: figureFrom(blocked),
 		criticalRisks: UNCONFIGURED,
 	};
+}
+
+/** The figure beside a criterion IS its outstanding count — never a second walk. */
+function figureFrom(criterion: ReleaseCriterion): ReleaseFigure<number> {
+	return criterion.outstanding === null ? UNCONFIGURED : counted(criterion.outstanding);
+}
+
+/**
+ * **What clears a prerequisite is this view's own already-bound state key and its done
+ * values**, not a sixth and seventh option. `docs/requirements/Release readiness.md` asks
+ * each criterion to declare its own key and clearing values; this view's `stateKey` already
+ * IS its own — the rule protects against borrowing the key from the view that WRITES it,
+ * which this does not do. A separate "cleared at" list is a later slice, for the day a vault
+ * clears a dependency short of done.
+ *
+ * With no edge key bound the criterion is unconfigured, and so it is with no state key: an
+ * edge says what a thing waits for and nothing about whether the wait is over, so an edge
+ * key alone answers half a question. The readiness note says so in its own words. **The edge
+ * key guard is load-bearing rather than defensive**: with `dependsOnProperty` unbound every
+ * member carries no entries at all, so without it every release would read as satisfied.
+ *
+ * **The edges are the MODEL's, never re-read here.** `item.prerequisites` and
+ * `item.brokenPrerequisites` are `resolveDependencies`' own output (`domain/dependencies.ts`),
+ * and reading the raw links again would build a second, disagreeing graph: that resolver
+ * deliberately rejects an unresolvable entry, an item naming ITSELF, and any entry inside a
+ * cycle, all into `broken`. A hand-rolled reader resolves a self-reference happily and then
+ * calls the member cleared because the target it found is done — which is the release
+ * reporting nothing outstanding on exactly the items whose dependencies are malformed.
+ * Raised by a review bot against this plan's first draft and confirmed at
+ * `domain/dependencies.ts`'s `settle`.
+ *
+ * That this reads the RELEASE view's own key rather than the backlog view's is not luck:
+ * `resolveSettings` maps every `PROPERTY_TABLE` row's option to its settings key
+ * generically (`domain/settingsResolve.ts`), and `releaseView.ts` builds its model with
+ * `resolveSettings(this.config)` — this view's own config. Declaring `dependsOnProperty` is
+ * therefore what points the model's resolution at the key this criterion reads. The two
+ * cannot drift, because there is only one.
+ *
+ * **No edges is RESOLVED** — the readiness note's stated exception. An empty list is removed
+ * rather than stored, so an item that waits for nothing has no value where this looks;
+ * counting that as unreadable would leave a release of independent work unable to satisfy
+ * this criterion at all.
+ *
+ * A broken entry IS unreadable: the wait cannot be shown to be over. It costs the member its
+ * criterion and is reported separately (extension 5a).
+ */
+function blockedCriterion(
+	members: BacklogItem[],
+	settings: ReleaseSettings,
+	planSettings: BacklogSettings,
+): ReleaseCriterion {
+	// Unconfigured when there is no edge key, and equally when NO workflow could say a
+	// prerequisite is done: with nothing clearing anything, "every member blocked" is a
+	// configuration mistake reported as a finding about the release.
+	const anyWorkflow = WORKFLOW_KINDS.some((kind) => workflowClears(kind, planSettings));
+	if (settings.dependsOnKey === '' || !anyWorkflow) return unconfiguredCriterion('blocked');
+	let cleared = 0;
+	let outstanding = 0;
+	let unreadable = 0;
+	for (const item of members) {
+		// Counted ONCE per member however many entries it holds — the acceptance criterion.
+		const broken = item.brokenPrerequisites.length > 0;
+		// A prerequisite whose OWN workflow is unconfigured is unreadable, not unfinished:
+		// `ownWorkflowReading(...).done` is false for every item under an unbound key or an
+		// empty done list, so counting it as waiting would report a prerequisite in an
+		// unconfigured workflow as blocking rather than as unanswerable.
+		const unread = item.prerequisites.some((p) => !workflowClears(ownWorkflowKind(p), planSettings));
+		const waiting = item.prerequisites.some(
+			(p) => workflowClears(ownWorkflowKind(p), planSettings) && !ownWorkflowReading(p).done,
+		);
+		if (broken || unread) unreadable += 1;
+		if (broken || unread || waiting) outstanding += 1;
+		else cleared += 1;
+	}
+	return { key: 'blocked', verdict: verdictOf(cleared, outstanding), cleared, outstanding, unreadable };
 }
 
 function estimateCriterion(app: App, members: BacklogItem[], settings: ReleaseSettings): ReleaseCriterion {

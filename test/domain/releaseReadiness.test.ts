@@ -221,3 +221,201 @@ describe('the effort figures', () => {
 		expect(readiness.criteria.find((c) => c.key === 'estimated')?.verdict).toBe('empty');
 	});
 });
+
+/**
+ * Two members, and the prerequisites they name are deliberately NOT in the release: the
+ * criterion counts MEMBERS, so a prerequisite that is also a member would answer for
+ * itself as well and blur which number came from where.
+ *
+ * `M1` waits on three unfinished notes — one blocked member, not three — and `M2` waits on
+ * one that is done.
+ */
+function blockedVault(): FakeVault {
+	const vault = new FakeVault();
+	vault.addFile('R.md', { frontmatter: { type: 'Release', version: '1.0.0' } });
+	vault.addFile('E.md', { frontmatter: { type: 'Epic' } });
+	for (const name of ['P1', 'P2', 'P3']) {
+		vault.addFile(`${name}.md`, { frontmatter: { type: 'PBI', parent: 'E', order: 1, status: 'Doing' } });
+	}
+	vault.addFile('P4.md', { frontmatter: { type: 'PBI', parent: 'E', order: 2, status: 'Done' } });
+	vault.addFile('M1.md', {
+		frontmatter: {
+			type: 'PBI',
+			parent: 'E',
+			order: 3,
+			release: '[[R]]',
+			status: 'Doing',
+			dependsOn: ['[[P1]]', '[[P2]]', '[[P3]]'],
+		},
+	});
+	vault.addFile('M2.md', {
+		frontmatter: { type: 'PBI', parent: 'E', order: 4, release: '[[R]]', status: 'Doing', dependsOn: '[[P4]]' },
+	});
+	return vault;
+}
+
+/** Two members carrying no `dependsOn` key at all — a release of independent work. */
+function independentVault(): FakeVault {
+	const vault = new FakeVault();
+	vault.addFile('R.md', { frontmatter: { type: 'Release', version: '1.0.0' } });
+	vault.addFile('E.md', { frontmatter: { type: 'Epic' } });
+	vault.addFile('M1.md', {
+		frontmatter: { type: 'PBI', parent: 'E', order: 1, release: '[[R]]', status: 'Doing' },
+	});
+	vault.addFile('M2.md', {
+		frontmatter: { type: 'PBI', parent: 'E', order: 2, release: '[[R]]', status: 'Done' },
+	});
+	return vault;
+}
+
+/** One member whose `dependsOn` names a note the model does not hold. */
+function unreadablePrereqVault(): FakeVault {
+	const vault = new FakeVault();
+	vault.addFile('R.md', { frontmatter: { type: 'Release', version: '1.0.0' } });
+	vault.addFile('E.md', { frontmatter: { type: 'Epic' } });
+	vault.addFile('M1.md', {
+		frontmatter: { type: 'PBI', parent: 'E', order: 1, release: '[[R]]', status: 'Doing', dependsOn: '[[Gone]]' },
+	});
+	return vault;
+}
+
+/**
+ * A member whose prerequisite belongs to a workflow this vault never configured.
+ *
+ * The KINDS are the other way round from the task's sketch, and for the reason
+ * `mixedWorkflowVault` above already states: `resolvedDeliverableStateKey` FALLS BACK to
+ * `stateKey`, so "a vault that never configured the Deliverable workflow" is not an
+ * unreadable workflow — it is the requirements one under another name. Only the
+ * requirements kind can be made unreadable, so the PREREQUISITE is the PBI here and the
+ * member is the Deliverable. The branch is the same one: a prerequisite whose own workflow
+ * cannot say done is unreadable, not unfinished.
+ *
+ * `P1` is done under the key nothing reads, so a criterion asking the wrong workflow would
+ * call the member cleared.
+ */
+function deliverablePrereqVault(): FakeVault {
+	const vault = new FakeVault();
+	vault.addFile('R.md', { frontmatter: { type: 'Release', version: '1.0.0' } });
+	vault.addFile('E.md', { frontmatter: { type: 'Epic' } });
+	vault.addFile('P1.md', { frontmatter: { type: 'PBI', parent: 'E', order: 1, status: 'Done' } });
+	vault.addFile('D1.md', {
+		frontmatter: {
+			type: 'Deliverable',
+			parent: 'E',
+			order: 2,
+			release: '[[R]]',
+			dstatus: 'Doing',
+			dependsOn: '[[P1]]',
+		},
+	});
+	return vault;
+}
+
+/**
+ * Three members whose dependencies are malformed and whose targets are all DONE: one
+ * naming itself, and two naming each other. `resolveDependencies` puts every one of those
+ * entries in `brokenPrerequisites`, so all three are unreadable — a criterion re-reading
+ * the raw links would resolve each target happily, find it done, and report the release
+ * as clear on exactly the items whose dependencies are broken.
+ */
+function selfAndCycleVault(): FakeVault {
+	const vault = new FakeVault();
+	vault.addFile('R.md', { frontmatter: { type: 'Release', version: '1.0.0' } });
+	vault.addFile('E.md', { frontmatter: { type: 'Epic' } });
+	vault.addFile('S.md', {
+		frontmatter: { type: 'PBI', parent: 'E', order: 1, release: '[[R]]', status: 'Done', dependsOn: '[[S]]' },
+	});
+	vault.addFile('C1.md', {
+		frontmatter: { type: 'PBI', parent: 'E', order: 2, release: '[[R]]', status: 'Done', dependsOn: '[[C2]]' },
+	});
+	vault.addFile('C2.md', {
+		frontmatter: { type: 'PBI', parent: 'E', order: 3, release: '[[R]]', status: 'Done', dependsOn: '[[C1]]' },
+	});
+	return vault;
+}
+
+/**
+ * The edge key bound on BOTH bags: the release settings decide whether the criterion is
+ * configured, and the plan settings are what `readItems` reads the entries with.
+ */
+function blockedReadiness(vault: FakeVault) {
+	return readinessOf(vault, 'R.md', { dependsOnKey: 'dependsOn' }, { dependsOnKey: 'dependsOn' });
+}
+
+describe('the blocked predicate', () => {
+	it('counts a member with three unmet prerequisites once, not three times', () => {
+		const readiness = blockedReadiness(blockedVault());
+		expect(readiness.blocked).toEqual({ value: 1, invalid: false, unconfigured: false });
+	});
+
+	it('treats no edges as resolved', () => {
+		// An empty edge list is REMOVED rather than stored, so an item that waits for
+		// nothing has no value where this criterion looks. The blanket "unreadable is not
+		// cleared" rule would leave a release full of independent work unable to satisfy
+		// this criterion at all — which is the readiness note's own stated exception.
+		const readiness = blockedReadiness(independentVault());
+		expect(readiness.blocked).toEqual({ value: 0, invalid: false, unconfigured: false });
+		expect(readiness.criteria.find((c) => c.key === 'blocked')?.verdict).toBe('satisfied');
+	});
+
+	it('counts a prerequisite it cannot read as outstanding, and reports it separately', () => {
+		// A prerequisite outside the base, or a broken link: the wait cannot be shown to be
+		// over, so the member does not clear — and 5a wants the number said out loud rather
+		// than folded into the others.
+		const criterion = blockedReadiness(unreadablePrereqVault()).criteria.find((c) => c.key === 'blocked');
+		expect(criterion?.outstanding).toBe(1);
+		expect(criterion?.unreadable).toBe(1);
+	});
+
+	it('is unconfigured, never zero, with no edge key', () => {
+		expect(readinessOf(blockedVault(), 'R.md', {}).blocked).toEqual({
+			value: null,
+			invalid: false,
+			unconfigured: true,
+		});
+		// Without this guard every member reads as having no prerequisites, so an unbound
+		// edge key would report every release as satisfied rather than as unconfigured.
+		// An edge says what a thing waits for and nothing about whether the wait is over,
+		// so with no state key bound this criterion is exactly as unconfigured as one with
+		// no property at all.
+		const noState = readinessOf(
+			blockedVault(),
+			'R.md',
+			{ dependsOnKey: 'dependsOn' },
+			{ stateKey: '', dependsOnKey: 'dependsOn' },
+		);
+		expect(noState.blocked.unconfigured).toBe(true);
+		// The OTHER half of that guard — a key bound and nothing clearing it — has no fixture
+		// here, and `test/helpers/settings.ts` is why: `settingsWith` re-derives the
+		// resolver's own "neither done list is ever empty" rule, so `doneValues: []` comes
+		// back as the default. Asserted with a bound key and an emptied list, this test fails
+		// on a vault nobody could configure rather than on the guard. The guard stays: it
+		// reads `workflowClears`, whose two halves are one question, and the effort figures
+		// above record the identical gap.
+	});
+
+	it('counts a prerequisite in a workflow nothing configured as unreadable', () => {
+		// A prerequisite whose own workflow cannot say done is unreadable, not unfinished —
+		// the same distinction, one workflow along. Only the requirements workflow can be
+		// left unreadable while another still clears, so it is the PREREQUISITE's here.
+		const criterion = readinessOf(
+			deliverablePrereqVault(),
+			'R.md',
+			{ dependsOnKey: 'dependsOn' },
+			{ stateKey: '', deliverableStateKey: 'dstatus', dependsOnKey: 'dependsOn' },
+		).criteria.find((c) => c.key === 'blocked');
+		expect(criterion?.unreadable).toBe(1);
+		expect(criterion?.cleared).toBe(0);
+	});
+
+	it('counts a self-reference and a cycle as unreadable, never as cleared by a done target', () => {
+		// `resolveDependencies` puts both in `brokenPrerequisites` on purpose. Re-reading the
+		// raw links here would resolve a self-reference happily and then call the member
+		// cleared because the target it found is done — a release reporting nothing
+		// outstanding on exactly the items whose dependencies are malformed. Three members,
+		// three broken lists: the self-namer, and BOTH ends of the cycle.
+		const criterion = blockedReadiness(selfAndCycleVault()).criteria.find((c) => c.key === 'blocked');
+		expect(criterion?.unreadable).toBe(3);
+		expect(criterion?.cleared).toBe(0);
+	});
+});
