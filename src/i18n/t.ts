@@ -302,13 +302,16 @@ export function compareText(a: string, b: string): number {
  * review rounds cost (Codex, PR #251). Lowercasing is correct CASING and is not a
  * case-INSENSITIVE form: Lithuanian's tailoring ADDS a dot above a soft-dotted letter when
  * an accent follows, so `Ì` lowercases to `i̇̀` while `ì` stays `ì` and a query stops
- * meeting the title it was typed from. `foldLocale` is where that is answered, and
- * `.normalize('NFC')` is the other half: canonically equivalent spellings of one string
- * are one string to a reader, so a decomposed `I` + `U+0307` has to meet a precomposed
- * `İ`, and it does not without it. **Before** the fold and not after, which is the
- * narrower claim the suite can actually hold: a trailing one changed nothing for any
- * single code point in the first three planes under any of the three locales this fold
- * asks for, so it would have been a line no test could fail.
+ * meeting the title it was typed from. `foldLocale` is where that is answered.
+ *
+ * **Both normalizations are load-bearing and they are different forms on purpose.** `NFC`
+ * goes first because the fold itself is not canonical-equivalence-safe: under `tr` a
+ * decomposed `I` + `U+0307` lowercases to `ı` + `U+0307` while the precomposed `İ` gives
+ * `i`, so two spellings of one string fold apart. `NFD` goes last because every call site
+ * asks `.includes()` about a SUBSTRING, and a composed `é` has no `e` in it: an ASCII
+ * query `cafe` finds a decomposed `Café` and, composed, would not. Decomposing both sides
+ * settles it in one direction rather than leaving it to how the name reached the vault.
+ * Found by review (Codex, PR #251).
  *
  * Two shapes were tried and are worse. Stripping the added dot back off (`[ij]`, then
  * `\p{Soft_Dotted}`) cannot tell a tailoring's dot from one an author WROTE, so it united
@@ -317,7 +320,7 @@ export function compareText(a: string, b: string): number {
  * SUBSTRING, and a collator compares whole strings.
  */
 export function foldForMatch(value: string): string {
-	return value.normalize('NFC').toLocaleLowerCase(active.fold);
+	return value.normalize('NFC').toLocaleLowerCase(active.fold).normalize('NFD');
 }
 
 /**

@@ -332,6 +332,21 @@ describe('collation, folding and numbers follow the requested locale', () => {
 		expect(foldForMatch('I')).toBe(foldForMatch('i'));
 	});
 
+	it('finds a base letter inside an accented word, however the word is spelled', () => {
+		// Every call site asks `.includes()` about a SUBSTRING, and a composed `é` has no
+		// `e` in it — so an ASCII query finds a decomposed title and misses the composed
+		// one, which is a coin toss on how the name reached the vault. Folding both sides
+		// to NFD settles it in one direction. Found by review (Codex, PR #251).
+		setLocale('en');
+		for (const title of ['Caf\u00E9 notes', 'Cafe\u0301 notes']) {
+			expect(foldForMatch(title).includes(foldForMatch('cafe'))).toBe(true);
+			expect(foldForMatch(title).includes(foldForMatch('caf\u00E9'))).toBe(true);
+			expect(foldForMatch(title).includes(foldForMatch('cafe\u0301'))).toBe(true);
+		}
+		// Equality is untouched: an accented word is still not the unaccented one.
+		expect(foldForMatch('Caf\u00E9')).not.toBe(foldForMatch('Cafe'));
+	});
+
 	it('formats a bare number with the SAME formatter a sentence uses', () => {
 		// German groups with a dot and there is no German catalog, so the sentence is
 		// English. The two numbers agreeing is what stops a count outside a sentence
