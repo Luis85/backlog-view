@@ -42,7 +42,10 @@ vi.setConfig({ testTimeout: 20_000 });
  *
  * It reads the **named imports a test file writes**, so it is a check on the boundary as
  * it is USED. Three ways past it, stated because a check that reads wider than it looks
- * is this repository's own recorded defect:
+ * is this repository's own recorded defect — and this list was itself incomplete on its
+ * first two commits, which is the honest caveat to read it with: a fourth way (a script
+ * whose basename the specifier pattern could not spell) was found by review rather than
+ * by anyone enumerating, and is fixed rather than listed.
  *
  * - A script a test reaches by `import(…)`, by a namespace import (`import * as`), or by
  *   spawning it as a subprocess. `docs-check.mjs` and `perf.mjs` are reached the last way
@@ -95,7 +98,14 @@ const boundaries = (): Boundary[] => {
 		const src = ts.createSourceFile(file, text, ts.ScriptTarget.Latest, true);
 		const walk = (node: ts.Node): void => {
 			if (ts.isImportDeclaration(node) && ts.isStringLiteral(node.moduleSpecifier)) {
-				const script = /scripts\/([a-z-]+\.mjs)$/.exec(node.moduleSpecifier.text)?.[1];
+				// Any basename, because a restriction the walk imposes and nothing states is
+				// a blind spot rather than a rule: `[a-z-]+` cannot match
+				// `scripts/esbuild.config.mjs` — the one dotted name in the directory today —
+				// so an untyped parameter there passed this while the floors below stayed
+				// satisfied by the other 23. Found in review, PR #256 round 2, and reproduced
+				// by exporting one. The `(?:^|\/)` keeps it a `scripts/` DIRECTORY segment
+				// rather than any path ending in those characters.
+				const script = /(?:^|\/)scripts\/([^/]+\.mjs)$/.exec(node.moduleSpecifier.text)?.[1];
 				const bindings = node.importClause?.namedBindings;
 				if (script && bindings && ts.isNamedImports(bindings)) {
 					const set = imported.get(script) ?? new Set<string>();

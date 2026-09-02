@@ -189,3 +189,29 @@ The budget then went **file-wide**, one `vi.setConfig({ testTimeout: 20_000 })` 
 `test/helpers/register.ts`'s spelling and for its stated reason: it is a fact about what
 the file does, and a timeout repeated per case is one a third case forgets. So the
 per-test count in the repository stays at four and the file-wide count goes to two.
+
+## And the list of blind spots was itself incomplete (PR #256, round 2)
+
+The section above enumerates "three ways past it" and calls them stated rather than
+assumed. Review found a **fourth**, and it was in the walk's own specifier pattern:
+`/scripts\/([a-z-]+\.mjs)$/` cannot match a basename carrying a dot, a digit, an
+underscore or a capital. `scripts/esbuild.config.mjs` is the one such name in the
+directory today, so a test importing from it would have been dropped from `imported`
+entirely — and the floor assertions stay satisfied by the other 23 functions, so it fails
+green.
+
+**Reproduced before fixing**: an exported `probeUntyped(thing)` with no `@param` added to
+`esbuild.config.mjs`, plus a test file importing it. **Both tests passed.** With the
+pattern widened to `/(?:^|\/)scripts\/([^/]+\.mjs)$/` the same planted pair turns the
+census red, and removing them turns it green again. The `(?:^|\/)` keeps `scripts/` a
+directory SEGMENT rather than any path ending in those eight characters.
+
+**The lesson is about the enumeration, not the regex.** The instruction this pass ran
+under was to *enumerate the spellings the instrument itself could miss before calling it
+tested*, and that was done — three were listed, in the test and in this note, and the
+list read as complete because the three somebody could think of were on it. It is the
+same failure the root guide records under "a table that enumerates code goes stale": a
+list of blind spots is a list of the blind spots someone had already seen. What made this
+one findable was that the restriction was undocumented — the pattern imposed kebab-case
+and nothing said so, which is why the fix is to stop restricting rather than to add a
+fourth bullet.
