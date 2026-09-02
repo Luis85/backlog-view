@@ -63,9 +63,14 @@ export function num(value: number): string {
  * and effort cells, which show a value the user typed rather than a count this plugin
  * computed. Same reason `num()` exists: an expectation spelling `3.142` for `3.14159`
  * would be pinning `Intl`'s default rounding rather than what the cell promises.
+ *
+ * The options here MIRROR `activate`'s `numberPrecise` and have to keep mirroring it —
+ * significant digits rather than fraction digits, for the reason stated there. A helper
+ * that drifted from the formatter it stands in for would assert the old policy while the
+ * view rendered the new one, which is the one failure a helper like this can cause.
  */
 export function numPrecise(value: number): string {
-	return new Intl.NumberFormat(intlLocale(TEST_LOCALE), { maximumFractionDigits: 20 }).format(value);
+	return new Intl.NumberFormat(intlLocale(TEST_LOCALE), { maximumSignificantDigits: 21 }).format(value);
 }
 
 /**

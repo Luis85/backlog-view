@@ -325,4 +325,21 @@ describe('collation, folding and numbers follow the requested locale', () => {
 		setLocale('de', { en: sparse });
 		expect(formatNumber(3.14159, true)).toBe('3,14159');
 	});
+
+	it('does not round a precise value away to zero, however small it is', () => {
+		// A CAP on fraction digits is a cap on magnitude, not on precision: at
+		// `maximumFractionDigits: 20` every value under 1e-20 formats as `0`, so a
+		// confidence of `1e-21` read straight off a note rendered as nothing at all — a
+		// nonzero number displayed as zero, which is the shape of defect this whole PBI
+		// is about. Significant digits is the cap that follows the VALUE rather than the
+		// decimal point. Found by review (Codex, PR #251).
+		setLocale('en');
+		expect(formatNumber(1e-21, true)).not.toBe('0');
+		expect(formatNumber(1e-21, true)).toBe('0.000000000000000000001');
+		// The ordinary values are untouched by the change — this is the same output the
+		// fraction-digit cap gave, which is what makes it a safe swap rather than a
+		// second formatting policy.
+		expect(formatNumber(1234.5, true)).toBe('1,234.5');
+		expect(formatNumber(0.1 + 0.2, true)).toBe('0.30000000000000004');
+	});
 });

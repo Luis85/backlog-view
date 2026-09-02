@@ -169,10 +169,18 @@ function activate(code: string, catalogs: Record<string, Catalog>): {
 		number: new Intl.NumberFormat(requested),
 		// `formatNumber(value, true)`'s own formatter, built once beside the other one for
 		// the reason stated there: a VALUE someone typed (estimation's confidence and
-		// effort) rather than a COUNT this plugin computed. `maximumFractionDigits: 20` is
-		// "big enough that no number this app stores gets cut", not a meaningful precision
-		// bound of its own — a JS number has nowhere near that many significant digits.
-		numberPrecise: new Intl.NumberFormat(requested, { maximumFractionDigits: 20 }),
+		// effort) rather than a COUNT this plugin computed.
+		//
+		// **SIGNIFICANT digits, not fraction digits, and the difference is not cosmetic.**
+		// A fraction-digit cap is a cap on MAGNITUDE: at `maximumFractionDigits: 20` every
+		// value below 1e-20 has no digit left to land in and formats as `0`, so a
+		// confidence of `1e-21` displayed as zero — a nonzero number rendered as nothing,
+		// which is exactly the silent-wrong-answer shape this whole PBI is about. 21 is
+		// `Intl`'s own ceiling and comfortably past a JS number's ~17, so no value is cut
+		// for precision; every ordinary number formats identically either way, which is
+		// what made this a swap rather than a second formatting policy.
+		// Found by review (Codex, PR #251).
+		numberPrecise: new Intl.NumberFormat(requested, { maximumSignificantDigits: 21 }),
 		collator: new Intl.Collator(requested),
 		requested,
 	};
@@ -273,7 +281,14 @@ export function foldForMatch(value: string): string {
  * caps at three fraction digits, silently rounding `3.14159` to `3.142` — fine for a
  * count, which is never that precise, and wrong for the estimation view's confidence and
  * effort cells, whose whole promise is showing back the number the user entered. `true`
- * asks the same locale's grouping and decimal separator with no such cap.
+ * asks the same locale's grouping and decimal separator, capped at 21 SIGNIFICANT digits
+ * instead — see `activate`, which says why that is the cap that follows the value.
+ *
+ * What it still does not reproduce is `String()`'s SCIENTIFIC notation: `Intl` is asked
+ * for standard notation, so `5e-324` spells out its 324 characters rather than staying
+ * short. That is the narrow guarantee this makes — no value is rounded away, not every
+ * value is rendered compactly — and the extreme is unreachable from an estimation cell
+ * anyone types into.
  */
 export function formatNumber(value: number, precise = false): string {
 	return (precise ? active.numberPrecise : active.number).format(value);
