@@ -25,6 +25,11 @@ describe("a release's readiness on screen", () => {
 		vault.addFile('Z1.md', { frontmatter: { type: 'PBI', order: 1, release: '[[Zeros]]', effort: 0 } });
 		vault.addFile('Z2.md', { frontmatter: { type: 'PBI', order: 2, release: '[[Zeros]]', effort: 0 } });
 		vault.addFile('Empty.md', { frontmatter: { type: 'Release' } });
+		// The estimate key is bound and NOT ONE member answers it — extension 4a, which is a
+		// different statement from `Zeros.md` above, where every member answers with zero.
+		vault.addFile('NoEst.md', { frontmatter: { type: 'Release' } });
+		vault.addFile('N1.md', { frontmatter: { type: 'PBI', order: 1, release: '[[NoEst]]' } });
+		vault.addFile('N2.md', { frontmatter: { type: 'PBI', order: 2, release: '[[NoEst]]', effort: 'TBD' } });
 		return vault;
 	}
 
@@ -158,6 +163,20 @@ describe("a release's readiness on screen", () => {
 		// The two that ARE configured still say what they read.
 		expect(said).toContain('Estimates read effort.');
 		expect(said).toContain('Prerequisites read dependsOn');
+	});
+
+	it('says there is nothing to sum when no member carries an estimate', () => {
+		// Extension 4a: "the effort figures say there is nothing to sum, which is a different
+		// statement from a total of zero". Drawing NOTHING does not say it — the figure reads
+		// as accidentally missing, which is the same absent-and-unnamed defect the
+		// unconfigured cases exist to prevent. The comment beside this branch claimed the rule
+		// while the code silently omitted the figure; found by a review bot.
+		const { containerEl } = openScope(CONFIGURED, 'NoEst.md');
+		const strip = containerEl.querySelector('.pbl-rel-summary');
+		expect(strip?.textContent).toContain('No estimates to sum');
+		// Still says how many carry none, and never a total that would read as measured.
+		expect(strip?.textContent).toContain('2 unestimated');
+		expect(strip?.textContent).not.toContain('pts');
 	});
 
 	it('plans no write while the screen renders', () => {

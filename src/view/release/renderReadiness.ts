@@ -197,7 +197,13 @@ export function drawReadinessFigures(
 	// members, never from the sum**: `0` is a valid estimate, so a release whose members all
 	// estimate zero would otherwise be drawn exactly like one nobody has estimated at all.
 	const estimatedMembers = readiness.criteria.find((criterion) => criterion.key === 'estimated')?.cleared ?? 0;
+	// **Named, never silent.** This branch drew nothing at all until a review bot read the
+	// comment above against the code under it: "nothing to sum" was asserted in prose while
+	// the figure was simply omitted, which is the absent-and-unnamed defect every other case
+	// in this module exists to prevent — and the repository's own "a comment that states a
+	// rule is not a check".
 	if (estimatedMembers > 0) drawEffort(sumEl, total, done);
+	else sumEl.createSpan({ cls: 'pbl-rel-unreadable', text: t('release.scope.effortNothingToSum') });
 	if (readiness.unestimated.value !== null) {
 		sumEl.createSpan({
 			cls: 'pbl-rel-figure',

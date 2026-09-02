@@ -2020,6 +2020,14 @@ export const en = {
 	 *  done means, so there is a total and no progress through it. */
 	'release.scope.effortEstimated': '{total} pts estimated',
 	'release.scope.effortUnconfigured': 'Effort is not configured',
+	/**
+	 * Extension 4a: the estimate key IS bound and no member answers it. Named rather than
+	 * absent, for the reason every unconfigured case here is named — a figure that is simply
+	 * missing reads as accidentally dropped, and this one has to be told apart from a real
+	 * total of zero, which `0 of 0 pts (0%)` is. Distinct from
+	 * `release.scope.effortUnconfigured`, which is the key itself being unbound.
+	 */
+	'release.scope.effortNothingToSum': 'No estimates to sum',
 	'release.scope.unestimated': '{count} unestimated',
 	/**
 	 * Main flow step 5 of `docs/requirements/Summing up a release.md` — "every figure names
