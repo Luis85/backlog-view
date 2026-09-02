@@ -1,5 +1,5 @@
 import { App, ButtonComponent, Modal, Setting, TFolder } from 'obsidian';
-import { t } from '../i18n/t';
+import { compareText, t } from '../i18n/t';
 import { ValueSuggest } from './valueSuggest';
 
 /**
@@ -170,7 +170,7 @@ export class FolderSuggest extends ValueSuggest<TFolder> {
 				folders.push(file);
 			}
 		}
-		folders.sort((a, b) => a.path.localeCompare(b.path));
+		folders.sort((a, b) => compareText(a.path, b.path));
 		return folders.slice(0, 50);
 	}
 

@@ -16,16 +16,21 @@ comparison sorting is the right tool for ranking siblings — so that pass alone
 **O(n log n)**.
 
 There is a second deliberate comparison sort, added with the resource roster (Task 1,
-2026-08): `model.ts` sorts `store.resources` by `title.localeCompare` (with a path
+2026-08): `model.ts` sorts `store.resources` by `compareText` on the title (with a path
 tie-break) right beside `sortSiblingsDeep`. It is bounded the same way and stays cheap for
 the same reason a second pass usually is not allowed to: `Resource` notes are a *subset*
 of the notes the base returns — `readItems.ts`'s `divertResource` diverts one before it is
 ever an item, so it never joins a sibling group — which makes the roster's own size `r`
 never exceed the item count `n`. Comparison sorting is the right tool here for the same
 reason it is for siblings: the roster is small, sorted once per build rather than per row,
-and the order it produces (alphabetical, `localeCompare`, following the USER's locale
-because a name is data) is itself the thing being asked for, not a byproduct of a faster
-structure. The build's bound is still **O(n log n)** with `r ≤ n` folded in — what the
+and the order it produces (alphabetical, through `compareText` in `src/i18n/t.ts`,
+following the USER's locale because a name is data) is itself the thing being asked for,
+not a byproduct of a faster structure. `compareText` rather than `localeCompare` is what
+keeps that sort cheap as well as correct: it collates through ONE `Intl.Collator`, built
+per `setLocale`, where `localeCompare` constructs a fresh one per comparison — n·log n of
+them in a sort this paragraph is otherwise counting comparisons for. A bare
+`localeCompare` is refused in all of `src/` by `no-restricted-properties` in
+`eslint.config.mjs`. The build's bound is still **O(n log n)** with `r ≤ n` folded in — what the
 older wording of this paragraph got wrong was forbidding a *second* superlinear step
 outright rather than bounding it: the rule that matters is that nothing here sorts a set
 that can outgrow the items, not that there is exactly one sort.

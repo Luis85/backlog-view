@@ -739,6 +739,37 @@ export default defineConfig([
 	),
 	forbidden('view', ['commands'], 'The view is mounted by the plugin shell, not the other way round.'),
 	// -- invariants that are checked rather than described -----------------------
+	{
+		// Collation follows the REQUESTED locale and uses ONE collator, built per
+		// `setLocale`. A bare `localeCompare(b)` takes the HOST's default — the operating
+		// system's language rather than Obsidian's — and `localeCompare(b, locale)` is
+		// wrong in the other direction: it constructs a fresh `Intl.Collator` for every
+		// comparison, n·log n of them inside a sort in a render path. So this bans the
+		// METHOD rather than checking its arguments; a rule about argument count can be
+		// satisfied by passing the wrong locale.
+		//
+		// `no-restricted-properties` rather than an arm of `no-restricted-syntax`, and the
+		// difference is the scope this rule needs. `src/` is carved into sixteen disjoint
+		// `no-restricted-syntax` regions because a second block matching one file OVERRIDES
+		// that rule rather than merging with it — which is why those regions' own comments
+		// have to say that a file ADDED to a directory is not covered until someone names
+		// it. A different rule name has no such problem: this one block covers every file
+		// under `src/`, including the ones nobody has written yet.
+		//
+		// No carve-out for `src/i18n/t.ts`: `compareText` collates through
+		// `Intl.Collator.compare`, so nothing in the tree needs the method at all.
+		files: ['src/**/*.ts'],
+		rules: {
+			'no-restricted-properties': [
+				'error',
+				{
+					property: 'localeCompare',
+					message:
+						'Collate with compareText (src/i18n/t.ts), which uses one Intl.Collator built per setLocale in the requested locale.',
+				},
+			],
+		},
+	},
 	// Disjoint regions of src/; see the note above `syntaxRules`. Two splits are one
 	// region divided along the view/ boundary — the general region and RANKING, split
 	// because ALL_TYPES_IMPORT and CHILD_TYPE_CHOICES_NULL apply to the view/ half and

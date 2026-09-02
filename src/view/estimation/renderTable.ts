@@ -2,7 +2,7 @@ import { setIcon } from 'obsidian';
 import type { EstimationView } from './estimationView';
 import { INDICATOR_BLOCK_KEYS, renderPanel } from './panel';
 import { renderCurrencyChip } from './currencyChip';
-import { t } from '../../i18n/t';
+import { compareText, t } from '../../i18n/t';
 import { EstimationItem, EstimationModel } from '../../domain/estimationItems';
 import { Indicator } from '../../domain/scoringModel';
 import { Currency, IndicatorBlock, indicatorFormula } from '../../domain/weightedScore';
@@ -287,7 +287,7 @@ function compareItems(a: EstimationItem, b: EstimationItem, pick: SortPick): num
 	// Absence partitions AFTER the sorted block in both directions — never negated by
 	// `pick.direction`, which is what keeps it out of the ascending/descending swap below.
 	if (av === null || bv === null) return av === bv ? 0 : av === null ? 1 : -1;
-	const cmp = typeof av === 'string' ? av.localeCompare(bv as string) : av - (bv as number);
+	const cmp = typeof av === 'string' ? compareText(av, bv as string) : av - (bv as number);
 	return pick.direction === 'asc' ? cmp : -cmp;
 }
 

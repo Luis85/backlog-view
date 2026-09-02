@@ -1,6 +1,7 @@
 import { displayType } from './itemTypes';
 import { ALL_TYPES } from './typeVocabulary';
 import { ShelfCard } from './bars';
+import { compareText } from '../i18n/t';
 
 /** Display-only ordering of cards within a group. Never written anywhere. */
 export type ShelfSort = 'tree' | 'title' | 'modified';
@@ -41,7 +42,7 @@ function groupKey(card: ShelfCard): string {
 }
 
 function compareCards(sort: ShelfSort, a: ShelfCard, b: ShelfCard): number {
-	if (sort === 'title') return a.item.title.localeCompare(b.item.title);
+	if (sort === 'title') return compareText(a.item.title, b.item.title);
 	if (sort === 'modified') return b.item.file.stat.mtime - a.item.file.stat.mtime;
 	// 'tree': the input is already sibling order: `roadmap.shelf` keeps it, and a
 	// stable sort over an already-ordered array leaves it exactly where it was.

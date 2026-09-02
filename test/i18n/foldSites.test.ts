@@ -17,8 +17,8 @@ import { FOLD_SITES, FoldSite } from './foldSites';
  * `toLowerCase` and a `matching` entry `toLocaleLowerCase`, so a sweep that moves an
  * identity fold to the locale-aware form FAILS until the table is edited to say so — and
  * the table edit is then the reviewable act, in a diff that is exactly the set of sites
- * that changed category. Every entry is `identity` in this round on purpose; see
- * `foldSites.ts`'s own comment.
+ * that changed category. Exactly one entry is `matching` — `foldForMatch` itself, the
+ * helper the matching SITES have not moved to yet; see `foldSites.ts`'s own comment.
  *
  * That check reads the spelling ANYWHERE in an entry's text, not the outermost callee, so a
  * nested mixed fold (`foo(a.toLocaleLowerCase()).toLowerCase()`) would be judged by its
@@ -32,12 +32,12 @@ import { FOLD_SITES, FoldSite } from './foldSites';
  * comment — three of them in this feature's own notes about the folds. A comment is not a
  * call. **Nothing asserts either figure**, and both drift: editing a comment that mentions
  * a fold moves the grep number without moving anything real. It is dated for that reason,
- * and the walk's own 113 is what the suite holds.
+ * and the walk's own count is what the suite holds.
  *
  * What the walk cannot see, stated rather than implied: a fold not spelled as a property
  * access — through a variable (`const fold = s.toLowerCase; fold()`) or through element
  * access (`s['toLowerCase']()`). Neither occurs in `src/` today, and the assertion that
- * this walk finds 113 calls in 26 files is what fails if the instrument ever stops seeing
+ * this walk finds 114 calls in 27 files is what fails if the instrument ever stops seeing
  * the tree at all.
  */
 
@@ -102,14 +102,14 @@ const inTable = tally(FOLD_SITES);
 
 describe('every case fold in src/ is classified', () => {
 	it('reads a tree that actually folds, so the walk is not silently looking at nothing', () => {
-		expect(calls.length).toBe(113);
-		expect(new Set(calls.map((call) => call.file)).size).toBe(26);
+		expect(calls.length).toBe(114);
+		expect(new Set(calls.map((call) => call.file)).size).toBe(27);
 	});
 
 	it('states the counts the table itself claims', () => {
-		expect(FOLD_SITES.length).toBe(113);
+		expect(FOLD_SITES.length).toBe(114);
 		expect(FOLD_SITES.filter((site) => site.kind === 'identity').length).toBe(113);
-		expect(FOLD_SITES.filter((site) => site.kind === 'matching').length).toBe(0);
+		expect(FOLD_SITES.filter((site) => site.kind === 'matching').length).toBe(1);
 	});
 
 	it('has an entry for every fold call — a new, unclassified fold fails here', () => {

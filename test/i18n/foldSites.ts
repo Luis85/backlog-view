@@ -13,13 +13,17 @@
  * find a note that is plainly on screen. See
  * `docs/requirements/Locale-aware sorting and formatting.md`.
  *
- * **Every entry here is `identity` in this round, and that is deliberate rather than a
- * finished classification.** Landing all 113 as identity first makes the later diff
+ * **Every entry here is `identity` except one, and that is deliberate rather than a
+ * finished classification.** Landing them all as identity first makes the later diff
  * exactly the set of sites that changed category — which is the reviewable act, and the
  * one place in this feature where a careless sweep is worse than no change at all. A
  * reviewer reading a `why` that plainly describes a needle and a haystack (the shelf's
  * title search, the folder and tag suggests) is reading a site that is expected to move,
  * not a misclassification that was missed.
+ *
+ * The exception is `foldForMatch` in `src/i18n/t.ts` — the helper those sites are expected
+ * to move TO. It is `matching` from the day it was written, because matching is the whole
+ * of what it does; nothing calls it yet.
  *
  * **A `why` beginning `UNCERTAIN — ` says the call was not decided.** Grep that spelling
  * for the list rather than trusting a count here: three earlier drafts of this paragraph
@@ -150,6 +154,7 @@ export const FOLD_SITES: FoldSite[] = [
 	{ file: 'src/i18n/locale.ts', text: 'name.toLowerCase()', kind: 'identity', why: 'matches a shipped catalog name against the wanted language tag' },
 	{ file: 'src/i18n/locale.ts', text: 'name.toLowerCase()', kind: 'identity', why: 'matches a shipped catalog name against the wanted tag base language' },
 	{ file: 'src/i18n/locale.ts', text: 'tag.toLowerCase()', kind: 'identity', why: 'canonicalizes a language TAG for catalog lookup; a tag case is convention, and folding it with a locale would be circular' },
+	{ file: 'src/i18n/t.ts', text: "value.toLocaleLowerCase(active.requested)", kind: 'matching', why: 'foldForMatch — the one fold in src/ whose job is matching, and the helper every matching site is meant to call' },
 	{ file: 'src/storage/frontmatter.ts', text: 'leaving.toLowerCase()', kind: 'identity', why: 'the state being left, in the match that decides whether a write moves anything' },
 	{ file: 'src/storage/frontmatter.ts', text: 'state.toLowerCase()', kind: 'identity', why: 'the state being written, in that same match' },
 	{ file: 'src/ui/prompts.ts', text: 'file.path.toLowerCase()', kind: 'identity', why: 'the haystack of the folder suggest filter — a needle-and-haystack site, identity only for this round' },

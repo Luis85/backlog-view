@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it } from 'vitest';
 import { intlLocale, resolveCatalog } from '../../src/i18n/locale';
-import { Catalog, list, setLocale, t, activeLocale } from '../../src/i18n/t';
+import { Catalog, compareText, foldForMatch, formatNumber, list, setLocale, t, activeLocale } from '../../src/i18n/t';
 import { resetLocale } from '../helpers/locale';
 import { shelfLabel } from '../../src/domain/roadmap';
 import { unscheduledLabel } from '../../src/domain/bars';
@@ -246,5 +246,70 @@ describe('a placement label reads the locale that is active when it is CALLED', 
 		expect(unscheduledLabel()).toBe('Ohne Termin');
 		expect(noStateLabel()).toBe('Kein Status');
 		expect(noStateCollisionLabel()).toBe('Nicht gesetzt');
+	});
+});
+
+/**
+ * The three presentation helpers, which all take the REQUESTED locale rather than the
+ * catalog's — the split `t()`'s own header states, asked of the half that is data.
+ *
+ * Every case here uses a locale with NO catalog on purpose. That is the arrangement the
+ * host default would survive undetected in: with a shipped catalog beside it, an assertion
+ * cannot tell "took the requested locale" from "took the resolved one".
+ */
+describe('collation, folding and numbers follow the requested locale', () => {
+	afterEach(() => resetLocale());
+
+	it('collates in the requested locale rather than the host default', () => {
+		// Swedish sorts `ä` AFTER `z`; German sorts it with `a`. So the pair is the
+		// assertion: a collator on the host default, or on the English catalog either of
+		// these falls back to, answers the same way twice.
+		setLocale('sv');
+		expect(compareText('ä', 'z')).toBeGreaterThan(0);
+		setLocale('de');
+		expect(compareText('ä', 'z')).toBeLessThan(0);
+	});
+
+	it('builds ONE collator per setLocale, not one per comparison', () => {
+		// The reason the helper exists rather than `localeCompare(b, locale)`, which
+		// constructs a collator for every comparison — n·log n of them inside a sort in a
+		// render path. Counted at the constructor, because the cost is not observable in
+		// any answer the helper gives.
+		const real = Intl.Collator;
+		let built = 0;
+		// A Proxy rather than a subclass: `Intl.Collator` is callable without `new` as well
+		// as constructible, and a `class` satisfies only half of that signature.
+		Intl.Collator = new Proxy(real, {
+			construct: (target, args: ConstructorParameters<typeof real>) => {
+				built++;
+				return new target(...args);
+			},
+		});
+		try {
+			setLocale('sv');
+			expect(built).toBe(1);
+			['a', 'b', 'c', 'd'].sort(compareText);
+			expect(built).toBe(1);
+		} finally {
+			Intl.Collator = real;
+		}
+	});
+
+	it('folds for matching in the requested locale, where toLowerCase would not', () => {
+		// Turkish folds `I` to `ı`. `toLowerCase()` gives `i` in every locale by
+		// specification, which is the bug: the filter misses a note plainly on screen.
+		setLocale('tr');
+		expect(foldForMatch('I')).toBe('ı');
+		setLocale('en');
+		expect(foldForMatch('I')).toBe('i');
+	});
+
+	it('formats a bare number with the SAME formatter a sentence uses', () => {
+		// German groups with a dot and there is no German catalog, so the sentence is
+		// English. The two numbers agreeing is what stops a count outside a sentence
+		// disagreeing with one inside it — they did, at a thousand.
+		setLocale('de', { en: sparse });
+		expect(formatNumber(12345)).toBe('12.345');
+		expect(t('count.items', { count: 12345 })).toBe('12.345 items');
 	});
 });

@@ -141,14 +141,23 @@ function activate(code: string, catalogs: Record<string, Catalog>): {
 	grammar: Grammar;
 	source: Grammar;
 	number: Intl.NumberFormat;
+	collator: Intl.Collator;
+	requested: string;
 } {
 	const name = resolveCatalog(code, Object.keys(catalogs));
+	// The ONE answer to "which locale does presentation use", taken once and shared by the
+	// two formatters and the fold below. `number.resolvedOptions().locale` is what `Intl`
+	// RESOLVED to and can differ from what was asked for, so a second reader taking it from
+	// there would be a second idea of the locale rather than the same one.
+	const requested = intlLocale(code);
 	return {
 		name,
 		messages: catalogs[name] ?? en,
 		grammar: grammarFor(name),
 		source: grammarFor(SOURCE_LOCALE),
-		number: new Intl.NumberFormat(intlLocale(code)),
+		number: new Intl.NumberFormat(requested),
+		collator: new Intl.Collator(requested),
+		requested,
 	};
 }
 
@@ -203,6 +212,47 @@ function localeOverride(): string | null {
 /** Which catalog is being read, and which locale `Intl` was given. */
 export function activeLocale(): { catalog: string; numbers: string } {
 	return { catalog: active.name, numbers: active.number.resolvedOptions().locale };
+}
+
+/**
+ * Collation, in the REQUESTED locale — an ordering is presentation of the user's own data,
+ * so it follows the user rather than the catalog: a French reader with no French catalog
+ * still sorts in French.
+ *
+ * The helper exists rather than a locale-passing `localeCompare` because of WHERE the
+ * comparison happens. `a.localeCompare(b, locale)` builds a fresh `Intl.Collator` per
+ * comparison, so a sort in a render path constructs n·log n of them; this one is built
+ * once per `setLocale`, beside the formatters, for the same reason they are. A bare
+ * `localeCompare(b)` is worse again — it takes the HOST's default, which is the operating
+ * system's language rather than Obsidian's. Both spellings are banned in `src/` by
+ * `no-restricted-properties` in `eslint.config.mjs`.
+ */
+export function compareText(a: string, b: string): number {
+	return active.collator.compare(a, b);
+}
+
+/**
+ * A string folded for MATCHING — what the user typed against what they can see — in the
+ * REQUESTED locale, for the same reason collation takes it: a filter that cannot find a
+ * note plainly on screen is the fold getting the locale wrong. Turkish is the worked
+ * example, where `I` folds to `ı` and `toLowerCase()` gives `i`.
+ *
+ * **This is the one fold in `src/` whose job is matching**, and it must stay the only one:
+ * every other fold decides what something *is* — a type name, a state, a persisted option
+ * key — and folding those with a locale corrupts vaults. `test/i18n/foldSites.ts`
+ * classifies all of them and the suite holds the split.
+ */
+export function foldForMatch(value: string): string {
+	return value.toLocaleLowerCase(active.requested);
+}
+
+/**
+ * A bare number shown to a person, in the REQUESTED locale — presentation, like collation.
+ * The SAME formatter `t()` gives a `{count}` parameter, so a count outside a sentence and
+ * one inside it cannot disagree; they did, at a thousand, which is what this exists for.
+ */
+export function formatNumber(value: number): string {
+	return active.number.format(value);
 }
 
 /**
