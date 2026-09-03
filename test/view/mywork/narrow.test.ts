@@ -173,4 +173,12 @@ describe('the rules that hold at every width', () => {
 		// to come after the `opacity: 0` it undoes.
 		expect(css.indexOf('@media (hover: none)')).toBeGreaterThan(css.indexOf('button.pbl-mw-menu {'));
 	});
+
+	it('dims a context row without an opacity over the whole row', () => {
+		// `opacity` over the row dims the badge and the chip with the title, and takes the
+		// title's own muted colour under the contrast floor. The emphasis is carried by
+		// colour instead, per element.
+		expect(css).not.toMatch(/\.pbl-mw-context\s*\{[^}]*opacity/);
+		expect(css).toMatch(/\.pbl-mw-context \.pbl-title/);
+	});
 });

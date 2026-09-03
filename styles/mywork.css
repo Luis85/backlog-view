@@ -79,12 +79,20 @@ button.pbl-mw-toggle-on {
 }
 
 /* A context ancestor is scaffolding holding a member in place, not something the reader
-   asked to see — dimmed for that, never hidden, or the member loses its place. The
-   identical rule `.pbl-rel-context` states for the release scope's own tree
-   (`releaseScope.css`), under this view's own class because the two trees are unrelated
-   screens sharing a shape rather than one screen the other includes. */
-.pbl-mw-context {
-	opacity: 0.62;
+   asked to see — de-emphasised for that, never hidden, or the member loses its place.
+   **By colour, not by `opacity`**, and that changed on 2026-09-03: `opacity: 0.62` over
+   the whole row dimmed the badge and the state chip along with the title, and multiplied
+   the title's own `--text-muted` down under the contrast floor a theme picked that token
+   to clear. Colour per element says the same thing and stays legible, and the badge — the
+   one part of the row that is a colour statement of its own — carries the softening
+   instead. The release scope's own `.pbl-rel-context` is the identical rule and was
+   changed with this one; two trees drawing one shape must not drift. */
+.pbl-mw-context .pbl-title {
+	color: var(--text-faint);
+}
+
+.pbl-mw-context .pbl-badge {
+	opacity: 0.7;
 }
 
 /* The note the workspace has open — a different fact from `.pbl-selected`, which is the

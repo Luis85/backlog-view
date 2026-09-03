@@ -1908,9 +1908,6 @@ export const en = {
 
 	/** The my-work view's own label, `release.viewName`'s case exactly. */
 	'mywork.viewName': 'My work',
-	/** Between construction and the first result set Bases delivers — the other views' own
-	 *  reason for saying so rather than showing an empty pane. */
-	'mywork.loading': 'Loading assigned work…',
 	/**
 	 * The two unconfigured states, `release.empty.noType`'s own split: one is a mapping to
 	 * bind, the other is a base that simply holds no roster yet.

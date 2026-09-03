@@ -1,10 +1,18 @@
 // @vitest-environment jsdom
 import { describe, expect, it } from 'vitest';
 import { MyWorkView } from '../../../src/view/mywork/myWorkView';
+import { WriteLock } from '../../../src/view/writeLock';
 import { makeMyWorkView, myWorkVault } from '../../helpers/mywork';
 import { t } from '../../../src/i18n/t';
 
 describe('the my-work view', () => {
+	it('shows the shared loading state before the first data update', () => {
+		const containerEl = document.createElement('div');
+		const view = new MyWorkView({} as never, containerEl, new WriteLock());
+
+		expect(view.viewEl.querySelector('.pbl-loading')).not.toBeNull();
+	});
+
 	it('says the assignee property is unbound rather than drawing an empty pane', () => {
 		const { view }: { view: MyWorkView } = makeMyWorkView(myWorkVault(), { assigneeProperty: '' });
 		expect(view.viewEl.querySelector('.pbl-empty-title')).not.toBeNull();

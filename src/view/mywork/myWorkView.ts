@@ -12,7 +12,7 @@ import { ItemWrite } from '../../domain/writePlan';
 import { applyWrites } from '../../storage/frontmatter';
 import { loadViewState, updateViewPrefs } from '../../storage/viewStateStore';
 import { resolveViewIdentity } from '../../storage/viewIdentity';
-import { guidanceShell } from '../render/emptyStates';
+import { guidanceShell, renderLoadingState } from '../render/emptyStates';
 import { OpenContext, OpenController } from '../openTarget';
 import type { TreeDraw } from '../scopeKeys';
 import { drawMyWorkTree } from './renderTree';
@@ -70,7 +70,10 @@ export class MyWorkView extends BasesView {
 		// control there has no button to land on, and an element removed from the document
 		// resets focus to `document.body` unless something else claims it first.
 		this.viewEl = containerEl.createDiv({ cls: 'pbl-view pbl-mw-view', attr: { tabindex: '-1' } });
-		this.viewEl.setText(t('mywork.loading'));
+		// The shared state, not a bare line of text: `renderLoadingState` carries the
+		// spinner, `role="status"` and `aria-live="polite"` that make this announce rather
+		// than sit there, and it costs no catalog key of this view's own.
+		renderLoadingState(this.viewEl);
 		this.settings = resolveMyWorkSettings({ get: () => undefined, getAsPropertyId: () => null } as never);
 		this.gate = new WriteGate<ItemWrite>(
 			{

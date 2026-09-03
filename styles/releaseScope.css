@@ -165,13 +165,13 @@ button.pbl-rel-desc-empty {
 	font-size: var(--font-ui-small);
 	color: var(--text-muted);
 }
-
-/* A context ancestor is scaffolding holding a member in place, not something the reader
-   asked to see — dimmed for that, never hidden, or the member loses its place. */
-.pbl-rel-context {
-	opacity: 0.62;
+/* Scaffolding, de-emphasised by colour rather than `opacity` over the row — see `styles/mywork.css`'s `.pbl-mw-context`. Changed together, 2026-09-03. */
+.pbl-rel-context .pbl-title {
+	color: var(--text-faint);
 }
-
+.pbl-rel-context .pbl-badge {
+	opacity: 0.7;
+}
 /* One release's scope reuses the tree's `.pbl-row` for its LAYOUT — the flex row, the
    `--pbl-depth` indent, `content-visibility` — and inherits gestures with it that this
    screen does not fully have: there is still no drag, which is why `user-select` is set
