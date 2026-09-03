@@ -591,8 +591,11 @@ widen the `ReleaseNoteRole` union with `'releaseCapacity'`, and add the catalog 
 risk keys are deliberately NOT in that list and stay out: they are read on MEMBERS, not on the
 release note, which is the distinction the table draws.
 
-Add a case to `test/domain/settingsConsistency.test.ts` binding `capacityProperty` to the same
-key as `releaseStatusProperty` and asserting the collision is reported.
+Add a case binding `capacityProperty` to the same key as `releaseStatusProperty` and asserting
+the collision is reported. It goes in `test/domain/releaseOptions.test.ts`, beside that file's
+existing `releaseNoteProblems` cases — there is **no** `test/domain/settingsConsistency.test.ts`
+in this repository, whatever an earlier draft of this plan said. Check where a function's
+existing cases live rather than inferring a filename from the module's.
 
 - [ ] **Step 8: Run the tests**
 
@@ -603,7 +606,7 @@ label — it must be passed as a parameter instead.
 - [ ] **Step 9: Commit**
 
 ```bash
-git add src/domain/releaseOptions.ts src/domain/settingsConsistency.ts src/view/release/init.ts src/i18n/en.ts test/helpers/releaseSettings.ts test/helpers/release.ts test/domain/releaseOptions.test.ts test/domain/settingsConsistency.test.ts test/view/release/init.test.ts
+git add src/domain/releaseOptions.ts src/domain/settingsConsistency.ts src/view/release/init.ts src/i18n/en.ts test/helpers/releaseSettings.ts test/helpers/release.ts test/domain/releaseOptions.test.ts test/view/release/init.test.ts
 git commit -m "Offer the capacity property and the unit it is in"
 ```
 
@@ -1350,7 +1353,28 @@ git commit -m "Close the capacity PBI, and correct what its notes promised"
 git push -u origin claude/next-increment-brainstorm-7pr3nj
 ```
 
-- [ ] **Step 7: Say what still needs a live vault**
+- [ ] **Step 7: Record what the instruments missed**
+
+Write `docs/issues/A piped command reports its pipe's exit code.md` — the shape this increment
+kept meeting, with what it cost:
+
+- `npm run check | tail -12` and `tsc … | tail -200` both report **`tail`'s** exit status, not
+  the command's. A failing gate reads as exit 0 with its own error text visible in the output.
+- It happened **three times in one increment**, to two independent agents and to the
+  coordinator: a broken `typecheck:test` was certified clean in a task report, then missed
+  again at the review gate, and CI on both platforms was what finally caught it.
+- The rule is `CLAUDE.md`'s own — *measure with an instrument that can see all of it, and test
+  the instrument first* — met by a spelling that rule did not name. The fix is
+  `cmd; echo "EXIT=$?"`, never a pipe, wherever an exit code is the answer.
+- Note the second instrument error beside it: two concurrent `npm run check` runs share
+  `coverage/.tmp`, so a parallel run fails with `ENOENT` or "something removed the coverage
+  directory". That is a collision, not a defect in the tree, and deleting the directory to
+  fix it makes it worse.
+
+Frontmatter as the folder's neighbours carry it (`type: Issue`, a `parent`, an `order`,
+`status: Done`), and the note states the evidence rather than the moral.
+
+- [ ] **Step 8: Say what still needs a live vault**
 
 The harness answers layout on Obsidian's DEFAULT colours. A themed vault's colours and accent,
 and anything Bases hands the view, are not answered here: report that the strip still owes a
