@@ -2,7 +2,7 @@
 type: PBI
 parent: "[[Capacity against commitment]]"
 order: 10
-status: Open
+status: Done
 created: 2026-08-21
 source: user request — release management concept refinement, 2026-08-21
 started: ""
@@ -22,7 +22,11 @@ iteration: ""
 capacity the release declared, in the unit my team uses, **so that** an over-commitment is
 legible as a sentence rather than as two bare numbers.
 
-Nothing yet. The commitment is the estimate summed over the members
+Built 2026-09-03: `ReleaseReadiness.capacity` and `.doubleCounted`
+(`src/domain/releaseReadiness.ts`), the two options that name the capacity property and the
+unit (`src/domain/releaseOptions.ts`), and the strip's own figure
+(`src/view/release/renderReadiness.ts`), which now draws the effort figures in that same unit
+too. The commitment is the estimate summed over the members
 [[The scope of a release as a tree]] resolves; the capacity is one number on the release note.
 
 ## Use case
@@ -82,8 +86,11 @@ Nothing yet. The commitment is the estimate summed over the members
 
 ## Where it lives
 
-The same new `src/domain/` derivation as the summary, from the model in
-`src/domain/model.ts`. The capacity key, the estimate key and the unit string are declared in
-`src/domain/viewOptions.ts`, and the capacity is read — and judged
-readable — where every other note value is, in `src/domain/readItems.ts`. The panel is the summary's own
-render module in `src/view/render/`.
+The same `src/domain/` derivation as the summary, from the model in `src/domain/model.ts`.
+The capacity key, the estimate key and the unit string are declared in
+`src/domain/releaseOptions.ts`, and the capacity is read — and judged readable — in
+`src/domain/releaseReadiness.ts`, not where every other note value is
+(`src/domain/readItems.ts`): `releaseReadiness.ts` already imports types from `releases.ts`,
+so a value import back the other way would be a runtime cycle, and that module already owns
+the other half of this comparison (the commitment), which is its stated reason for existing.
+The panel is the release summary's own render module, `src/view/release/renderReadiness.ts`.

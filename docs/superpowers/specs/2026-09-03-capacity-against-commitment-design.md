@@ -27,7 +27,7 @@ anything Bases hands the view, are still owed a live-vault check.
 | Decision | Why |
 | --- | --- |
 | Commitment is `readiness.estimatedEffort`, not a new sum | `releaseReadiness.ts` already sums each member's own estimate over `scope.members`, once, beside the criterion that reads the same key. A second sum here is the second walk that module exists to prevent, and two sums can disagree. |
-| Capacity is a `ReleaseFigure<number>` on `ReleaseRow` | It is one value on the release note, exactly like `version`, `target` and `status`, and it is read where they are (`releases.ts`). The three-state figure is what lets the strip tell "no key bound" from "somebody typed something unreadable" from "a number". |
+| Capacity is a `ReleaseFigure<number>` on `ReleaseReadiness` | It is one value on the release note, exactly like `version`, `target` and `status`, but it is read in `releaseReadiness.ts` rather than beside them in `releases.ts`: that module already imports types from `releases.ts`, so a value import back the other way would be a runtime cycle, and it already owns the other half of this comparison (the commitment), which is its stated reason for existing. The three-state figure is what lets the strip tell "no key bound" from "somebody typed something unreadable" from "a number". |
 | Negative capacity is judged on READ | Nothing in this plugin writes a capacity, so there is no entry surface to refuse one at — extension 1b. The feature note says "refused where it is entered", which no surface can deliver; **that sentence is what changes**, not the extension. |
 | `estimateValue` is the reader, unchanged | It already returns `null` for a non-numeric value and for a negative one, and its own comment cites this feature as the reason it refuses negatives. Reusing it makes "an unreadable capacity and an unreadable estimate are the same judgement" true by construction. |
 | The unit is one string on the view, not a property | The feature note's own argument: two properties would let a release disagree with its neighbour about the unit while the comparison added them up, and `40 points` in one field is a string nothing can sum. |
@@ -59,8 +59,12 @@ Each refusal is `.pbl-rel-unreadable`; each number is `.pbl-rel-figure`. Both cl
 
 ## Slice A — the numbers
 
-**`src/domain/releases.ts`** gains `capacity: ReleaseFigure<number>` on `ReleaseRow`, built
-beside `version` from the release note's own frontmatter, with the three-state figure's
+**`src/domain/releaseReadiness.ts`** gains `capacity: ReleaseFigure<number>` on
+`ReleaseReadiness`, not on `ReleaseRow` in `domain/releases.ts` as first drawn:
+`releaseReadiness.ts` already imports types from `releases.ts`, so a value import back the
+other way is a runtime cycle — and that module already owns the other half of this
+comparison (the commitment), which is its stated reason for existing. It is read the same
+way `version` is, from the release note's own frontmatter, with the three-state figure's
 fourth reading kept apart: no key bound is `unconfigured`, a key holding a value
 `estimateValue` refuses is `invalid`, a bound key with nothing at it is neither — value
 `null` and both flags false, which is how `version` and `target` already say "absent" — and
