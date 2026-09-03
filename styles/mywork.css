@@ -5,21 +5,27 @@
    the static state chip, and the "what is next" marker beside the title, below.
 
    Position in `styles/index.css`'s import list is NOT load-bearing, and since 2026-09-01
-   that is a claim about SPECIFICITY rather than about a disjoint vocabulary. Four rules
-   here re-target a selector another partial owns, each a two-class compound that beats
-   the bare single-class rule it targets — (0,2,0) against (0,1,0) — at any position in
-   that list: `.pbl-mw-view .pbl-row` sets `user-select` against `tree.css`'s bare
-   `.pbl-row`, and `.pbl-mw-view .pbl-state-text` sets `display` inside the narrow block
-   against `columns.css`'s bare `.pbl-state-text`, which declares only that element's
-   `overflow`/`text-overflow`. Added 2026-09-03 with the context row's own colour-based
-   emphasis: `.pbl-mw-context .pbl-title` sets `color` against `tree.css`'s bare
-   `.pbl-title`, and `.pbl-mw-context .pbl-badge` sets `opacity` against `badges.css`'s
-   bare `.pbl-badge` — the identical arithmetic. Everything else here is `.pbl-mw-*`, a
-   vocabulary no other partial declares — the disclosure (`button.pbl-twisty`,
-   `releaseScope.css`), the spacer (`.pbl-row-spacer`, `propertyColumns.css`) and the
-   state chip's own base rules (`.pbl-state-chip`, `.pbl-state-static`, …, `columns.css`)
-   are used here exactly as drawn. Write an UNPREFIXED rule over another partial's
-   selector and this paragraph is what contradicts you.
+   that is a claim about SPECIFICITY rather than about a disjoint vocabulary. **Six**
+   sites here re-target a selector another partial owns — counted by walking every
+   selector in this file against the class names the other partials declare, not by
+   reading down looking for them, because this inventory has been wrong twice from doing
+   that. Every one is a two-class compound at (0,2,0), beating the bare single-class rule
+   it targets at (0,1,0), so each wins from any position in the import list:
+   `.pbl-mw-view .pbl-row` (`user-select`, against `tree.css`'s bare `.pbl-row`),
+   `.pbl-mw-view .pbl-title` (`min-width`, against `tree.css`'s bare `.pbl-title`),
+   `.pbl-mw-view .pbl-state-text` (`display`, inside the narrow block, against
+   `columns.css`'s bare `.pbl-state-text`, which declares only that element's
+   `overflow`/`text-overflow`), `.pbl-mw-open .pbl-title` (`color`/`font-weight`,
+   `tree.css`'s bare `.pbl-title` again — drawn since Task 3, missed by this paragraph
+   until 2026-09-03's second correction), and — added 2026-09-03 with the context row's
+   own colour-based emphasis — `.pbl-mw-context .pbl-title` (`color`, `tree.css`'s bare
+   `.pbl-title` a third time) and `.pbl-mw-context .pbl-badge` (`opacity`, against
+   `badges.css`'s bare `.pbl-badge`). Everything else here is `.pbl-mw-*`, a vocabulary
+   no other partial declares — the disclosure (`button.pbl-twisty`, `releaseScope.css`),
+   the spacer (`.pbl-row-spacer`, `propertyColumns.css`) and the state chip's own base
+   rules (`.pbl-state-chip`, `.pbl-state-static`, …, `columns.css`) are used here exactly
+   as drawn. Write an UNPREFIXED rule over another partial's selector and this paragraph
+   is what contradicts you.
    ========================================================================== */
 
 /* A tree that DRAGS nothing may not keep the tree's own `user-select: none` —

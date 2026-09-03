@@ -20,19 +20,19 @@
    vocabulary reason `release.css`'s own header gives. This partial DOES re-target a class
    another file writes: `.pbl-row`/`.pbl-row:hover` (`tree.css`'s own),
    `.pbl-empty-filter-icon` (`toolbar.css`'s own) and, since 2026-09-03, `.pbl-title` and
-   `.pbl-badge` (`tree.css`'s and `badges.css`'s own); `button.pbl-twisty` is not
-   `.pbl-rel-*` either. What actually settles it is SPECIFICITY — every rule here that
-   re-targets one of those classes is a compound selector that outranks the single-class
-   rule it re-targets, whatever order the two partials import in. `index.css`'s own
-   import-list comment gives the arithmetic for each site; read it there rather than a
-   second time here.
+   `.pbl-badge` (`tree.css`'s and `badges.css`'s own) — five sites, each a compound
+   selector that outranks the single-class rule it re-targets on specificity alone,
+   whatever order the two partials import in; `button.pbl-twisty` is not `.pbl-rel-*`
+   either. `index.css`'s own import-list comment gives the arithmetic for each site,
+   rather than restating it here.
    ========================================================================== */
 
-/* The header stacks THREE lines — the release's identity with its facts
+/* The header stacks THREE lines: the release's identity with its facts
    (`.pbl-rel-hline`), the description under it (`.pbl-rel-desc`), and the footline
-   (`.pbl-rel-footline`, the summary and the closing actions on one row) — each its own
-   flex row. It said two, hline and `.pbl-rel-summary`, until 2026-08-30, when the summary
-   moved INSIDE the footline and the actions joined it there. */
+   (`.pbl-rel-footline`), which is the summary and the closing actions on one row. This is
+   what gives the three separate flex rows to arrange rather than one row they must all
+   agree on. It said two — hline and `.pbl-rel-summary` — until 2026-08-30, when the
+   summary moved INSIDE the footline and the actions joined it there. */
 .pbl-rel-header {
 	display: flex;
 	flex-direction: column;

@@ -158,10 +158,12 @@
    `releaseScope.css` declares `.pbl-rel-crit*` or `.pbl-rel-ready`, so the position
    BESIDE its neighbour here is a reading convenience. */
 @import "./releaseReadiness.css";
-/* Position NOT load-bearing, and not because nothing here overlaps another partial: four
-   sites re-target a foreign selector — `.pbl-row` and `.pbl-state-text` (both `.pbl-mw-view`-
-   prefixed) and, since 2026-09-03, `.pbl-title` (`tree.css`'s) and `.pbl-badge`
-   (`badges.css`'s), both `.pbl-mw-context`-prefixed — and all four win on the compound
-   selector's specificity alone, whatever position this import holds. The partial's own
-   header gives the arithmetic. */
+/* Position NOT load-bearing, and not because nothing here overlaps another partial: six
+   sites re-target a foreign selector — `.pbl-mw-view .pbl-row`, `.pbl-mw-view .pbl-title`
+   and `.pbl-mw-open .pbl-title` (all `tree.css`'s bare `.pbl-row`/`.pbl-title`),
+   `.pbl-mw-view .pbl-state-text` (`columns.css`'s bare `.pbl-state-text`), and, since
+   2026-09-03, `.pbl-mw-context .pbl-title` (`tree.css`'s bare `.pbl-title` again) and
+   `.pbl-mw-context .pbl-badge` (`badges.css`'s bare `.pbl-badge`) — and all six win on
+   the same (0,2,0)-against-(0,1,0) compound-selector arithmetic, whatever position this
+   import holds. The partial's own header gives the per-site properties. */
 @import "./mywork.css";
