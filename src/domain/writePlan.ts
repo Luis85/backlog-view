@@ -8,7 +8,7 @@ import { daysBetween, formatCivil } from './timeline';
 import { BacklogSettings, isDoneValue, isStartedValue } from './settings';
 import { OptionalField } from './optionalProperties';
 import { edgeRank, ORDER_SPACING, rankBetween, RankResult } from './rankArithmetic';
-import { drawnInRankOrder } from './rankOrder';
+import { distinctlyRanked, drawnInRankOrder } from './rankOrder';
 
 /**
  * What a change to the tree *would* write, worked out without touching anything.
@@ -925,6 +925,16 @@ export function dropPlacement(dragged: BacklogItem | null, target: DropTarget, r
 function invisibleRank(placed: RankResult, dragged: BacklogItem | null, target: DropTarget): RankResult {
 	if ('refusal' in placed) return placed;
 	if (target.parentUnchanged !== true || dragged === null) return placed;
+	// **Only where the write would LIFT the fallback.** With the writable rows already
+	// distinct the list is drawn in rank order, not tree order, and the drag is an ordinary
+	// visible move — nothing about it can rearrange anybody. Asked unconditionally the guard
+	// refuses one of those: writable `A(10)`, `D(20)` with a context `C(10)` beside them is
+	// correctly drawn (the tie breaks on `entryIndex`), yet peers A and C tie and the strict
+	// test says no. That is a feature loss, and it is the failure the control test beside
+	// this rule exists to catch — it simply did not cover a tie against a context row.
+	// `distinctlyRanked` over the whole list is exactly `inRankOrder`'s own fallback
+	// condition, so the two cannot drift apart.
+	if (distinctlyRanked([...target.peers, dragged])) return placed;
 	// **The peers must already stand in their own rank order, not merely hold distinct
 	// ranks.** Distinctness alone says the fallback WILL lift; it does not say the list comes
 	// back in the sequence the screen is showing. Drawn `A(30), B(10), C(10)`, dropping C at

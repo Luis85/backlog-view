@@ -561,6 +561,29 @@ describe('a focus drop past a ranked context row', () => {
 		expect(vault.writeLog).toEqual([]);
 	});
 
+	it('allows the drop where a context row TIES with a writable one and the list is ordered', async () => {
+		// Round four on this guard, and the one where the fix over-refused. Writable A(10) and
+		// D(20) are distinct, so the list is drawn in rank order and the drag is an ordinary
+		// visible move — but the context row C(10) ties with A, the peers fail the strict
+		// ascending test, and the drop was refused with a notice. A feature loss, and exactly
+		// what the control beside it was meant to catch: it did not, because it only covered a
+		// context row that DIFFERS from its writable neighbour rather than one that ties.
+		const vault = new FakeVault();
+		vault.addFile('Epic A.md', { frontmatter: { type: 'Epic', order: 1 } });
+		vault.addFile('Epic C.md', { frontmatter: { type: 'Epic', order: 2 } });
+		vault.addFile('Epic D.md', { frontmatter: { type: 'Epic', order: 3 } });
+		vault.addFile('A.md', { frontmatter: { type: 'PBI', order: 10 }, parentLink: 'Epic A' });
+		vault.addFile('C.md', { frontmatter: { type: 'PBI', order: 10 }, parentLink: 'Epic C' });
+		vault.addFile('D.md', { frontmatter: { type: 'PBI', order: 20 }, parentLink: 'Epic D' });
+		vault.addFile('T.md', { frontmatter: { type: 'Task', order: 50 }, parentLink: 'C' });
+		const { containerEl } = makeView(vault, {}, { focus: 'PBI', except: ['C.md'] });
+
+		drag(rowByTitle(containerEl, 'D'), rowByTitle(containerEl, 'A'), 'before');
+		await flush();
+
+		expect(vault.writeLog.map((w) => w.path)).toEqual(['D.md']);
+	});
+
 	it('still allows the drop when the list is not in fallback at all', async () => {
 		// The control, and it corrects the reading that nearly went in: with D ranked 30 the
 		// two WRITABLE rows are already distinct, so `inRankOrder` never falls back — the list

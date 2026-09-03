@@ -139,6 +139,16 @@ from.
   context row lifted to the top. An UNRANKED context row cannot reach the predicate at all:
   `rankablePeers` drops it first, the same skip `anchoredOrder` makes.
   **Checked by** `test/view/focusRanking.test.ts` — "refuses where the context row would be sorted above the row just dropped", with "still allows the drop when the list is not in fallback at all" as the control: with the writable rows already distinct there is no fallback, the drag moves something visible, and a guard that spoke there would be removing the feature rather than repairing it
+  **And it runs ONLY where the fallback is holding** (added 2026-09-03, the fourth round —
+  this one an OVER-refusal introduced by the third). Reading every peer made the guard
+  refuse a legitimate move: writable `A(10)` and `D(20)` are distinct, so the list is drawn
+  in rank order and the drag rearranges nobody, but a context `C(10)` ties with A, the peers
+  fail the strictly-ascending test, and the drop was refused with a notice. The bypass is
+  `distinctlyRanked` over the whole list — `inRankOrder`'s own fallback condition, so the
+  read side and the guard cannot drift apart. The control that was supposed to catch this
+  did not, because it covered a context row DIFFERING from its writable neighbour and never
+  one that ties: a control is only as wide as the case it varies.
+  **Checked by** `test/view/focusRanking.test.ts` — "allows the drop where a context row TIES with a writable one and the list is ordered"
 - **2e — the vault's ranks were never spread for this.** Two palette commands rewrite
   them all: **Seed ranks from the hierarchy** (`seed-ranks`) numbers every note in the
   order the tree draws it, and **Respace ranks** (`respace-ranks`) keeps the rank order and
