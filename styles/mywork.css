@@ -5,17 +5,21 @@
    the static state chip, and the "what is next" marker beside the title, below.
 
    Position in `styles/index.css`'s import list is NOT load-bearing, and since 2026-09-01
-   that is a claim about SPECIFICITY rather than about a disjoint vocabulary. Two rules
-   here re-target a selector another partial owns, and both are written as
-   `.pbl-mw-view <selector>` — (0,2,0) against the bare class's (0,1,0), so each wins from
-   any position in that list: `user-select` on `.pbl-row` (`tree.css`), and `display` on
-   `.pbl-state-text` inside the narrow block (`columns.css`, which declares only that
-   element's `overflow`/`text-overflow`). Everything else here is `.pbl-mw-*`, a vocabulary
-   no other partial declares — the disclosure (`button.pbl-twisty`, `releaseScope.css`),
-   the spacer (`.pbl-row-spacer`, `propertyColumns.css`) and the state chip's own base
-   rules (`.pbl-state-chip`, `.pbl-state-static`, …, `columns.css`) are used here exactly
-   as drawn. Write an UNPREFIXED rule over another partial's selector and this paragraph
-   is what contradicts you.
+   that is a claim about SPECIFICITY rather than about a disjoint vocabulary. Four rules
+   here re-target a selector another partial owns, each a two-class compound that beats
+   the bare single-class rule it targets — (0,2,0) against (0,1,0) — at any position in
+   that list: `.pbl-mw-view .pbl-row` sets `user-select` against `tree.css`'s bare
+   `.pbl-row`, and `.pbl-mw-view .pbl-state-text` sets `display` inside the narrow block
+   against `columns.css`'s bare `.pbl-state-text`, which declares only that element's
+   `overflow`/`text-overflow`. Added 2026-09-03 with the context row's own colour-based
+   emphasis: `.pbl-mw-context .pbl-title` sets `color` against `tree.css`'s bare
+   `.pbl-title`, and `.pbl-mw-context .pbl-badge` sets `opacity` against `badges.css`'s
+   bare `.pbl-badge` — the identical arithmetic. Everything else here is `.pbl-mw-*`, a
+   vocabulary no other partial declares — the disclosure (`button.pbl-twisty`,
+   `releaseScope.css`), the spacer (`.pbl-row-spacer`, `propertyColumns.css`) and the
+   state chip's own base rules (`.pbl-state-chip`, `.pbl-state-static`, …, `columns.css`)
+   are used here exactly as drawn. Write an UNPREFIXED rule over another partial's
+   selector and this paragraph is what contradicts you.
    ========================================================================== */
 
 /* A tree that DRAGS nothing may not keep the tree's own `user-select: none` —
@@ -81,12 +85,14 @@ button.pbl-mw-toggle-on {
 /* A context ancestor is scaffolding holding a member in place, not something the reader
    asked to see — de-emphasised for that, never hidden, or the member loses its place.
    **By colour, not by `opacity`**, and that changed on 2026-09-03: `opacity: 0.62` over
-   the whole row dimmed the badge and the state chip along with the title, and multiplied
-   the title's own `--text-muted` down under the contrast floor a theme picked that token
-   to clear. Colour per element says the same thing and stays legible, and the badge — the
-   one part of the row that is a colour statement of its own — carries the softening
-   instead. The release scope's own `.pbl-rel-context` is the identical rule and was
-   changed with this one; two trees drawing one shape must not drift. */
+   the whole row dimmed the badge along with the title, and multiplied the title's own
+   `--text-muted` down under the contrast floor a theme picked that token to clear — never
+   a state chip, which a context row draws none of at all (`drawScopeStateChip` in
+   `scopeRow.ts` returns early on `row.context`, for both trees). Colour per element says
+   the same thing and stays legible, and the badge — the one part of the row that is a
+   colour statement of its own — carries the softening instead. The release scope's own
+   `.pbl-rel-context` is the identical rule and was changed with this one; two trees
+   drawing one shape must not drift. */
 .pbl-mw-context .pbl-title {
 	color: var(--text-faint);
 }

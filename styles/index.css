@@ -139,16 +139,18 @@
    overriding it, so nothing here is decided by order either. */
 @import "./release.css";
 /* Position NOT load-bearing, but not because nothing here overlaps `release.css`.
-   `.pbl-row`/`.pbl-row:hover` (owned by `tree.css`) and `.pbl-empty-filter-icon` (owned
-   by `toolbar.css`) ARE re-targeted here, and what decides those three sites is
+   `.pbl-row`/`.pbl-row:hover` (owned by `tree.css`), `.pbl-empty-filter-icon` (owned by
+   `toolbar.css`) and, since 2026-09-03, `.pbl-title` (`tree.css`'s) and `.pbl-badge`
+   (`badges.css`'s) ARE re-targeted here, and what decides those five sites is
    SPECIFICITY, stated at each rule in this file: `.pbl-rel-view .pbl-row` is (0,2,0)
    against `tree.css`'s bare `.pbl-row` at (0,1,0); `.pbl-rel-view .pbl-row:hover` is
-   (0,3,0) against `tree.css`'s `.pbl-row:hover` at (0,2,0); and
+   (0,3,0) against `tree.css`'s `.pbl-row:hover` at (0,2,0);
    `.pbl-rel-alldone-icon.pbl-empty-filter-icon` is (0,2,0) against `toolbar.css`'s
-   `.pbl-empty-filter-icon` at (0,1,0). All three win on specificity alone, so this
-   partial's own import position is not what makes any of them apply. `.pbl-rel-bar` and
-   `.pbl-rel-spacer`, `release.css`'s own vocabulary, are the ones this file only ever
-   USES rather than redeclares. */
+   `.pbl-empty-filter-icon` at (0,1,0); and `.pbl-rel-context .pbl-title` /
+   `.pbl-rel-context .pbl-badge` are each (0,2,0) against the bare class each targets at
+   (0,1,0). All five win on specificity alone, so this partial's own import position is
+   not what makes any of them apply. `.pbl-rel-bar` and `.pbl-rel-spacer`, `release.css`'s
+   own vocabulary, are the ones this file only ever USES rather than redeclares. */
 @import "./releaseScope.css";
 /* Position load-bearing in one direction only: `.pbl-rel-crit` sets `max-width` against
    `columns.css`'s `.pbl-state-chip` at the same (0,1,0) specificity, so this partial must
@@ -156,6 +158,10 @@
    `releaseScope.css` declares `.pbl-rel-crit*` or `.pbl-rel-ready`, so the position
    BESIDE its neighbour here is a reading convenience. */
 @import "./releaseReadiness.css";
-/* Position NOT load-bearing: every selector here is `.pbl-mw-*`, a vocabulary no other
-   partial declares — see the partial's own header. */
+/* Position NOT load-bearing, and not because nothing here overlaps another partial: four
+   sites re-target a foreign selector — `.pbl-row` and `.pbl-state-text` (both `.pbl-mw-view`-
+   prefixed) and, since 2026-09-03, `.pbl-title` (`tree.css`'s) and `.pbl-badge`
+   (`badges.css`'s), both `.pbl-mw-context`-prefixed — and all four win on the compound
+   selector's specificity alone, whatever position this import holds. The partial's own
+   header gives the arithmetic. */
 @import "./mywork.css";
