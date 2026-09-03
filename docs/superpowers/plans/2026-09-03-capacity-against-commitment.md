@@ -635,7 +635,9 @@ The seven states, and the sentence each draws:
 | capacity key unbound | `committed` | `capacityUnconfigured` |
 | capacity absent on the note | `committed` | `capacityAbsent` |
 | unit unset (whatever the capacity is, and whether or not there is a commitment) | — | `capacityNoUnit` |
-| commitment unreadable or unconfigured | — | the capacity's own note, and the unit's if unset |
+| commitment unreadable or unconfigured, capacity readable | `capacityAlone` | — |
+| commitment unreadable or unconfigured, capacity not readable | — | the capacity's own note, and the unit's if unset |
+| nothing estimated, capacity readable | `capacityAlone` | — |
 
 **A release with NO MEMBERS draws none of this, and that is deliberate rather than an
 oversight.** `drawSummary` returns before the strip exists when `members === 0`
@@ -762,6 +764,13 @@ describe('capacity against commitment on the strip', () => {
 		);
 	});
 
+	it('draws a readable capacity even with no commitment to set it against', () => {
+		// A valid capacity has no state note, so returning early showed nothing at all for a
+		// release whose capacity is perfectly readable and whose estimate key is unbound.
+		const text = stripText(40, { ...CONFIGURED, estimateProperty: '' });
+		expect(text).toContain(t('release.scope.capacityAlone', { capacity: 40, unit: 'pts' }));
+	});
+
 	it('reports a missing unit even with no commitment to label', () => {
 		// Two unbound mappings, two notes. Behind the commitment return the reader was told
 		// about one of them.
@@ -842,6 +851,11 @@ In `src/i18n/en.ts`, beside the other `release.scope.*` figures:
 	/** Zero capacity: the other three figures still answer, the percentage cannot. */
 	'release.scope.capacityNoPct': '{commitment} of {capacity} {unit} committed ({over} over)',
 	'release.scope.capacityZero': 'A percentage needs a capacity',
+	/** The capacity alone, where there is no commitment to set it against — an unbound
+	 *  estimate key, an overflowed sum, or a release nobody has estimated. A readable number
+	 *  is worth drawing on its own; withholding it because the OTHER half is missing is the
+	 *  same defect as withholding the double count for an unset unit. */
+	'release.scope.capacityAlone': '{capacity} {unit} capacity',
 	/**
 	 * A positive capacity is not enough for a finite percentage: `estimateValue` accepts any
 	 * finite non-negative number, so a capacity near `Number.MIN_VALUE` overflows the ratio
@@ -984,8 +998,20 @@ function drawCapacityFigures(
 		return;
 	}
 	const commitment = readiness.estimatedEffort.value;
+	// **A readable capacity is drawn even with nothing to compare it against.** This
+	// function's own rule two branches up is that the capacity half is named whatever the
+	// other half does — and a VALID capacity has no state note, so returning here showed
+	// nothing at all for a release whose capacity is perfectly readable and whose estimate
+	// key happens to be unbound. Naming the number is what "the missing half is named"
+	// means from this side.
+	const alone = (): void => {
+		if (capacity.value !== null) figure(sumEl, t('release.scope.capacityAlone', { capacity: capacity.value, unit }));
+	};
 	// The effort figures beside this one already said why there is no total.
-	if (commitment === null) return;
+	if (commitment === null) {
+		alone();
+		return;
+	}
 	// **A release nobody has estimated sums to zero, and that zero is not a measurement.**
 	// `effortFigures` starts its total at 0 and adds nothing, so `estimatedEffort` is a real
 	// `0` rather than a null — which would draw `0 of 40 pts committed (0%, 40 left)` and
@@ -993,7 +1019,10 @@ function drawCapacityFigures(
 	// the COUNT of estimated members, never from the sum, for the reason `drawEffortFigures`
 	// states one function above: `0` is a valid estimate, so a release whose members all
 	// estimate zero is a genuine zero commitment and still compares.
-	if (estimatedMembers === 0) return;
+	if (estimatedMembers === 0) {
+		alone();
+		return;
+	}
 	if (capacity.value === null) {
 		figure(sumEl, t('release.scope.committed', { commitment, unit }));
 		return;
