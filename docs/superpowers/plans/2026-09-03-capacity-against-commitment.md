@@ -185,6 +185,19 @@ and in `resolveReleaseSettings`, beside `estimateKey`:
 		capacityKey: propKey('capacityProperty', ''),
 ```
 
+**A new field on this interface breaks a test helper.** `releaseSettingsWith` in
+`test/helpers/releaseSettings.ts` builds a complete `ReleaseSettings` literal field by field,
+so an added field makes it `string | undefined` and `npm run typecheck:test` exits 2 — a gate
+this task's targeted commands do not run. Add it there in its neighbours' style:
+
+```ts
+		capacityKey: '',
+```
+
+Do not widen the helper's type, make the field optional, or suppress the error: the builder
+exists to fail exactly this way. Task 3 adds `capacityUnit` and has the same requirement; that
+one was missed and CI caught it on both platforms.
+
 The option ROW that makes `capacityProperty` bindable is Task 3; this step is only the
 reading, so that Task 1 can be tested on a settings fixture.
 
@@ -248,7 +261,7 @@ resolver's whole shape on purpose.
 - [ ] **Step 7: Commit**
 
 ```bash
-git add src/domain/releaseReadiness.ts src/domain/releaseOptions.ts test/domain/releaseCapacity.test.ts
+git add src/domain/releaseReadiness.ts src/domain/releaseOptions.ts test/helpers/releaseSettings.ts test/domain/releaseCapacity.test.ts
 git commit -m "Read the capacity a release declares"
 ```
 
@@ -1340,20 +1353,7 @@ and under `### Changed`:
   always saying `pts`, and say nothing about units where none is set.
 ```
 
-- [ ] **Step 5: Run the full gate**
-
-Run: `npm run check`
-Expected: all seven steps PASS.
-
-- [ ] **Step 6: Commit and push**
-
-```bash
-git add docs/ CHANGELOG.md
-git commit -m "Close the capacity PBI, and correct what its notes promised"
-git push -u origin claude/next-increment-brainstorm-7pr3nj
-```
-
-- [ ] **Step 7: Record what the instruments missed**
+- [ ] **Step 5: Record what the instruments missed**
 
 Write `docs/issues/A piped command reports its pipe's exit code.md` — the shape this increment
 kept meeting, with what it cost:
@@ -1373,6 +1373,19 @@ kept meeting, with what it cost:
 
 Frontmatter as the folder's neighbours carry it (`type: Issue`, a `parent`, an `order`,
 `status: Done`), and the note states the evidence rather than the moral.
+
+- [ ] **Step 6: Run the full gate**
+
+Run: `npm run check`
+Expected: all seven steps PASS.
+
+- [ ] **Step 7: Commit and push**
+
+```bash
+git add docs/ CHANGELOG.md
+git commit -m "Close the capacity PBI, and correct what its notes promised"
+git push -u origin claude/next-increment-brainstorm-7pr3nj
+```
 
 - [ ] **Step 8: Say what still needs a live vault**
 
