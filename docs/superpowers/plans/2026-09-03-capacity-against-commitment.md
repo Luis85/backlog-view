@@ -382,16 +382,29 @@ and the walk beside `capacityFigure`:
  */
 function doubleCountFigure(app: App, scope: ReleaseScope, settings: ReleaseSettings): ReleaseFigure<number> {
 	if (settings.estimateKey === '') return UNCONFIGURED;
-	const open: number[] = [];
-	let counted_ = 0;
+	// One entry per estimated member still open, and `covers` is what makes this count the
+	// ANCESTOR: it is set when an estimated member arrives BELOW this one, and read when the
+	// subtree closes. Counting at the arrival instead counts the descendant, which is the
+	// reversed predicate — right on a chain, wrong on a fan.
+	const open: { depth: number; covers: boolean }[] = [];
+	let total = 0;
+	const close = (depth: number): void => {
+		while (open.length > 0 && open[open.length - 1].depth >= depth) {
+			if (open.pop()?.covers === true) total += 1;
+		}
+	};
 	for (const row of scope.rows) {
-		while (open.length > 0 && open[open.length - 1] >= row.depth) open.pop();
+		close(row.depth);
 		if (row.context) continue;
 		if (!isEstimated(estimateOf(app, row.item, settings))) continue;
-		if (open.length > 0) counted_ += 1;
-		open.push(row.depth);
+		// EVERY open estimate may already contain this one, not just the nearest: an Epic
+		// whose grandchild is estimated is covering an estimate too.
+		for (const entry of open) entry.covers = true;
+		open.push({ depth: row.depth, covers: false });
 	}
-	return counted(counted_);
+	// The last subtree has no row after it to close it.
+	close(-1);
+	return counted(total);
 }
 ```
 
@@ -401,8 +414,11 @@ and wire it in beside `capacity`:
 		doubleCounted: doubleCountFigure(app, scope, settings),
 ```
 
-Note the `while` pops ancestors at or deeper than the current row BEFORE the context check, so
-a context row between two members does not leave a stale ancestor open.
+Two things the shape is carrying. `close` pops ancestors at or deeper than the current row
+BEFORE the context check, so a context row between two members does not leave a stale ancestor
+open. And the count lands on the POP, never on the arrival: an estimated member is counted
+when its subtree closes and only if something estimated arrived inside it, which is what makes
+one Epic over two estimated PBIs report one rather than two.
 
 - [ ] **Step 4: Run the test to verify it passes**
 
@@ -675,6 +691,12 @@ describe('capacity against commitment on the strip', () => {
 		}
 	});
 
+	it('drops the unit clause rather than reading a blank one out', () => {
+		const text = stripText(40, { ...CONFIGURED, capacityUnit: '' });
+		expect(text).toContain(t('release.scope.provenanceCapacityNoUnit', { property: 'capacity' }));
+		expect(text).not.toContain(t('release.scope.provenanceCapacity', { property: 'capacity', unit: '' }));
+	});
+
 	it('names no property where the key itself is unbound', () => {
 		const text = stripText(40, { ...CONFIGURED, capacityProperty: '' });
 		expect(text).not.toContain(t('release.scope.provenanceCapacity', { property: '', unit: 'pts' }));
@@ -740,9 +762,12 @@ In `src/i18n/en.ts`, beside the other `release.scope.*` figures:
 		other: '{count} members may double count',
 	},
 	/** Drawn on every path with a bound capacity key — the unreadable one included, since
-	 *  that reader is the one who needs to know which key to repair. `{unit}` may be empty;
-	 *  the sentence still names the property, which is the part that locates the fix. */
+	 *  that reader is the one who needs to know which key to repair. */
 	'release.scope.provenanceCapacity': 'Capacity reads {property}, in {unit}.',
+	/** The same sentence with no unit set. A separate key rather than an empty parameter:
+	 *  `Capacity reads capacity, in .` is what a screen reader would say otherwise, and a
+	 *  message assembled around a blank is not a sentence in any language. */
+	'release.scope.provenanceCapacityNoUnit': 'Capacity reads {property}.',
 ```
 
 and change the two effort keys to take the same unit, each gaining an unlabelled twin:
@@ -817,9 +842,13 @@ function drawCapacity(sumEl: HTMLElement, readiness: ReleaseReadiness, settings:
 	// This is `drawEstimateProvenance`'s own lesson, which a review bot had to teach once
 	// already on the path above.
 	if (settings.capacityKey === '') return;
+	const property = settings.capacityKey;
 	sumEl.createSpan({
 		cls: 'pbl-sr-only',
-		text: t('release.scope.provenanceCapacity', { property: settings.capacityKey, unit: settings.capacityUnit }),
+		text:
+			settings.capacityUnit === ''
+				? t('release.scope.provenanceCapacityNoUnit', { property })
+				: t('release.scope.provenanceCapacity', { property, unit: settings.capacityUnit }),
 	});
 }
 
