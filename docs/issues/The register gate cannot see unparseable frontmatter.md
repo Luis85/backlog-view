@@ -2,13 +2,15 @@
 type: Issue
 order: 210
 parent: "[[Invariants as checks, not conventions]]"
-status: Open
+status: Done
 priority: P2
 area: verification
 created: 2026-08-26
+closed: 2026-09-02
 source: Whole-branch review of the release-index-design branch, 2026-08-26 — the reviewer planted a note and ran the gate
 files:
   - scripts/docs-check.mjs
+  - test/docs/checkerRejectsFrontmatter.test.ts
   - scripts/docs-markdown.mjs
 started: ""
 finished: ""
@@ -22,6 +24,50 @@ iteration: ""
 
 # The register gate cannot see unparseable frontmatter
 
+## Closed, 2026-09-02 — the gate parses, and the parse found a live casualty
+
+`frontmatter()` in `docs-check.mjs` calls `YAML.parse()` before any field is read, and one
+rule over every `.md` in the tree reports the parser's own first line. The general case is
+closed: whatever `yaml` refuses, the gate refuses, so a third spelling is no longer a hole
+that has to be predicted.
+
+**It caught one on `main` immediately.** `docs/requirements/Editing a release from its own
+screen.md` carried `priority` twice — `P2` at line 6 and `""` at line 31, the template stub
+left behind when the real value was added. No YAML parser accepts a duplicate key, so
+Obsidian had read **none** of that note's frontmatter since 2026-08-29: no `type`, no
+`parent`, no `status`, on no projection, in no rollup — and `npm run docs` had reported the
+register green for four days. It is the exact failure this note describes, met in the wild,
+and it was found by execution rather than by reading. Fixed in the same change by deleting
+the stub.
+
+### The dependency was priced wrong, not argued wrong
+
+This note refused the parser three times on ADR 0019 and ADR 0022 grounds — a new audit
+surface, a new Dependabot row, a new thing to keep green on two platforms. **`yaml` is none
+of those.** `npm ls yaml` puts 2.9.0 flat in `node_modules` already, deduped between `vite`
+(under vitest) and `yaml-eslint-parser` (under `eslint-plugin-obsidianmd`). It is on the
+audit surface and in Dependabot's tree today, whether or not this repository declares it.
+What the `devDependencies` entry buys is the right to **import** it, which fallow's
+dependency-hygiene gate otherwise refuses — and refusing to reach into an undeclared
+transitive is a rule this repository is right to keep.
+
+That is the whole correction. The cost that was being weighed was the cost of *adding* a
+package; the actual cost was a line in `package.json`. Nobody checked which, for three
+rounds, and the paragraph below still reads as if the question were open — it is kept
+because what was believed and when is the point of a record.
+
+### What the parse does NOT reach, and what is kept beside it
+
+- **It is `yaml`'s reading, not Obsidian's.** A conforming parser is a proxy. Obsidian is
+  the reader that decides whether a note is a work item, and only a live vault answers
+  that. Same remainder [[The checker reads frontmatter its own way]] names, unchanged.
+- **The ` #` rule stays**, because a plain-scalar hash **parses**. `source: Review of PR
+  #114, which found it` is valid YAML meaning `Review of PR`; the parser has no complaint
+  and the note silently means less than it says. A parse cannot see that class at all.
+- **The `[[` rule stays**, and this was measured rather than assumed: `source: [[A note]]`
+  with nothing after it parses cleanly as a nested list `[["A note"]]`. Only the form with
+  trailing prose is a parse error. So the parse catches a subset, and deleting the rule
+  would reopen the plain case.
 
 ## Narrowed, 2026-08-30 — the two spellings that have actually occurred are refused
 

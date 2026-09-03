@@ -177,8 +177,30 @@ job logs for four consecutive `main` commits — `b2907c35`, `d5ecbaac`, `6a2e0d
 `db137c16` — **Ubuntu and Windows agree to the unit on every metric on every one of them**,
 and on `db137c16` both agree with this machine as well.
 
-So **twenty measurements** — twelve local runs, eight CI runs across four commits and two
-operating systems — and not one covered unit apart.
+So twelve local runs and eight CI runs across four commits and two operating systems, and
+every comparison that is a comparison agrees to the unit.
+
+**This paragraph said "twenty measurements … not one covered unit apart" until 2026-09-02,
+and that is false as stated** — in PR #256's body as well as here. The four CI commits are
+**three different trees**: `b2907c35` and `d5ecbaac` at 10933/11030 statements, `6a2e0d97`
+at 10949/11046, `db137c16` at 10950/11047. Different denominators are not measurements of
+the same thing, so they cannot be "one unit apart" in either direction; pooling them into
+one agreement count made the sample sound four commits wider than it is.
+
+What the sample actually supports, stated as two claims because it is two:
+
+- **14 measurements of ONE tree agree to the unit** — twelve local runs plus both CI legs
+  on `db137c16`.
+- **4 cross-OS pairs agree to the unit**, one per commit, across those three trees. That is
+  the environment-shaped half, and it is four pairs rather than eight measurements of
+  anything.
+
+Recorded here as evidence rather than fixed quietly, because it is the same family as
+everything else this note catalogues: **an aggregate assembled from parts that are not
+comparable, reported as one number that is bigger than any of them.** It was written by the
+pass whose subject was that family, which is the part worth remembering — the arithmetic
+that inflates a count is not obviously wrong to the person doing it, and 14 + 4 pairs is
+what an instrument reports where 20 is what a summary wants.
 
 ### What that does and does not license
 
@@ -244,9 +266,10 @@ this sample distinguishes no cause, exactly as the three-run one did not.
 The question this note is asked at every ratchet — *is the fix a floor stated to a
 precision the measurement supports, or is the non-determinism itself worth root-causing?*
 
-**The precision is supported.** Twenty measurements agree to the unit, so the hundredth of
-a percent the floors are written at is not finer than the instrument on this tree. Nothing
-about the numbers needs restating.
+**The precision is supported.** Fourteen measurements of one tree agree to the unit (and
+four cross-OS pairs agree on their own trees — see the correction above, which is why this
+sentence no longer says "twenty"), so the hundredth of a percent the floors are written at
+is not finer than the instrument on this tree. Nothing about the numbers needs restating.
 
 **And the non-determinism cannot reach them.** Not "has not been seen to" — the band above
 says every drifting unit is at least 13 counts from the boundary, and every unit within 5

@@ -2,13 +2,16 @@
 type: Issue
 order: 60
 parent: "[[Invariants as checks, not conventions]]"
-status: Open
+status: Done
 priority: P2
 area: verification
 created: 2026-08-01
+closed: 2026-09-02
 source: 2026-08-01 review of PR
 files:
   - scripts/docs-check.mjs
+  - test/docs/checkerRejectsFrontmatter.test.ts
+  - test/docs/checkerAccepts.test.ts
   - src/domain/noteFields.ts
 started: ""
 finished: ""
@@ -21,6 +24,134 @@ iteration: ""
 ---
 
 # The checker reads frontmatter its own way
+
+## Closed, 2026-09-02 — measured first, then closed by deleting one of the two readers
+
+The acceptance criteria below asked for a **comparison**. It was run, and what it measured
+argued for something shorter than keeping it: there is now **one reader**, so there is no
+pair left to compare.
+
+### The differential, and the instrument
+
+`scripts/docs-check.mjs`'s regex reader, copied verbatim, against `yaml` 2.9.0, over every
+`.md` in the repository. Not a list of the five keys the gate happens to ask about — the
+union of every `^key:` line the reader's own model admits and every top-level key YAML
+produces, per note, because a check restricted to the keys somebody thought of is the shape
+this register keeps being burned by.
+
+**766 files scanned, 654 with frontmatter, 9,840 key questions. 15 disagreeing shapes.**
+
+| shape | notes | reader says | YAML says |
+| --- | --- | --- | --- |
+| a quoted value (`parent`, `release`) | 725 | `"[[X]]"` — quotes kept | `[[X]]` |
+| an empty string (`risk`, `iteration`, `horizon`, `assignee`, `started`, `finished`, `start`, `due`, `priority`) | 4,506 | `""` — two literal quote characters | `""` |
+| a block sequence (`files`, `dependsOn`) | 257 | the **first item only** | the whole list |
+| a value wrapped onto a second line (`source`) | 14 | the first line only | the folded scalar |
+| a block no parser accepts | 1 | answers every question | refuses the block |
+
+**The instrument was tested on ten hand-computed inputs before its numbers were believed,
+and the first run corrected three of them** — which is the part worth recording:
+
+- `parent:` bare, on the last line, was expected to diverge and **does not**. `has` and
+  `field` already split key-presence from value-presence, so the reader is capable of the
+  distinction. This note's founding instance was therefore a **call-site** bug (a rule
+  asking `field` where it meant `has`), not a reader bug — which nothing here had said.
+- `parent: "[[X]]"` and `started: ""` were expected to agree and **do not**. The reader
+  never unquotes. Compensated at the parent call site by a `"?` in its pattern, and
+  uncompensated everywhere else.
+
+Testing it also produced a finding no enumeration of mine had: `^name:\s*(.+)$` has `\s*`
+matching a **newline**, so a bare key takes the NEXT line's text as its value —
+`parent:\nstatus: Open` answers `field("parent") === "status: Open"`. Nothing in `docs/`
+is written that way, so the corpus sweep could never have shown it; it came out of the
+hand-computed case that the corpus said nothing about.
+
+### The fix is a deletion
+
+`frontmatter()` parses with `yaml`, `field`/`has` answer from the parsed map, and `raw` is
+no longer returned at all — the two rules that read it (the parent wikilink, the ADR date)
+were the two that had drifted. One reader, so no divergence to check and no comparator to
+maintain. The whole register stays green through the change: 654 notes, no rule reversed.
+
+Two undocumented restrictions came off with it, both the burn list's *"a pattern imposing
+a naming rule nothing states"* shape, and both watched failing on the old reader before the
+new accept case was believed: `date: "2026-08-24"` was "date is not YYYY-MM-DD" and
+`order: "30"` was "not a number", where YAML and Obsidian read both exactly as the unquoted
+form. Neither spelling is in `docs/` today, which is why nothing noticed.
+`checkerAccepts.test.ts` now holds them.
+
+One restriction was added, deliberately: the parent link is anchored at both ends, which
+the raw-text pattern could not be. `parent: "[[A]] and [[B]]"` used to name `A` — ranking a
+note under one of two parents, which is worse than reporting none.
+
+**Each of the five new assertions was watched failing**, by restoring a saved copy of the
+pre-change `docs-check.mjs` and running the case against it — never `git checkout`, which
+took an unrelated edit with it on an earlier pass. The mechanisms, because "it went red" is
+not one: the three unparseable cases and the two-parent case failed on `runRejections`'s own
+first assertion, *"expected the gate to reject this document, but it passed"* — the old
+reader answered every question about all four documents and exited 0. The accept case failed
+the other way, naming both refusals it exists to prevent: `order ""10"" is not a number` and
+`date is not YYYY-MM-DD`.
+
+**And the instrument that measured all this was itself tested first**, on ten inputs whose
+answers were computed by hand — including three that must AGREE, which is the half that
+catches a comparator reporting everything as a finding. That run is what corrected the three
+expectations above.
+
+### A correction from CI, and it is the instrument again
+
+The first push of this change **failed `npm run check`**, and the pull request body said it
+passed. `fallow` refused the new `frontmatter()` at **CRAP 42** — cyclomatic 6 in a script
+no test covers, which is above its threshold and was the honest answer: one function was
+doing the parse, the normalization and both accessors. Split into `parseBlock` (3) and
+`frontmatter` (4), same code, under the threshold.
+
+The claim was wrong because the way it was read was wrong: the run had been piped,
+`npm run check 2>&1 | tail -40`, and a pipeline exits with the status of `tail`. So `npm`
+exiting 1 was read as 0. Recorded here as well as in
+[[A gate that did not run looks like one that passed]], whose subject this turns out to be —
+that note is about a gate that never started, and this is one that ran, said no, and had its
+answer discarded on the way to being read. Both look like silence.
+
+The connection to this note's own subject is not decorative: **a second reader of a result
+is exactly what this change deleted, and I introduced one in the verification while deleting
+one from the gate.** `tail` was reading the gate's output where the exit code was the answer.
+
+### A second correction from review, and this one is the direction that matters
+
+Review (Codex, PR #257) found **the one place parsing is WEAKER than the line patterns it
+replaced.** A quoted `order: ""` parses to the empty string; `String("")` is `""`; and
+`Number("")` is **0** — finite, so a note with an explicitly blank rank was accepted at rank
+0 wherever no sibling had claimed it. The regex reader answered `'""'`, which `Number`
+refuses. So the change introduced a false green the old reader did not have, in the same
+edit whose whole argument was that the old reader was less exact.
+
+The differential above could not see it, and saying why is the useful part: it compares the
+two readers' **answers to the same key**, and both answers were "a value" — `'""'` and `""`.
+The disagreement is downstream, in what `Number()` does with each. **A differential over
+readers cannot see a divergence that only exists after a caller interprets what it read**,
+and that is a real limit of the instrument rather than a slip in running it.
+
+Fixed in `field` — a blank scalar reduces to absent — rather than beside `Number()`, because
+`order` is not the only site: `superseded-by`, `supersedes`, `title`, `area`, `adr` and
+`date` all test `field(…)` against `null` and would each have read a blank as a stated
+value. Two of them are now planted cases (a blank `order`, a Superseded ADR with a blank
+`superseded-by`), each watched failing against the one clause with everything else in place.
+
+`has` is deliberately unchanged: `parent: ""` still DECLARES the key, which is what the ADR
+prohibition asks. Stated a value / declared a key stays exact.
+
+### What is still not reached, and it is the same remainder as before
+
+**This is agreement with `yaml`, not with Obsidian.** A conforming parser is a proxy for
+the reader that actually decides whether a note is a work item, and only a live vault
+answers that — the criterion below asked for exactly this honesty and it is unchanged by
+the fix. [[Run the checks CI cannot]] is where that half lives.
+
+And the runtime half of the original seam is untouched by construction:
+`src/domain/noteFields.ts` takes an already-parsed `CachedMetadata` and never sees YAML
+text, so nothing here says anything about step 2 of the table below. What changed is that
+step 1 and step 3 are now the same parse.
 
 ## The limitation
 
