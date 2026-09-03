@@ -17,6 +17,10 @@ render function on the strip. Nothing is written, nothing is stored, no clock is
 
 - `npm run check` must pass before every commit — build, test typecheck, lint, markdown,
   coverage-thresholded tests, fallow, docs register. Coverage thresholds only ever go up.
+  **The targeted commands in each task's steps are the inner TDD loop, not the gate**: run
+  them while iterating, then run `npm run check` once before the commit step and commit only
+  on a clean exit. A task whose targeted suites pass can still fail coverage, fallow or the
+  docs register, and a commit that fails them is a commit that fails CI.
 - Four layers, outermost first: `main → commands → view → storage → domain`, each reaching
   only downward. `i18n/` imports nothing. Enforced by `eslint.config.mjs`.
 - **No English literal on a UI path.** Every sentence goes through `t()` and lives in
@@ -618,6 +622,15 @@ The seven states, and the sentence each draws:
 | unit unset (whatever the capacity is, and whether or not there is a commitment) | — | `capacityNoUnit` |
 | commitment unreadable or unconfigured | — | the capacity's own note, and the unit's if unset |
 
+**A release with NO MEMBERS draws none of this, and that is deliberate rather than an
+oversight.** `drawSummary` returns before the strip exists when `members === 0`
+(`renderScope.ts`), so an empty release shows no capacity figure. Reviewed and kept: the
+commitment there is a zero nobody measured, and `0 of 40 pts committed (0%, 40 left)` would
+report an empty release as having its whole capacity free — the same defect as the
+unestimated case above, reached by a different road. An empty release has nothing to compare,
+and [[Summing up a release]] extension 1a already says every figure on this strip reads as
+nothing to count there. Do not move the capacity outside that gate.
+
 The double count is drawn **outside this table**, once, on every path — it counts estimates
 and reads neither the capacity nor the unit, so no state above suppresses it.
 
@@ -709,6 +722,29 @@ describe('capacity against commitment on the strip', () => {
 		const text = stripText(40, { ...CONFIGURED, capacityUnit: '' });
 		expect(text).toContain(t('release.scope.capacityNoUnit'));
 		expect(text).not.toContain(t('release.scope.capacityOver', { commitment: 52, capacity: 40, unit: '', pct: 130, over: 12 }));
+	});
+
+	it('draws no comparison for a release nobody has estimated', () => {
+		// The sum is a real `0` there — absence presented as a measurement is the defect the
+		// effort figure beside this one already refuses.
+		const vault = capacityVault(40);
+		vault.setFrontmatter('F1.md', { type: 'Feature', parent: 'E', order: 1, release: '[[R]]' });
+		const { view, containerEl } = makeReleaseView(vault, CONFIGURED);
+		view.pick('R.md');
+		const text = containerEl.querySelector('.pbl-rel-summary')?.textContent ?? '';
+		expect(text).not.toContain(t('release.scope.capacityUnder', { commitment: 0, capacity: 40, unit: 'pts', pct: 0, left: 40 }));
+	});
+
+	it('still compares a release whose members all estimate zero', () => {
+		// `0` is a valid estimate: the guard reads the COUNT of estimated members, never the
+		// sum, so a genuinely zero commitment is a comparison and not an absence.
+		const vault = capacityVault(40);
+		vault.setFrontmatter('F1.md', { type: 'Feature', parent: 'E', order: 1, release: '[[R]]', effort: 0 });
+		const { view, containerEl } = makeReleaseView(vault, CONFIGURED);
+		view.pick('R.md');
+		expect(containerEl.querySelector('.pbl-rel-summary')?.textContent).toContain(
+			t('release.scope.capacityUnder', { commitment: 0, capacity: 40, unit: 'pts', pct: 0, left: 40 }),
+		);
 	});
 
 	it('reports a missing unit even with no commitment to label', () => {
@@ -884,7 +920,10 @@ function drawEffort(sumEl: HTMLElement, total: number, done: number | null, unit
  * is the drift that module exists to prevent.
  */
 function drawCapacity(sumEl: HTMLElement, readiness: ReleaseReadiness, settings: ReleaseSettings): void {
-	drawCapacityFigures(sumEl, readiness, settings);
+	// The SAME count `drawEffortFigures` reads, computed once and passed to both, so the two
+	// can never disagree about whether this release has been estimated at all.
+	const estimatedMembers = readiness.criteria.find((criterion) => criterion.key === 'estimated')?.cleared ?? 0;
+	drawCapacityFigures(sumEl, readiness, settings, estimatedMembers);
 	// **Outside the comparison, and drawn once.** The double count is a count of ESTIMATES:
 	// it does not read the capacity, it does not read the unit, and it answers on every path
 	// where the comparison cannot be drawn at all. Inside those branches it was suppressed
@@ -907,7 +946,12 @@ function drawCapacity(sumEl: HTMLElement, readiness: ReleaseReadiness, settings:
 	});
 }
 
-function drawCapacityFigures(sumEl: HTMLElement, readiness: ReleaseReadiness, settings: ReleaseSettings): void {
+function drawCapacityFigures(
+	sumEl: HTMLElement,
+	readiness: ReleaseReadiness,
+	settings: ReleaseSettings,
+	estimatedMembers: number,
+): void {
 	const capacity = readiness.capacity;
 	// The capacity's own state is named even with no commitment to compare it against —
 	// extension 2b's "both halves are named" — but a comparison needs both numbers.
@@ -927,6 +971,14 @@ function drawCapacityFigures(sumEl: HTMLElement, readiness: ReleaseReadiness, se
 	const commitment = readiness.estimatedEffort.value;
 	// The effort figures beside this one already said why there is no total.
 	if (commitment === null) return;
+	// **A release nobody has estimated sums to zero, and that zero is not a measurement.**
+	// `effortFigures` starts its total at 0 and adds nothing, so `estimatedEffort` is a real
+	// `0` rather than a null — which would draw `0 of 40 pts committed (0%, 40 left)` and
+	// report a completely unsized release as having its whole capacity free. Decided from
+	// the COUNT of estimated members, never from the sum, for the reason `drawEffortFigures`
+	// states one function above: `0` is a valid estimate, so a release whose members all
+	// estimate zero is a genuine zero commitment and still compares.
+	if (estimatedMembers === 0) return;
 	if (capacity.value === null) {
 		figure(sumEl, t('release.scope.committed', { commitment, unit }));
 		return;
