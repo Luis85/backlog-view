@@ -85,7 +85,9 @@ from.
   Measured on that same list: Seed writes the writable rows apart, the fallback lifts, and
   the null-ordered context row leaves the TOP of the focused list for the bottom — drawn
   `Ctx, A, B` before and `A, B, Ctx` after, with Seed never touching that note. The drop
-  then lands where it was aimed (`B` written 3500, redrawn `B, A, Ctx`). So the refusal is
+  then lands where it was aimed, and writes. The rank it writes is not quoted here on
+  purpose: it is whatever Seed happened to leave the two neighbours at, so a figure would
+  be a fact about one run of one command rather than about this extension. So the refusal is
   transient, and the price of lifting it is a row moving on screen that the user did not
   ask to move. The capability this extension's own test appeared to prove was not present
   in that shape: the assertion stopped at the write and never looked at the screen the
