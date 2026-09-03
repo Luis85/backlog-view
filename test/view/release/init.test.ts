@@ -5,7 +5,7 @@ import { releaseNoteProblems } from '../../../src/domain/settingsConsistency';
 import { en } from '../../../src/i18n/en';
 import { RELEASE_SUGGESTED_KEYS, runReleaseInit } from '../../../src/view/release/init';
 import { bindAndReport } from '../../../src/view/release/newRelease';
-import { makeReleaseView, mountRelease, RELEASE_CONFIG, scopeVault } from '../../helpers/release';
+import { makeReleaseView, mountRelease, noReleaseVault, RELEASE_CONFIG, scopeVault } from '../../helpers/release';
 import { FakeVault } from '../../helpers/vault';
 import { useViewHarness } from '../../helpers/view';
 
@@ -231,6 +231,22 @@ describe('runReleaseInit', () => {
 		// `releaseStatusValues` is absent from this list.
 		expect(config.get('criticalRiskValues')).toBeUndefined();
 		expect(config.get('addressedRiskValues')).toBeUndefined();
+	});
+
+	it('binds only the option it was narrowed to', async () => {
+		const { view } = makeReleaseView(noReleaseVault(), {});
+		const bound = await runReleaseInit(view, ['estimateProperty']);
+
+		expect(bound).toBe(true);
+		expect(view.config.getAsPropertyId('estimateProperty')).toBe('note.effort');
+		// Every other candidate is untouched — the whole point of the narrowing.
+		expect(view.config.getAsPropertyId('capacityProperty')).toBeNull();
+		expect(view.config.getAsPropertyId('membershipProperty')).toBeNull();
+	});
+
+	it('reports nothing bound when the narrowed option is already set', async () => {
+		const { view } = makeReleaseView(noReleaseVault(), { estimateProperty: 'note.effort' });
+		expect(await runReleaseInit(view, ['estimateProperty'])).toBe(false);
 	});
 });
 

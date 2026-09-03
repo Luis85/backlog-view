@@ -43,7 +43,7 @@ export function renderNewRelease(view: ReleaseView, parentEl: HTMLElement): void
  * dialog (the requirement's "stays quiet when it did not"), while a standalone control
  * with nothing after it would otherwise look dead.
  */
-export async function bindAndReport(view: ReleaseView): Promise<boolean> {
+export async function bindAndReport(view: ReleaseView, only?: string[]): Promise<boolean> {
 	// Read from the LIVE config, never from `view.settings`: that field is a snapshot from
 	// the last data update, so an option bound since then reads as unset here and the press
 	// reports a configuration change it did not make — `init.ts`'s own documented trap, met
@@ -54,8 +54,10 @@ export async function bindAndReport(view: ReleaseView): Promise<boolean> {
 	// already puts that question to the live config (`adoptCandidates`), binds only what
 	// nobody has touched, leaves a cleared option alone and does nothing at all when
 	// everything is bound — a second reading of the same question here could only ever come
-	// to disagree with it.
-	await runReleaseInit(view);
+	// to disagree with it. `only` narrows WHICH candidates it binds and never widens what
+	// this function reports: a filtered press still counts as bound exactly when the config
+	// actually changed.
+	await runReleaseInit(view, only);
 	return boundKeys(view.config) !== before;
 }
 
