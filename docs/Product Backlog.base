@@ -72,6 +72,10 @@ views:
     releaseNotesFolder: docs/release-notes
     releasedStatusValues: Released
     releasedTransitionValue: Released
+    dependsOnProperty: note.dependsOn
+    riskProperty: note.risk
+  - type: product-my-work
+    name: My Work
   - type: table
     name: ADRs
     filters:
@@ -108,5 +112,6 @@ views:
       - status
       - area
       - tags
+      - order
     columnSize:
       note.area: 152
