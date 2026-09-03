@@ -4,8 +4,13 @@ import { ReleaseView } from '../../src/view/release/releaseView';
 import { installObsidianDom } from './dom';
 import { Modal } from './obsidian-mock';
 import { FakeVault, FakeViewConfig, mountLeaf, mountView, setResults } from './vault';
-import { flush } from './view';
 import { fakeController } from '../helpers/vault';
+
+/** `view.ts`'s own one-liner, inlined: that module reads `node:fs` and imports vitest, so
+ *  importing it here made the release HARNESS bundle unbuildable. */
+function flush(): Promise<void> {
+	return new Promise((resolve) => setTimeout(resolve, 0));
+}
 
 /** `t.pbl-row[data-path="…"]` — the scope tree's own row, or null when `optional` says a
  *  missing one is the assertion rather than a broken fixture. Reads `view.viewEl` rather
