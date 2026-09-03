@@ -33,7 +33,7 @@ anything Bases hands the view, are still owed a live-vault check.
 | The unit is one string on the view, not a property | The feature note's own argument: two properties would let a release disagree with its neighbour about the unit while the comparison added them up, and `40 points` in one field is a string nothing can sum. |
 | One figure on the existing strip | The strip already wraps by design (`.pbl-rel-summary` is `flex-wrap`), every class this needs is in the sheet, and a dedicated region or a second bar is a new idiom for one sentence. Confirmed in the harness rather than assumed. |
 | The double count is NAMED, never resolved | Only the vault knows whether its parent estimates are aggregates. A view that guessed would be silently wrong in whichever direction it guessed — the feature note's own words. |
-| Utilization only where capacity > 0 | Dividing by zero prints an infinity as a percentage. Zero capacity is a real statement and keeps the other three figures. |
+| Utilization only where capacity > 0 **and the result is finite** | Dividing by zero prints an infinity as a percentage. Zero capacity is a real statement and keeps the other three figures. A positive capacity is not enough on its own: `estimateValue` accepts any finite non-negative number, so a capacity near `Number.MIN_VALUE` against an ordinary commitment overflows the ratio, and `∞%` is a percentage nobody can act on. The figure is drawn from `Number.isFinite` on the computed percentage, never from the sign of the capacity alone. |
 
 ## The strip
 
@@ -47,6 +47,7 @@ anything Bases hands the view, are still owed a live-vault check.
 | Over-committed | `52 of 40 pts committed (130%, 12 over)` |
 | Under-committed | `31 of 40 pts committed (78%, 9 left)` |
 | Capacity zero | `52 of 0 pts committed (52 over)` + `A percentage needs a capacity` |
+| Utilization overflows | `52 of 0.000…1 pts committed (52 over)` + `The utilization is too large to state` — the same three figures, a different reason for the missing fourth |
 | Capacity negative or not a number | `52 pts committed` + `Capacity is not a number` |
 | Capacity key unbound | `52 pts committed` + `Capacity is not configured` |
 | Key bound, no value on the note | `52 pts committed` + `This release declares no capacity` |
@@ -67,9 +68,12 @@ anything else is the number. Absent and unconfigured are drawn differently becau
 the reader to different places: one is a property to bind, the other a number to type.
 
 **`src/domain/releaseReadiness.ts`** gains one function returning the double-count figure: a
-single pass over `scope.rows` carrying a stack of open member ancestors, counting each member
-that carries an estimate while an ancestor member in the same release carries one. It reads
-`isEstimated`, so it can never disagree with the sums beside it. Context rows are not members
+single pass over `scope.rows` carrying a stack of the open estimated members, counting each
+member that carries an estimate **while a DESCENDANT member in the same release carries one**
+— the feature note's own direction, and not its reverse. The two differ wherever a subtree is
+not a chain: one estimated Epic over two estimated PBIs is **one** possible double count, the
+Epic, and counting the descendants instead would report two. It reads `isEstimated`, so it can
+never disagree with the sums beside it. Context rows are not members
 and are in no count — the context-row rule, asked of this figure like every other.
 
 The comparison itself — difference, utilization, and which of the seven states holds — is

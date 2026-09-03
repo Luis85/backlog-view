@@ -262,10 +262,14 @@ git commit -m "Read the capacity a release declares"
   within THIS tree and `context: true` marks an ancestor drawn only to hold a member in place;
   `isEstimated(raw: unknown): boolean` from this module.
 - Produces: `ReleaseReadiness.doubleCounted: ReleaseFigure<number>` — how many members carry
-  an estimate while an ancestor member in the same release carries one.
+  an estimate **while a descendant member in the same release carries one**.
 
-The count is of the DESCENDANTS, not the ancestors: it answers "this many estimates may
-already be inside another one". A context row is neither, in either direction.
+**The count is of the ANCESTORS, not the descendants**, and the direction is load-bearing:
+`docs/requirements/Capacity against commitment.md` counts "members carrying an estimate while
+a descendant in the same release carries one", which is the member whose estimate may already
+CONTAIN the others. The two directions agree on a chain and disagree on a fan: one estimated
+Epic over two estimated PBIs is **one** possible double count, not two. A context row is
+neither an ancestor nor a descendant for this purpose — it is not a member at all.
 
 - [ ] **Step 1: Write the failing test**
 
@@ -290,12 +294,24 @@ describe('estimates that may already be inside another estimate', () => {
 		expect(doubleCountOf(vault)).toBe(1);
 	});
 
-	it('counts each estimated descendant once, however deep the chain', () => {
+	it('counts each estimated ancestor once, however deep the chain', () => {
 		const vault = baseVault();
 		vault.addFile('E.md', { frontmatter: { type: 'Epic', order: 1, release: '[[R]]', effort: 8 } });
 		vault.addFile('F.md', { frontmatter: { type: 'Feature', parent: 'E', order: 1, release: '[[R]]', effort: 5 } });
 		vault.addFile('P.md', { frontmatter: { type: 'PBI', parent: 'F', order: 1, release: '[[R]]', effort: 2 } });
+		// `E` and `F` each cover something estimated below them; `P` covers nothing.
 		expect(doubleCountOf(vault)).toBe(2);
+	});
+
+	it('counts the ancestor once, not each estimated child under it', () => {
+		// The case that tells the two directions apart, and the one a chain cannot: ONE
+		// estimate may already contain the two below it, so there is one possible double
+		// count and not two.
+		const vault = baseVault();
+		vault.addFile('E.md', { frontmatter: { type: 'Epic', order: 1, release: '[[R]]', effort: 8 } });
+		vault.addFile('P1.md', { frontmatter: { type: 'PBI', parent: 'E', order: 1, release: '[[R]]', effort: 3 } });
+		vault.addFile('P2.md', { frontmatter: { type: 'PBI', parent: 'E', order: 2, release: '[[R]]', effort: 2 } });
+		expect(doubleCountOf(vault)).toBe(1);
 	});
 
 	it('does not count a descendant whose ancestor carries no estimate', () => {
@@ -305,7 +321,7 @@ describe('estimates that may already be inside another estimate', () => {
 		expect(doubleCountOf(vault)).toBe(0);
 	});
 
-	it('does not count an estimated ancestor whose children are unestimated', () => {
+	it('does not count an estimated member whose children are unestimated', () => {
 		const vault = baseVault();
 		vault.addFile('E.md', { frontmatter: { type: 'Epic', order: 1, release: '[[R]]', effort: 8 } });
 		vault.addFile('F.md', { frontmatter: { type: 'Feature', parent: 'E', order: 1, release: '[[R]]' } });
@@ -391,7 +407,7 @@ a context row between two members does not leave a stale ancestor open.
 - [ ] **Step 4: Run the test to verify it passes**
 
 Run: `npx vitest run test/domain/releaseCapacity.test.ts`
-Expected: PASS, 13 tests.
+Expected: PASS, 14 tests.
 
 - [ ] **Step 5: Verify the invariant by reverting it**
 
@@ -534,6 +550,7 @@ The seven states, and the sentence each draws:
 | capacity > 0, commitment ≥ capacity | `capacityOver` | — |
 | capacity > 0, commitment < capacity | `capacityUnder` | — |
 | capacity 0 | `capacityNoPct` | `capacityZero` |
+| capacity > 0, ratio overflows | `capacityNoPct` | `capacityPctOverflow` |
 | capacity invalid | `committed` | `capacityUnreadable` |
 | capacity key unbound | `committed` | `capacityUnconfigured` |
 | capacity absent on the note | `committed` | `capacityAbsent` |
@@ -590,6 +607,14 @@ describe('capacity against commitment on the strip', () => {
 		expect(stripText(60)).toContain(
 			t('release.scope.capacityUnder', { commitment: 52, capacity: 60, unit: 'pts', pct: 87, left: 8 }),
 		);
+	});
+
+	it('withholds the percentage when the ratio overflows, and says why', () => {
+		// A positive capacity is not enough on its own — the guard is on the RESULT.
+		const text = stripText(Number.MIN_VALUE);
+		expect(text).toContain(t('release.scope.capacityPctOverflow'));
+		expect(text).not.toContain('Infinity');
+		expect(text).not.toContain('%');
 	});
 
 	it('withholds the percentage at zero capacity, and says why', () => {
@@ -657,6 +682,12 @@ In `src/i18n/en.ts`, beside the other `release.scope.*` figures:
 	/** Zero capacity: the other three figures still answer, the percentage cannot. */
 	'release.scope.capacityNoPct': '{commitment} of {capacity} {unit} committed ({over} over)',
 	'release.scope.capacityZero': 'A percentage needs a capacity',
+	/**
+	 * A positive capacity is not enough for a finite percentage: `estimateValue` accepts any
+	 * finite non-negative number, so a capacity near `Number.MIN_VALUE` overflows the ratio
+	 * itself. The three figures still answer; the fourth says why it cannot.
+	 */
+	'release.scope.capacityPctOverflow': 'The utilization is too large to state',
 	/** The commitment alone, where the capacity half cannot be read. */
 	'release.scope.committed': '{commitment} {unit} committed',
 	'release.scope.capacityUnreadable': 'Capacity is not a number',
@@ -768,8 +799,12 @@ function drawCapacity(sumEl: HTMLElement, readiness: ReleaseReadiness, settings:
 	// itself, and `∞%` is a percentage nobody can act on.
 	const pct = Math.round(100 * (commitment / capacity.value));
 	if (!Number.isFinite(pct)) {
-		figure(sumEl, t('release.scope.committed', { commitment, unit }));
-		note(sumEl, t('release.scope.capacityUnreadable'));
+		// The capacity IS a number and IS positive — it is the ratio that overflowed — so
+		// this is not `capacityUnreadable`, which would send the reader to fix a value that
+		// is fine. Same three figures as the zero case, a different reason for the fourth.
+		figure(sumEl, t('release.scope.capacityNoPct', { commitment, capacity: capacity.value, unit, over }));
+		note(sumEl, t('release.scope.capacityPctOverflow'));
+		drawDoubleCount(sumEl, readiness);
 		return;
 	}
 	figure(
