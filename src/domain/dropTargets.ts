@@ -169,7 +169,12 @@ export function dropTargetFor(
 	// back in at its own original index in THAT list reproduces it — which means the drop is a no-op
 	// precisely when the insert index equals that index. Read off `model.roots` instead
 	// and the comparison shifts by the number of unranked context rows above the row,
-	// so a drop that moves nothing reads as a move and spends the undo slot.
+	// so a drop that moves nothing reads as a move. What it spends is not the undo slot,
+	// and that is worth being exact about: the two lists differ only where such a row is
+	// drawn ABOVE the dragged one, which is only while the tree-order fallback holds, and
+	// `invisibleRank` refuses every write there. The cost is a NOTICE — the planner tells
+	// the user to seed a list they never asked to reorder. Measured both ways, in
+	// `test/view/focusedUnrankedContext.test.ts`.
 	if (model.focused && model.roots.includes(dragged) && position.parent === dragged.parent) {
 		// `rankablePeers(model.roots)`, matching the list `peers` was built from — the two
 		// disagree by the number of unranked context rows ABOVE the dragged row, and reading

@@ -2,7 +2,7 @@
 import { describe, expect, it } from 'vitest';
 import { ProductBacklogView } from '../../src/view/backlogView';
 import { FakeVault, FakeViewConfig } from '../helpers/vault';
-import { Menu } from '../helpers/obsidian-mock';
+import { Menu, Notice } from '../helpers/obsidian-mock';
 import { clickExpandAll, drag, flush, key, rowByTitle, titlesOf, treeOf, useViewHarness } from '../helpers/view';
 
 useViewHarness();
@@ -144,10 +144,13 @@ describe('ranking PAST an unranked context row', () => {
 	 * returned `B, A, Ctx` for a gesture that asked for `Ctx, B, A`. The rank the three inputs
 	 * agreed on was a rank that produced the wrong screen, so agreeing on it was not enough.
 	 *
-	 * No rank can do better here, which is why this is a refusal rather than a better number:
-	 * the context row's position is fixed at last-once-sorted and nothing can ever give it a
-	 * rank. So the capability this file was written to prove was never really present in this
-	 * shape — it looked present because the assertion stopped at the write.
+	 * No rank can do better WHILE THE FALLBACK HOLDS, which is why this is a refusal rather
+	 * than a better number: the context row's position is fixed at last-once-sorted and
+	 * nothing can ever give it a rank. The refusal is not the end of the road, though —
+	 * `rank.unseededList` names Seed and Seed works, at the price of moving that context row
+	 * from the top of the list to the bottom. So the capability this file was written to
+	 * prove was not present in this shape — it looked present because the assertion stopped
+	 * at the write.
 	 */
 	it('has the drag, Alt+ArrowUp and the move menu all REFUSE, identically', async () => {
 		const dragged = focusedView(['Ctx', 'A', 'B']);
@@ -179,15 +182,30 @@ describe('ranking PAST an unranked context row', () => {
 	// guard reading the unfiltered list misses the no-op and writes to a row that did not
 	// move. Peers and index have to come off the SAME list, and only this shape shows it.
 	/**
-	 * **Shadowed as of 2026-09-03, and kept with that said out loud.** The refusal above now
-	 * answers this fixture too, so a zero-write assertion here would pass with the no-op
-	 * check deleted — it would prove nothing about the index lists it was written for.
+	 * **The no-op check is still discriminating, and the observable is a NOTICE, not a
+	 * write.** The todo that stood here until 2026-09-03 said the shape needed "a fixture
+	 * with no unranked context row drawn above the rows in play", which is the one shape
+	 * where the two index lists agree — so it asked for a fixture that cannot discriminate.
+	 * The real reachability question is narrower and it comes out the other way.
 	 *
-	 * The subject is still worth a test and the fixture is the wrong one for it; the shape
-	 * that discriminates needs a focused list the guard does not refuse, which is a fixture
-	 * with no unranked context row drawn above the rows in play. Recorded rather than
-	 * quietly left green: a test that cannot fail for its own reason is not coverage, and
-	 * this file's own comment above says exactly that about its first version.
+	 * The lists disagree only where an unranked context row is drawn ABOVE the dragged row,
+	 * and that only happens while the tree-order fallback holds — a null sorts last the
+	 * moment it lifts. So `invisibleRank` refuses every write on exactly these fixtures, and
+	 * a zero-write assertion here proves nothing, which is what the todo got right. But a
+	 * refusal is not silence: it draws `rank.unseededList`. Reading the index off
+	 * `model.roots` shifts it by the context rows above the dragged one, so a drop into the
+	 * row's OWN slot reads as a move, reaches the planner and tells the user to seed a list
+	 * they did not ask to reorder. Measured both ways on this fixture.
 	 */
-	it.todo('reads the no-op index off the same filtered list, on a fixture the guard allows');
+	it('says nothing when the drop is into the row\'s own slot, above an unranked context row', async () => {
+		const { containerEl, vault } = focusedView(['Ctx', 'A', 'B']);
+		Notice.messages = [];
+
+		// `PBI B` already draws straight after `PBI A`; this asks for the slot it is in.
+		drag(rowByTitle(containerEl, 'PBI B'), rowByTitle(containerEl, 'PBI A'), 'after');
+		await flush();
+
+		expect(vault.writeLog).toEqual([]);
+		expect(Notice.messages).toEqual([]);
+	});
 });

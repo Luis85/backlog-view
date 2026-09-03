@@ -72,19 +72,24 @@ from.
   context row stays: its number is a real constraint, and a swap past it would put the
   moved row above something on screen.
   **Checked by** `test/view/focusedUnrankedContext.test.ts` — "does not offer Move down past a context row with nothing to rank from"
-  **A permanent refusal is exactly what one of these lists gets, and this entry denied it
+  **A refusal is exactly what one of these lists gets, and this entry denied it
   until 2026-09-03.** Skipping the row as a NEIGHBOUR stands — that is `anchoredOrder`'s
   rule and it is unchanged. What the sentence above got wrong is the inference that no
   refusal may ever follow from such a row. A null sorts LAST the moment the fallback lifts,
   so an unranked context row drawn anywhere but last MOVES when a write ends the fallback:
   drawn `Ctx(null), A(5000), B(5000)`, dropping B above A wrote 2525 and returned
   `B, A, Ctx`, the dragged row past its slot and the untouched context row at the bottom.
-  No rank does better, because that row's sorted position is fixed and nothing can give it
-  one — so the move is refused, and for that list the refusal is permanent. The advice is
-  not "run a command"; it is that the list cannot be hand-ordered while that row is drawn
-  above the rows in play. The capability this extension's own test appeared to prove was
-  never present in that shape: the assertion stopped at the write and never looked at the
-  screen the write produced.
+  No rank does better while the fallback holds, because that row's sorted position is fixed
+  and nothing can give it one — so the move is refused, and `rank.unseededList` names the
+  remedy it always named. **The remedy WORKS, and the cost of it is what belongs here.**
+  Measured on that same list: Seed writes the writable rows apart, the fallback lifts, and
+  the null-ordered context row leaves the TOP of the focused list for the bottom — drawn
+  `Ctx, A, B` before and `A, B, Ctx` after, with Seed never touching that note. The drop
+  then lands where it was aimed (`B` written 3500, redrawn `B, A, Ctx`). So the refusal is
+  transient, and the price of lifting it is a row moving on screen that the user did not
+  ask to move. The capability this extension's own test appeared to prove was not present
+  in that shape: the assertion stopped at the write and never looked at the screen the
+  write produced.
   **Checked by** `test/view/focusedUnrankedContext.test.ts` — "has the drag, Alt+ArrowUp and the move menu all REFUSE, identically", and `test/view/focusRanking.test.ts` — "refuses where lifting the fallback would drop that row to the bottom", with "allows it where that row is already drawn last, since the sort agrees" as the control that keeps this from being a blanket refusal of every list holding a context row
 - **2b — the two neighbours have no room between them.** Nothing is written and a notice
   names the remedy: **Respace ranks** for a spent gap, the toolbar's set-up button for a
