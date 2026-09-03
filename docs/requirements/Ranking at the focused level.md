@@ -117,6 +117,17 @@ from.
   fallback. It does not touch an ordinary sibling reorder, which `compareSiblings` draws
   and the fallback never reaches.
   **Checked by** `test/view/focusRanking.test.ts` — "refuses a rank that could not show, rather than writing one nobody can see"
+  **Distinctness of the peers was not enough, and the second half of the rule is sharper
+  than the first** (added 2026-09-03, from PR review). Distinct peers say the fallback WILL
+  lift; they do not say the list comes back in the order the screen is showing. Drawn
+  `A(30), B(10), C(10)`, a dragged C has peers A and B holding distinct ranks, so the first
+  version allowed the drop — it wrote C a 20 and the list returned `B, C, A`. Two faults at
+  once, both worse than the invisible write this guard was built for: C is not at the top
+  where it was dropped, and B, which nobody touched, moved above A. The condition is
+  therefore that the peers ALREADY STAND in their own rank order (`drawnInRankOrder`,
+  strictly ascending along the drawn list, which implies distinctness and asks the stronger
+  question), so lifting the fallback leaves every untouched row where it is.
+  **Checked by** `test/view/focusRanking.test.ts` — "refuses, rather than landing the row elsewhere and moving an untouched one", with "still allows the drop where the peers already stand in their rank order" beside it as the control, since a guard that refused every focus drop would satisfy the first on its own
 - **2e — the vault's ranks were never spread for this.** Two palette commands rewrite
   them all: **Seed ranks from the hierarchy** (`seed-ranks`) numbers every note in the
   order the tree draws it, and **Respace ranks** (`respace-ranks`) keeps the rank order and

@@ -78,6 +78,30 @@ export function distinctlyRanked(rows: BacklogItem[]): boolean {
 }
 
 /**
+ * Whether these rows, in the order given, ALREADY stand in their own rank order.
+ *
+ * **Distinctness is not enough to know that lifting the fallback keeps the screen still**,
+ * and that is the difference this predicate exists for. `inRankOrder` draws a focused list
+ * in tree order while its rows are not distinctly ranked; the write that makes them
+ * distinct switches the whole list to the RANK order, which is a different sequence unless
+ * the ranks already agreed with the tree. Drawn `A(30), B(10), C(10)`, a drop of C at the
+ * top gives C a rank between them and the list comes back `B, C, A` — C is not where it was
+ * dropped, and B, which nobody touched, has moved. Measured, not supposed.
+ *
+ * Asked of the same rows `distinctlyRanked` reads — the writable ones — for the same reason
+ * it gives: a context row is one no pass can ever migrate, so counting it would be a
+ * permanent veto rather than a condition Seed can clear.
+ *
+ * Strictly ascending, so this implies `distinctlyRanked` of the same rows and is the
+ * stronger question: not "is there an order" but "is the order the one on screen".
+ */
+export function drawnInRankOrder(rows: BacklogItem[]): boolean {
+	const orders = rows.filter((item) => !item.outsideFilter).map((item) => item.order);
+	if (orders.some((o) => o === null)) return false;
+	return orders.every((order, i) => i === 0 || (orders[i - 1] as number) < (order as number));
+}
+
+/**
  * The rows that could stand beside this one in a single `inRankOrder` list — equal keys
  * mean a shared list is possible, and only then does one row's rank constrain another's.
  * Beside the mechanism it has to agree with rather than beside the one caller

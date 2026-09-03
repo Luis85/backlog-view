@@ -8,7 +8,7 @@ import { daysBetween, formatCivil } from './timeline';
 import { BacklogSettings, isDoneValue, isStartedValue } from './settings';
 import { OptionalField } from './optionalProperties';
 import { edgeRank, ORDER_SPACING, rankBetween, RankResult } from './rankArithmetic';
-import { distinctlyRanked } from './rankOrder';
+import { drawnInRankOrder } from './rankOrder';
 
 /**
  * What a change to the tree *would* write, worked out without touching anything.
@@ -925,7 +925,14 @@ export function dropPlacement(dragged: BacklogItem | null, target: DropTarget, r
 function invisibleRank(placed: RankResult, dragged: BacklogItem | null, target: DropTarget): RankResult {
 	if ('refusal' in placed) return placed;
 	if (target.parentUnchanged !== true || dragged === null) return placed;
-	return distinctlyRanked(target.peers) ? placed : { refusal: 'unseededList' };
+	// **The peers must already stand in their own rank order, not merely hold distinct
+	// ranks.** Distinctness alone says the fallback WILL lift; it does not say the list comes
+	// back in the sequence the screen is showing. Drawn `A(30), B(10), C(10)`, dropping C at
+	// the top passes a distinctness test on peers A and B, writes C a rank between them, and
+	// redraws `B, C, A`: C is not where it was dropped and untouched B has moved. That is a
+	// worse outcome than the invisible write this guard was built for, so the guard asks the
+	// stronger question — see `drawnInRankOrder`.
+	return drawnInRankOrder(target.peers) ? placed : { refusal: 'unseededList' };
 }
 
 /**

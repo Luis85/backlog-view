@@ -10,6 +10,7 @@ import {
 	refresh,
 	rowByTitle,
 	rows,
+	titlesOf,
 	treeOf,
 	useViewHarness,
 } from '../helpers/view';
@@ -462,5 +463,61 @@ describe('a drop that cannot be ranked says why', () => {
 		expect(Notice.messages).toEqual([
 			'Fix the view options first: the parent and order properties share the key "parent".',
 		]);
+	});
+});
+
+/**
+ * **Distinctness of the peers says the fallback WILL lift; it does not say the list comes
+ * back in the order on screen.** The sharper half of the same rule, found in review after
+ * the first half shipped.
+ *
+ * Drawn `A(30), B(10), C(10)`: the list is in tree-order fallback because B and C tie, and
+ * a dragged C has peers A and B holding distinct ranks — so the first version of the guard
+ * allowed the drop. It wrote C a rank of 20 and the list came back `B, C, A`. Two things
+ * wrong at once, both worse than the invisible write the guard was built for: C is not at
+ * the top where it was dropped, and B, which nobody touched, has moved above A.
+ *
+ * The fixture needs the peers' ranks to DISAGREE with their drawn order — A drawn first and
+ * ranked last — because peers whose ranks already ascend are the case that must keep
+ * working. The control below is that case, and without it a guard that simply refused every
+ * focus drop would pass the test above.
+ */
+describe('a focus drop whose peers are ranked against their drawn order', () => {
+	function threeRoots(a: number, b: number, c: number) {
+		const vault = new FakeVault();
+		vault.addFile('Epic A.md', { frontmatter: { type: 'Epic', order: 1 } });
+		vault.addFile('Epic B.md', { frontmatter: { type: 'Epic', order: 2 } });
+		vault.addFile('Epic C.md', { frontmatter: { type: 'Epic', order: 3 } });
+		vault.addFile('A.md', { frontmatter: { type: 'PBI', order: a }, parentLink: 'Epic A' });
+		vault.addFile('B.md', { frontmatter: { type: 'PBI', order: b }, parentLink: 'Epic B' });
+		vault.addFile('C.md', { frontmatter: { type: 'PBI', order: c }, parentLink: 'Epic C' });
+		return { vault, ...makeView(vault, {}, { focus: 'PBI' }) };
+	}
+
+	it('refuses, rather than landing the row elsewhere and moving an untouched one', async () => {
+		const { containerEl, vault } = threeRoots(30, 10, 10);
+		// Drawn in TREE order, because B and C tie — which is the state this turns on.
+		expect(titlesOf(containerEl)).toEqual(['A', 'B', 'C']);
+
+		drag(rowByTitle(containerEl, 'C'), rowByTitle(containerEl, 'A'), 'before');
+		await flush();
+
+		expect(vault.writeLog).toEqual([]);
+		expect(Notice.messages).toEqual([
+			'This list is drawn in tree order, because some of its rows have no rank or share one — so ordering it by hand would not show. Use the toolbar’s set-up button to fill in missing ranks, or run "Seed ranks from the hierarchy" from the command palette.',
+		]);
+	});
+
+	it('still allows the drop where the peers already stand in their rank order', async () => {
+		// The control, and it is load-bearing: peers A(10) and B(20) ascend as drawn, so
+		// lifting the fallback leaves them put and C lands where it was dropped. A guard that
+		// refused this would have taken the feature away rather than repaired it, and no
+		// assertion on the case above could tell those two apart.
+		const { containerEl, vault } = threeRoots(10, 20, 20);
+
+		drag(rowByTitle(containerEl, 'C'), rowByTitle(containerEl, 'A'), 'before');
+		await flush();
+
+		expect(vault.writeLog.map((w) => w.path)).toEqual(['C.md']);
 	});
 });
