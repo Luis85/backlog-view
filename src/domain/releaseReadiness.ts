@@ -1,6 +1,6 @@
 import { App } from 'obsidian';
 import { ownValue, readString, sameValue } from './noteFields';
-import { exactSum } from './decimal';
+import { Decimal, exactSum, toNumber } from './decimal';
 import { ownWorkflowKind, ownWorkflowReading, WorkflowKind, workflowStateInfo } from './board';
 import { ReleaseFigure, ReleaseScope } from './releases';
 import { ReleaseSettings } from './releaseOptions';
@@ -53,6 +53,19 @@ export interface ReleaseReadiness {
 	criteria: ReleaseCriterion[];
 	unestimated: ReleaseFigure<number>;
 	estimatedEffort: ReleaseFigure<number>;
+	/**
+	 * The same total as {@link estimatedEffort}, exactly — the decimal the estimates sum to
+	 * rather than the double that sum rounds to. **The number is for display and this is for
+	 * arithmetic**: they disagree wherever the exact sum has more digits than a double holds,
+	 * and `[1e21, 1]` is the smallest release where that costs a whole unit. Anything that
+	 * SUBTRACTS from the commitment must take this one, or the difference is decided by a
+	 * rounding that happened before the comparison did.
+	 *
+	 * `null` exactly when `estimatedEffort.value` is — no key bound, or a total no double can
+	 * hold — so a reader narrowing one has narrowed both and no second check can disagree with
+	 * the first.
+	 */
+	estimatedEffortExact: Decimal | null;
 	completedEffort: ReleaseFigure<number>;
 	blocked: ReleaseFigure<number>;
 	criticalRisks: ReleaseFigure<number>;
@@ -398,12 +411,17 @@ function effortFigures(
 	members: BacklogItem[],
 	settings: ReleaseSettings,
 	planSettings: BacklogSettings,
-): Pick<ReleaseReadiness, 'unestimated' | 'estimatedEffort' | 'completedEffort'> {
+): Pick<ReleaseReadiness, 'unestimated' | 'estimatedEffort' | 'estimatedEffortExact' | 'completedEffort'> {
 	if (settings.estimateKey === '') {
 		// All three read the SAME key, so all three are unconfigured together. Drawing a
 		// count beside "not configured" contradicts itself — caught in the harness before
 		// this module existed, and `Summing up a release` extension 2a is amended to say so.
-		return { unestimated: UNCONFIGURED, estimatedEffort: UNCONFIGURED, completedEffort: UNCONFIGURED };
+		return {
+			unestimated: UNCONFIGURED,
+			estimatedEffort: UNCONFIGURED,
+			estimatedEffortExact: null,
+			completedEffort: UNCONFIGURED,
+		};
 	}
 	// Read every estimate first, so the readability test below sees exactly the members whose
 	// value reaches a total — never one whose estimate is missing anyway.
@@ -424,8 +442,12 @@ function effortFigures(
 		// progress bar above this already uses.
 		if (doneReadable && ownWorkflowReading(entry.item).done) done.push(entry.value);
 	}
-	const estimated = exactSum(all);
-	const completed = exactSum(done);
+	// The exact sum is kept as well as rounded: `estimated` is what the strip DRAWS, and the
+	// decimal beside it is what the capacity comparison subtracts from — see this field's own
+	// comment on {@link ReleaseReadiness.estimatedEffortExact}.
+	const exact = exactSum(all);
+	const estimated = toNumber(exact);
+	const completed = toNumber(exactSum(done));
 	// **A finite estimate can still overflow a finite TOTAL.** `estimateValue` refuses a
 	// non-finite value, which closes that door per member and not for their sum: two members
 	// at `1e308` are each accepted and add to `Infinity`, which reaches the strip as an
@@ -434,7 +456,15 @@ function effortFigures(
 	// Raised by a review bot. Tested at `estimated` alone: every estimate is non-negative, so
 	// `completed <= estimated` and a finite total cannot carry an infinite completion.
 	if (!Number.isFinite(estimated)) {
-		return { unestimated: counted(missing), estimatedEffort: OVERFLOWED, completedEffort: OVERFLOWED };
+		// The exact decimal goes with it: it exists here (two finite estimates summing past
+		// `Number.MAX_VALUE` have a perfectly good decimal sum), and keeping it would leave a
+		// comparison reachable for a total this figure has already declared unreadable.
+		return {
+			unestimated: counted(missing),
+			estimatedEffort: OVERFLOWED,
+			estimatedEffortExact: null,
+			completedEffort: OVERFLOWED,
+		};
 	}
 	// A member whose descendant in the same release also carries an estimate is double
 	// counted here. `doubleCountFigure` NAMES how many members that is; it does not correct
@@ -444,6 +474,7 @@ function effortFigures(
 	return {
 		unestimated: counted(missing),
 		estimatedEffort: counted(estimated),
+		estimatedEffortExact: exact,
 		completedEffort: doneReadable ? counted(completed) : UNCONFIGURED,
 	};
 }

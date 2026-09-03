@@ -2105,7 +2105,7 @@ export const en = {
 	'release.scope.capacityPctOverflow': 'The utilization is too large to state',
 	/** The commitment alone, where the capacity half cannot be read. */
 	'release.scope.committed': '{commitment} {unit} committed',
-	'release.scope.capacityUnreadable': 'Capacity is not a number',
+	'release.scope.capacityUnreadable': 'Capacity must be a number, and not a negative one',
 	'release.scope.capacityUnconfigured': 'Capacity is not configured',
 	/** The key IS bound and this release is silent at it — a number to type, not a property
 	 *  to bind, which is why it is not the sentence above. */

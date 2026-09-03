@@ -98,11 +98,22 @@ The panel is the release summary's own render module, `src/view/release/renderRe
 Both halves of the comparison are arithmetic on decimals somebody TYPED, so both go through
 `src/domain/decimal.ts` — `exactSum` for the commitment and `exactDifference` for the
 difference. It parses each double's shortest round-trip decimal representation (what `String`
-gives, which is the number the user typed) into digits and a scale, adds and subtracts them in
-`BigInt`, and converts back to a double once at the end. A new file rather than a helper
-beside either caller: it is the whole of one concern, it is the layer's own kind of pure
-function, and the two callers sit in different layers. What it replaced was a tolerance scaled
-by the number of additions performed and a rounding of the difference to twelve significant
-digits, each of which reported a real difference as none — a `1e-16` shortfall as exactly
-filled, and `1000000000001` over as `1000000000000`. Exact arithmetic needs neither, which is
-why there is no threshold left to tune.
+gives, which is what the user typed whenever they typed seventeen significant digits or fewer,
+and otherwise the shortest decimal that comes back to the double they got) into digits and a
+scale, adds and subtracts them in `BigInt`, and converts back to a double once at the end. A
+new file rather than a helper beside either caller: it is the whole of one concern, it is the
+layer's own kind of pure function, and the two callers sit in different layers. What it
+replaced was a tolerance scaled by the number of additions performed and a rounding of the
+difference to twelve significant digits, each of which reported a real difference as none — a
+`1e-16` shortfall as exactly filled, and `1000000000001` over as `1000000000000`. Exact
+arithmetic needs neither, which is why there is no threshold left to tune.
+
+**The exact sum crosses the layer boundary, not the number it rounds to.**
+`ReleaseReadiness.estimatedEffortExact` carries the commitment's decimal beside
+`estimatedEffort`'s figure, and `renderReadiness.ts` subtracts the capacity from THAT. Rounding
+in `src/domain/` first is a real defect rather than a tidiness question: no double lies between
+`1e21` and `1e21 + 1`, so estimates of `1e21` and `1` against a capacity of `1e21` reported
+exactly filled when the total was rounded before the subtraction. The number is for display and
+the decimal is for arithmetic, and the guarantee is exact through the arithmetic and rounded
+once at the end — never "nothing rounds", which is what the module's own header claimed until a
+review found what the sentence cost.

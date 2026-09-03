@@ -297,6 +297,34 @@ describe('capacity against commitment on the strip', () => {
 		expect(text).not.toContain(formatNumber(1000000000000, true));
 	});
 
+	it('reports one over when the exact total is past what a double can hold', () => {
+		// **The seam, end to end.** No double lies between `1e21` and `1e21 + 1`, so a
+		// commitment summed to a NUMBER in `domain/` arrives here already rounded and
+		// subtracts to zero — a release one over its capacity drawn as exactly filled. The
+		// exact decimal crosses instead, so the difference is taken before the rounding is.
+		// The two numbers DISPLAY identically, which is honest: display rounds, arithmetic
+		// does not.
+		const text = estimatedStrip(1e21, [1e21, 1]);
+		expect(text).toContain(
+			t('release.scope.capacityOver', {
+				commitment: formatNumber(1e21, true),
+				capacity: formatNumber(1e21, true),
+				unit: 'pts',
+				pct: 100,
+				over: formatNumber(1, true),
+			}),
+		);
+		expect(text).not.toContain(
+			t('release.scope.capacityOver', {
+				commitment: formatNumber(1e21, true),
+				capacity: formatNumber(1e21, true),
+				unit: 'pts',
+				pct: 100,
+				over: formatNumber(0, true),
+			}),
+		);
+	});
+
 	it('keeps a real difference at a tiny magnitude rather than normalizing it away', () => {
 		// `1.1e-10 - 1e-10` is `9.999999999999991e-12` by the operator and exactly `1e-11` as
 		// decimals. Neither the tolerance nor the rounding could produce that answer: the

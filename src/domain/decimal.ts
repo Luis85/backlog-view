@@ -1,23 +1,23 @@
 /**
  * Exact decimal arithmetic over the numbers a note actually holds.
  *
- * **Why this is not `a + b` and `a - b`.** Both operands here are decimals somebody TYPED —
- * a capacity into a release note, an effort estimate onto each member — and a double cannot
- * hold most of them. `0.1 + 0.2` is `0.30000000000000004`, so a release filled to exactly its
- * declared `0.3` subtracts to `5.55e-17` and the strip reports it over. Every attempt to
- * clean that up downstream is a heuristic that is wrong somewhere else, and this module
- * exists because two of them shipped: a tolerance scaled by the number of additions performed
- * called a genuine `1e-16` shortfall zero, and rounding the difference to twelve significant
- * digits turned a real `1000000000001` over into `1000000000000`. There is no threshold that
- * separates noise from a small real difference, because the noise is not small relative to
- * the answer — it is the whole answer.
+ * **Why this is not `a + b` and `a - b`.** Both operands in the capacity comparison are
+ * decimals somebody TYPED — a capacity into a release note, an effort estimate onto each
+ * member — and a double cannot hold most of them. `0.1 + 0.2` is `0.30000000000000004`, so a
+ * release filled to exactly its declared `0.3` subtracts to `5.55e-17` and the strip reports
+ * it over. Every attempt to clean that up downstream is a heuristic that is wrong somewhere
+ * else, and this module exists because two of them shipped: a tolerance scaled by the number
+ * of additions performed called a genuine `1e-16` shortfall zero, and rounding the difference
+ * to twelve significant digits turned a real `1000000000001` over into `1000000000000`. There
+ * is no threshold that separates noise from a small real difference, because the noise is not
+ * small relative to the answer — it is the whole answer.
  *
  * **What makes an exact answer available at all**: every double has a shortest round-trip
  * decimal representation, which is what `String` gives (`String(0.1)` is `"0.1"`, not
- * `0.1000000000000000055…`), and that representation is the number the user typed. Adding and
- * subtracting THOSE decimals reproduces the arithmetic the reader did in their head, and the
- * result is converted back to a double once, at the end, where a single correctly-rounded
- * conversion is the only rounding in the whole path.
+ * `0.1000000000000000055…`). At seventeen significant digits or fewer that representation IS
+ * what the user typed; past that it is the shortest decimal that comes back to the double
+ * they got, which is the best any reader of the note could recover. Adding and subtracting
+ * THOSE decimals reproduces the arithmetic the reader did on paper.
  *
  * **Scaling is in `BigInt`, and that is the trap rather than a preference.** The obvious
  * shape — multiply each value by a power of ten so the fractions become integers, add, divide
@@ -29,16 +29,39 @@
  * therefore carried as a `bigint` with a decimal `scale` beside them and never pass through a
  * double until {@link toNumber}.
  *
- * **Nothing here rounds, clamps or judges.** An overflow is still an overflow: summing two
- * estimates of `1e308` yields a `bigint` no double can hold and `toNumber` answers `Infinity`,
- * which is the reading `releaseReadiness.ts` already refuses as an unreadable total.
+ * **Where the exactness stops, stated to the check rather than ahead of it.** The arithmetic
+ * is exact; the conversion back to a double is not, and cannot be — most exact sums have no
+ * double to be. So the guarantee is *exact through the arithmetic, rounded once at the end*,
+ * and the rounding is `Number`'s own parse of a decimal string, which the language requires to
+ * be correctly rounded only up to twenty significant digits and permits to approximate past
+ * them.
+ *
+ * That one rounding is why a `Decimal` crosses the domain/view seam rather than a number. This
+ * header claimed "nothing here rounds, clamps or judges" until a review found what the
+ * sentence cost: `exactSum` answered a number, so `[1e21, 1]` came back as `1e21` with the
+ * `1` discarded in `domain/` before `view/` could subtract anything from it — and a release
+ * exactly one over its capacity reported as exactly filled. **The number is for display and
+ * the decimal is for arithmetic**, and they disagree precisely where a double runs out of
+ * digits.
+ *
+ * Nothing here clamps or judges, though: an overflow is still an overflow. Summing two
+ * estimates of `1e308` yields a `bigint` no double can hold and {@link toNumber} answers
+ * `Infinity`, which is the reading `releaseReadiness.ts` already refuses as an unreadable
+ * total.
  */
 
-/** A value as `digits / 10 ** scale` — exact, unbounded, and never a double. */
-interface Decimal {
+/**
+ * A value as `digits / 10 ** scale` — exact, unbounded, and never a double.
+ *
+ * Carried across the seam beside the number it rounds to, so the comparison can be taken on
+ * the value the notes state rather than on the value a double could keep of it.
+ */
+export interface Decimal {
 	digits: bigint;
 	scale: number;
 }
+
+const ZERO: Decimal = { digits: 0n, scale: 0 };
 
 /**
  * Every finite double's `String` matches this, INCLUDING the exponent forms at both ends of
@@ -60,54 +83,66 @@ function decimalOf(value: number): Decimal | null {
 	return { digits: BigInt(`${sign}${whole}${fraction}`), scale: fraction.length - Number(exponent) };
 }
 
-/**
- * One correctly-rounded conversion, and the only rounding in this module. The digits are
- * handed to `Number` as a decimal string rather than divided by a power of ten, because a
- * division is two roundings — the divisor and the quotient — where the string is one.
- */
-function toNumber(value: Decimal): number {
-	return Number(`${value.digits}e${-value.scale}`);
-}
-
 /** Both terms restated at the deeper scale, so their digits are comparable integers. */
-function combine(a: Decimal, b: Decimal, sign: bigint): Decimal {
+function combine(a: Decimal, b: Decimal): Decimal {
 	const scale = Math.max(a.scale, b.scale);
 	return {
-		digits: a.digits * 10n ** BigInt(scale - a.scale) + sign * (b.digits * 10n ** BigInt(scale - b.scale)),
+		digits: a.digits * 10n ** BigInt(scale - a.scale) + b.digits * 10n ** BigInt(scale - b.scale),
 		scale,
 	};
 }
 
 /**
- * The sum of what each note says, not of what a double could hold of it: `[0.1, 0.2]` is
- * `0.3` and prints as `0.3`, where the running `+=` it replaced produced a commitment that
- * contradicted the `0 over` beside it.
+ * The one lossy step in this module, and the only place a `Decimal` becomes a figure anyone
+ * can read. The digits are handed to `Number` as a decimal string rather than divided by a
+ * power of ten, because a division is two roundings — the divisor and the quotient — where
+ * the string is one.
  *
- * Linear in the values, and the digit counts stay bounded because the scale never exceeds the
- * deepest one any single value carries — this runs on every release-scope render.
- *
- * A non-finite value falls back to plain addition rather than being refused: the callers
- * already reject one upstream, and where one did reach here the honest answer is the
- * `Infinity` or `NaN` that a total nobody can read is made of.
+ * `null` in is a sum that could not be stated exactly because one of its terms was not
+ * finite, and `NaN` out is what a caller's own "is this total readable" guard is already
+ * written to refuse. Taken here rather than branched on at each call site so that the callers
+ * carry no second opinion about what an unstatable total means.
  */
-export function exactSum(values: number[]): number {
-	let total: Decimal = { digits: 0n, scale: 0 };
-	for (const value of values) {
-		const term = decimalOf(value);
-		if (term === null) return values.reduce((running, next) => running + next, 0);
-		total = combine(total, term, 1n);
-	}
-	return toNumber(total);
+export function toNumber(value: Decimal | null): number {
+	return value === null ? Number.NaN : Number(`${value.digits}e${-value.scale}`);
 }
 
 /**
- * `left - right` as the reader would do it on paper. `52.1 - 40` is `12.1` rather than
- * `12.100000000000001`, and `1000000000002 - 1` is `1000000000001` rather than the
- * `1000000000000` twelve significant digits produced — the two defects that shared one line.
+ * The sum of what each note says, as a decimal: `[0.1, 0.2]` is exactly `0.3`, where the
+ * running `+=` it replaced produced a commitment that contradicted the `0 over` beside it.
+ *
+ * It answers a {@link Decimal} rather than a number because rounding here would throw away the
+ * digits the comparison downstream needs — see this module's header. `null` is a value that is
+ * not finite, which both callers already refuse upstream (`estimateValue`); the exact sum of a
+ * list holding an infinity is not a decimal, so it is not reported as one.
+ *
+ * Linear in the values, and the digit counts stay bounded because the scale never exceeds the
+ * deepest one any single value carries — this runs on every release-scope render.
  */
-export function exactDifference(left: number, right: number): number {
-	const a = decimalOf(left);
-	const b = decimalOf(right);
-	if (a === null || b === null) return left - right;
-	return toNumber(combine(a, b, -1n));
+export function exactSum(values: number[]): Decimal | null {
+	let total: Decimal = ZERO;
+	for (const value of values) {
+		const term = decimalOf(value);
+		if (term === null) return null;
+		total = combine(total, term);
+	}
+	return total;
+}
+
+/**
+ * `left - right` as the reader would do it on paper, rounded to a double once at the end:
+ * `52.1 - 40` is `12.1` rather than `12.100000000000001`, and `1000000000002 - 1` is
+ * `1000000000001` rather than the `1000000000000` twelve significant digits produced.
+ *
+ * The left side is a {@link Decimal} because it is a SUM whose exact value a double may not
+ * hold; the right is a single typed number, which is its own exact decimal. A non-finite right
+ * falls back to the plain operator rather than being refused — the caller rejects one upstream,
+ * and where one did arrive the honest answer is the `Infinity` or `NaN` that an unreadable
+ * comparison is made of.
+ */
+export function exactDifference(left: Decimal, right: number): number {
+	// `-right` is exact for every double (IEEE negation flips a sign bit and touches no
+	// digit), so subtraction is addition here and `combine` needs no sign of its own.
+	const negated = decimalOf(-right);
+	return negated === null ? toNumber(left) - right : toNumber(combine(left, negated));
 }

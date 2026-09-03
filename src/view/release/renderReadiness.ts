@@ -2,7 +2,7 @@ import { setTooltip } from 'obsidian';
 import { formatNumber, t } from '../../i18n/t';
 import { ReleaseCriterion, ReleaseReadiness, clearingWorkflows } from '../../domain/releaseReadiness';
 import { WorkflowKind } from '../../domain/board';
-import { exactDifference } from '../../domain/decimal';
+import { exactDifference, toNumber } from '../../domain/decimal';
 import { ReleaseSettings } from '../../domain/releaseOptions';
 import { BacklogSettings } from '../../domain/settings';
 
@@ -380,7 +380,13 @@ function drawCapacityFigures(
 		note(sumEl, t('release.scope.capacityNoUnit'));
 		return;
 	}
-	const commitment = readiness.estimatedEffort.value;
+	// **The EXACT commitment, and it is the only null this branch asks about.** It is null in
+	// exactly the two states `estimatedEffort.value` is — no estimate key, or a total no double
+	// can hold — so reading the figure's own null beside it would be a second opinion about one
+	// fact. What the exact one buys is the comparison below: the sum `[1e21, 1]` rounds to
+	// `1e21` as a double, so a release one over its capacity subtracted to zero when the
+	// rounding happened in `domain/` before this got to subtract.
+	const exact = readiness.estimatedEffortExact;
 	// **A readable capacity is drawn even with nothing to compare it against.** This
 	// function's own rule two branches up is that the capacity half is named whatever the
 	// other half does — and a VALID capacity has no state note, so returning here showed
@@ -394,10 +400,13 @@ function drawCapacityFigures(
 		if (capacity.value !== null) figure(sumEl, t('release.scope.capacityAlone', { capacity: formatNumber(capacity.value, true), unit }));
 	};
 	// The effort figures beside this one already said why there is no total.
-	if (commitment === null) {
+	if (exact === null) {
 		alone();
 		return;
 	}
+	// The figure's own `value` is this same decimal rounded, so the two cannot disagree about
+	// what is drawn — and only this one is subtracted from.
+	const commitment = toNumber(exact);
 	// **A release nobody has estimated sums to zero, and that zero is not a measurement.**
 	// `effortFigures` starts its total at 0 and adds nothing, so `estimatedEffort` is a real
 	// `0` rather than a null — which would draw `0 of 40 pts committed (0%, 40 left)` and
@@ -423,10 +432,12 @@ function drawCapacityFigures(
 	// — and the bare operator loses that in its own right: `52.1 - 40` is `12.100000000000001`,
 	// which the precise formatter this figure uses prints in full. An exact sum upstream is
 	// therefore not enough on its own, and neither half can be dropped for the other. There is
-	// no tolerance and no rounding here any more, and that is the point: both were tried, and
-	// each was wrong about a difference the other got right — a `1e-16` shortfall zeroed as
-	// noise, and `1000000000001` over rounded to `1000000000000`.
-	const over = exactDifference(commitment, capacity.value);
+	// no tolerance and no INTERMEDIATE rounding any more — the difference is taken in decimal
+	// and rounded to a double once, at the end — and that is the point: a tolerance and a
+	// twelve-digit rounding were both tried, and each was wrong about a difference the other
+	// got right, a `1e-16` shortfall zeroed as noise and `1000000000001` over rounded to
+	// `1000000000000`.
+	const over = exactDifference(exact, capacity.value);
 	if (capacity.value === 0) {
 		figure(
 			sumEl,
