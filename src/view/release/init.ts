@@ -95,6 +95,7 @@ export const RELEASE_SUGGESTED_KEYS: AdoptionCandidate[] = [
 	{ option: 'releasedDateProperty', suggested: 'released' },
 	{ option: 'descriptionProperty', suggested: 'description' },
 	{ option: 'estimateProperty', suggested: 'effort' },
+	{ option: 'capacityProperty', suggested: 'capacity' },
 	{ option: 'dependsOnProperty', suggested: 'dependsOn' },
 	{ option: 'riskProperty', suggested: 'risk' },
 ];

@@ -55,6 +55,8 @@ export interface ReleaseSettings {
 	estimateKey: string;
 	/** The release note's own declared capacity, in {@link ReleaseSettings.capacityUnit}. */
 	capacityKey: string;
+	/** The unit BOTH halves of the comparison are in, and the effort figures beside them. */
+	capacityUnit: string;
 	/** The member's prerequisites. What CLEARS one is this view's own `stateKey` and its
 	 *  done values — see `releaseReadiness.ts` for why that is not a sixth option. */
 	dependsOnKey: string;
@@ -287,6 +289,23 @@ function readinessOptionItems(): BasesOptions[] {
 		},
 		{
 			type: 'property',
+			key: 'capacityProperty',
+			displayName: t('release.option.capacity'),
+			placeholder: 'capacity',
+			filter: notePropsOnly,
+		},
+		{
+			// A TEXT box, not a property: the unit is one string for the whole view. Two
+			// properties would let a release disagree with its neighbour about the unit
+			// while the comparison added them up, and `40 points` in one field is a string
+			// nothing can sum.
+			type: 'text',
+			key: 'capacityUnit',
+			displayName: t('release.option.capacityUnit'),
+			placeholder: 'points',
+		},
+		{
+			type: 'property',
 			key: 'dependsOnProperty',
 			displayName: t('release.option.dependsOn'),
 			placeholder: 'dependsOn',
@@ -454,6 +473,9 @@ export function resolveReleaseSettings(config: BasesViewConfig): ReleaseSettings
 		// `propKey`, not `clearablePropKey`: their default is `''`, so the two resolve the
 		// same value for every input — the reason already stated above for `versionKey`.
 		capacityKey: propKey('capacityProperty', ''),
+		// Trimmed: the value is drawn into a sentence beside two numbers, and a padded unit
+		// reads as a spacing bug rather than as data.
+		capacityUnit: str('capacityUnit').trim(),
 		dependsOnKey: propKey('dependsOnProperty', ''),
 		riskKey: propKey('riskProperty', ''),
 		// `dedupe` for both: a vault listing `High, high` means one value, and a criterion

@@ -223,6 +223,7 @@ describe('runReleaseInit', () => {
 		const { view, config } = makeReleaseView(new FakeVault(), {});
 		await runReleaseInit(view);
 		expect(config.get('estimateProperty')).toBe('note.effort');
+		expect(config.get('capacityProperty')).toBe('note.capacity');
 		expect(config.get('dependsOnProperty')).toBe('note.dependsOn');
 		expect(config.get('riskProperty')).toBe('note.risk');
 		// The VOCABULARIES are not candidates and could not be: there is no key to hand out —

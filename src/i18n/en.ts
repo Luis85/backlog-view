@@ -826,6 +826,8 @@ export const en = {
 	'release.option.description': 'Release description property',
 	'release.option.releasedDate': 'Released date property',
 	'release.option.estimate': 'Estimate property',
+	'release.option.capacity': 'Capacity property',
+	'release.option.capacityUnit': 'Estimation unit',
 	'release.option.dependsOn': 'Prerequisites property',
 	'release.option.risk': 'Risk property',
 	'release.option.criticalRiskValues': 'Risk values that are critical',
@@ -965,6 +967,7 @@ export const en = {
 	'property.releaseStatus': 'release status',
 	'property.releasedDate': 'released date',
 	'property.releaseDescription': 'release description',
+	'property.releaseCapacity': 'release capacity',
 
 	/**
 	 * The menus — the row and card menu in `view/interactions/menu.ts`, the shelf's picks

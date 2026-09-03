@@ -34,6 +34,8 @@ describe('the release view names its own keys', () => {
 				'addressedRiskValues',
 				'descriptionProperty',
 				'criticalRiskValues',
+				'capacityProperty',
+				'capacityUnit',
 				'dependsOnProperty',
 				'estimateProperty',
 				'doneValues',
@@ -233,7 +235,7 @@ describe('the release view names its own keys', () => {
 		// reported by nothing — while every release in the base counted itself among the
 		// unresolved memberships, a figure that scales with the vault.
 		const plan = resolveSettings(new FakeViewConfig({}));
-		for (const key of ['versionKey', 'targetDateKey', 'statusKey', 'releasedDateKey', 'descriptionKey'] as const) {
+		for (const key of ['versionKey', 'targetDateKey', 'statusKey', 'releasedDateKey', 'descriptionKey', 'capacityKey'] as const) {
 			const settings = releaseSettingsWith({ [key]: 'shared', membershipKey: 'shared' });
 			expect(membershipCollision(settings, plan), key).not.toBeNull();
 		}
@@ -270,5 +272,14 @@ describe('the release view names its own keys', () => {
 		expect(bare.riskKey).toBe('');
 		expect(bare.criticalRiskValues).toEqual([]);
 		expect(bare.addressedRiskValues).toEqual([]);
+	});
+
+	it('resolves the capacity property and its unit, and leaves both empty when unset', () => {
+		const bound = resolveReleaseSettings(new FakeViewConfig({ capacityProperty: 'note.capacity', capacityUnit: 'points' }));
+		expect(bound.capacityKey).toBe('capacity');
+		expect(bound.capacityUnit).toBe('points');
+		const unset = resolveReleaseSettings(new FakeViewConfig({}));
+		expect(unset.capacityKey).toBe('');
+		expect(unset.capacityUnit).toBe('');
 	});
 });

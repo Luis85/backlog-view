@@ -150,12 +150,15 @@ export const RELEASE_CONFIG = {
 	// above are — a suite that wants the unbound case clears the key it is about.
 	descriptionProperty: 'note.description',
 	releaseStatusValues: 'Planned, In progress, Released',
-	// The readiness criteria's own three property keys (2026-09-01), here for the reason
-	// every key above is: this object is what "every candidate already bound" means to four
-	// suites, so a ✨ candidate missing from it makes each of them report work a press
-	// really does have. The two risk VOCABULARIES stay out — ✨ binds no key for them, so a
-	// fixture that bound them would describe a state no press can reach.
+	// The readiness criteria's own three property keys (2026-09-01), plus the capacity
+	// comparison's own (2026-09-03), here for the reason every key above is: this object is
+	// what "every candidate already bound" means to the suites that spread it, so a ✨
+	// candidate missing from it makes each of them report work a press really does have. The
+	// two risk VOCABULARIES stay out — ✨ binds no key for them, so a fixture that bound them
+	// would describe a state no press can reach. `capacityUnit` stays out for the identical
+	// reason: it is a text box, not a property, and ✨ never binds it either.
 	estimateProperty: 'note.effort',
+	capacityProperty: 'note.capacity',
 	dependsOnProperty: 'note.dependsOn',
 	riskProperty: 'note.risk',
 	// The closing actions' own three (2026-08-29) — but only TWO of them here.
