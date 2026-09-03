@@ -114,6 +114,25 @@ describe('frontmatter no YAML parser accepts', () => {
 			'frontmatter is not valid YAML, so Obsidian reads none of it',
 		],
 		[
+			// **The parse is only as good as the bytes it is handed** (found by review,
+			// Codex, PR #257). `\n---` matches inside `\n---oops`, so the block was cut at
+			// that prefix and `YAML.parse` was given `type: Feature` alone — which parses,
+			// so the gate reported no error while Obsidian reads to the real closing line
+			// and refuses the whole block. `blockOf` requires a complete closing line now.
+			//
+			// The keys BEFORE the false delimiter are deliberately the valid ones: that is
+			// what made the truncated prefix parse, and a case whose prefix already failed
+			// would go green against the fix for the wrong reason.
+			'a line that starts like the closing delimiter but is not one',
+			(files) => {
+				files['docs/requirements/Thing.md'] = files['docs/requirements/Thing.md'].replace(
+					'status: Open\n',
+					'status: Open\n---oops\nsource: after the false delimiter\n',
+				);
+			},
+			'frontmatter is not valid YAML, so Obsidian reads none of it',
+		],
+		[
 			// The parent link is read off the parsed VALUE and anchored at both ends since
 			// 2026-09-02. The raw-text pattern it replaced could not be anchored — the block
 			// continues past the line — so `"[[A]] and [[B]]"` matched its first link and the

@@ -371,10 +371,45 @@ function scalar(map, name) {
 	return (typeof value === "object" ? "" : String(value)).trim() || null;
 }
 
+/**
+ * The frontmatter block, delimited the way Obsidian delimits it: the closing `---` is a
+ * COMPLETE LINE, not a prefix.
+ *
+ * **Found by review (Codex, PR #257), and it was the parse being handed the wrong bytes
+ * rather than the parse being wrong.** `\n---` alone matches inside `\n---oops`, so a note
+ * written
+ *
+ * ```
+ * ---
+ * type: Feature
+ * ---oops
+ * status: Open
+ * ---
+ * ```
+ *
+ * handed `YAML.parse` the string `type: Feature`, which parses, so the all-files rule
+ * reported no error — while the block Obsidian actually reads runs to the real closing line
+ * and is refused (`Implicit keys need to be on a single line`). Measured both ways before
+ * the fix. That is [[The register gate cannot see unparseable frontmatter]] reopened one
+ * layer down: not a reader that cannot parse, but a reader parsing a prefix of the document
+ * and calling it the document.
+ *
+ * **One function because there were two copies of the pattern**, and the second is in the
+ * narrow ` #`/`[[` rules further down — so the same truncation would have hidden a value
+ * from those as well, and a fix applied to one of two spellings is how this file got
+ * [[The checker reads frontmatter its own way]] in the first place. The trailing `[ \t]*`
+ * allows the whitespace an editor leaves; `(?:\n|$)` allows a file that ends at the
+ * delimiter.
+ */
+function blockOf(text) {
+	const match = /^---\n([\s\S]*?)\n---[ \t]*(?:\n|$)/.exec(text);
+	return match ? match[1] : null;
+}
+
 function frontmatter(text) {
-	const match = /^---\n([\s\S]*?)\n---/.exec(text);
-	if (!match) return null;
-	const { map, error } = parseBlock(match[1]);
+	const raw = blockOf(text);
+	if (raw === null) return null;
+	const { map, error } = parseBlock(raw);
 	// `Object.hasOwn` rather than a truth test, so that `field` and `has` cannot disagree
 	// about a key inherited from `Object.prototype` — `constructor:` is a legal frontmatter
 	// key and YAML gives it as an own property.
@@ -1014,11 +1049,11 @@ for (const [, note] of notes) {
  * quote the value. `parent: "[[...]]"` has always been quoted here.
  */
 for (const file of files) {
-	const block = /^---\n([\s\S]*?)\n---/.exec(texts.get(file) ?? "");
-	if (!block) continue;
+	const block = blockOf(texts.get(file) ?? "");
+	if (block === null) continue;
 	// Key lines only — a continuation line is part of the value above it, and the value is
 	// what these two rules are about, so the whole entry is reassembled before it is read.
-	const lines = block[1].split("\n");
+	const lines = block.split("\n");
 	const entries = [];
 	for (const line of lines) {
 		const start = /^([A-Za-z_][\w-]*):\s?(.*)$/.exec(line);
