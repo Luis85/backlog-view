@@ -514,16 +514,36 @@ In `src/i18n/en.ts`, beside the other `release.option.*` keys:
 	'release.option.capacityUnit': 'Estimation unit',
 ```
 
-- [ ] **Step 6: Run the tests**
+- [ ] **Step 6: Bind it from the initializer too**
 
-Run: `npx vitest run test/domain/releaseOptions.test.ts test/i18n && npx eslint src`
+Every other optional property this view reads is in `RELEASE_SUGGESTED_KEYS`
+(`src/view/release/init.ts`), including `estimateProperty` — that list is what the toolbar's
+✨ binds and then backfills. A property missing from it is one the press cannot reach, so a
+reader who initializes the view is told it succeeded while this feature stays unconfigured.
+Add the row beside `estimateProperty`:
+
+```ts
+	{ option: 'capacityProperty', suggested: 'capacity' },
+```
+
+**`capacityUnit` does NOT join it, and not by oversight.** That list adopts PROPERTY keys, and
+`RELEASE_SUGGESTED_VALUES` beside it adopts value vocabularies — the unit is neither, and
+there is no honest default for it: a guessed unit is exactly what this feature exists to
+prevent. It stays a box the reader fills.
+
+Update `test/view/release/init.test.ts`'s expectations for the adopted-key set — it asserts
+which options a press binds, so a new row fails it until the expectation names it.
+
+- [ ] **Step 7: Run the tests**
+
+Run: `npx vitest run test/domain/releaseOptions.test.ts test/view/release/init.test.ts test/i18n && npx eslint src`
 Expected: PASS. `test/i18n/optionLabels.test.ts` will fail if any message quotes either
 label — it must be passed as a parameter instead.
 
-- [ ] **Step 7: Commit**
+- [ ] **Step 8: Commit**
 
 ```bash
-git add src/domain/releaseOptions.ts src/i18n/en.ts test/domain/releaseOptions.test.ts
+git add src/domain/releaseOptions.ts src/view/release/init.ts src/i18n/en.ts test/domain/releaseOptions.test.ts test/view/release/init.test.ts
 git commit -m "Offer the capacity property and the unit it is in"
 ```
 
@@ -643,6 +663,23 @@ describe('capacity against commitment on the strip', () => {
 		expect(text).not.toContain(t('release.scope.capacityOver', { commitment: 52, capacity: 40, unit: '', pct: 130, over: 12 }));
 	});
 
+	it('names the capacity property on every path with a bound key', () => {
+		// The unreadable state needs it MOST: it is the one telling the reader to go and fix
+		// a value, and it says nothing about where.
+		for (const capacity of [40, 0, -5, undefined]) {
+			const { view, containerEl } = makeReleaseView(capacityVault(capacity), CONFIGURED);
+			view.pick('R.md');
+			expect(containerEl.querySelector('.pbl-rel-summary')?.textContent).toContain(
+				t('release.scope.provenanceCapacity', { property: 'capacity', unit: 'pts' }),
+			);
+		}
+	});
+
+	it('names no property where the key itself is unbound', () => {
+		const text = stripText(40, { ...CONFIGURED, capacityProperty: '' });
+		expect(text).not.toContain(t('release.scope.provenanceCapacity', { property: '', unit: 'pts' }));
+	});
+
 	it('names a possible double count beside the figure, and only when there is one', () => {
 		const vault = capacityVault(40);
 		vault.setFrontmatter('E.md', { type: 'Epic', order: 1, release: '[[R]]', effort: 20 });
@@ -702,6 +739,9 @@ In `src/i18n/en.ts`, beside the other `release.scope.*` figures:
 		one: '{count} member may double count',
 		other: '{count} members may double count',
 	},
+	/** Drawn on every path with a bound capacity key — the unreadable one included, since
+	 *  that reader is the one who needs to know which key to repair. `{unit}` may be empty;
+	 *  the sentence still names the property, which is the part that locates the fix. */
 	'release.scope.provenanceCapacity': 'Capacity reads {property}, in {unit}.',
 ```
 
@@ -769,6 +809,21 @@ function drawEffort(sumEl: HTMLElement, total: number, done: number | null, unit
  * is the drift that module exists to prevent.
  */
 function drawCapacity(sumEl: HTMLElement, readiness: ReleaseReadiness, settings: ReleaseSettings): void {
+	drawCapacityFigures(sumEl, readiness, settings);
+	// **Every path with a bound key, not just the one that draws a percentage.** The
+	// provenance is what tells the reader WHICH frontmatter key to go and repair, so the
+	// unreadable state is the one that needs it most and the one five early returns would
+	// skip. Omitted only where the key itself is unbound — there is no property to name.
+	// This is `drawEstimateProvenance`'s own lesson, which a review bot had to teach once
+	// already on the path above.
+	if (settings.capacityKey === '') return;
+	sumEl.createSpan({
+		cls: 'pbl-sr-only',
+		text: t('release.scope.provenanceCapacity', { property: settings.capacityKey, unit: settings.capacityUnit }),
+	});
+}
+
+function drawCapacityFigures(sumEl: HTMLElement, readiness: ReleaseReadiness, settings: ReleaseSettings): void {
 	const commitment = readiness.estimatedEffort.value;
 	const capacity = readiness.capacity;
 	// The capacity's own state is named even with no commitment to compare it against —
@@ -814,10 +869,6 @@ function drawCapacity(sumEl: HTMLElement, readiness: ReleaseReadiness, settings:
 			: t('release.scope.capacityUnder', { commitment, capacity: capacity.value, unit, pct, left: -over }),
 	);
 	drawDoubleCount(sumEl, readiness);
-	sumEl.createSpan({
-		cls: 'pbl-sr-only',
-		text: t('release.scope.provenanceCapacity', { property: settings.capacityKey, unit }),
-	});
 }
 
 /** Absent rather than present and empty — extension 4a. */
@@ -885,6 +936,7 @@ gate, asked at the forbidden thing rather than at today's four entries.
 - [ ] **Step 1: Write the failing test**
 
 ```ts
+import { readdirSync } from 'node:fs';
 import { build } from 'esbuild';
 import { describe, expect, it } from 'vitest';
 
@@ -898,12 +950,26 @@ import { describe, expect, it } from 'vitest';
  * is exactly the one nobody would have listed.
  */
 describe('the harness entries bundle for a browser', () => {
-	const ENTRIES = [
-		'test/harness/page.ts',
-		'test/harness/release.ts',
-		'test/harness/estimation.ts',
-		'test/harness/mywork.ts',
-	];
+	/**
+	 * **Discovered, never listed.** A frozen list of today's entries passes the day somebody
+	 * adds a fifth with the same defect — which is the regression this gate exists to catch,
+	 * so a list would state the rule and check something narrower.
+	 *
+	 * Every non-test module under `test/harness/` is bundled, not only the four files
+	 * `scripts/harness.mjs` documents as entries: they are all browser modules, an entry is
+	 * only a module nothing imports, and a superset needs no registry to be kept in step.
+	 */
+	const ENTRIES = readdirSync('test/harness')
+		.filter((name) => name.endsWith('.ts') && !name.endsWith('.test.ts'))
+		.map((name) => `test/harness/${name}`)
+		.sort();
+
+	it('finds the entries rather than naming them', () => {
+		// The discovery is the gate's load-bearing half, so it is asserted rather than
+		// assumed: a glob that silently matched nothing would make every case below vacuous.
+		expect(ENTRIES).toContain('test/harness/release.ts');
+		expect(ENTRIES.length).toBeGreaterThanOrEqual(4);
+	});
 
 	it.each(ENTRIES)('%s resolves to browser-safe modules only', async (entry) => {
 		const result = await build({
@@ -923,8 +989,10 @@ describe('the harness entries bundle for a browser', () => {
 });
 ```
 
-Confirm the four entry paths against `ls test/harness/*.ts` before running — bundle the
-files that `scripts/harness.mjs` documents as entries, no more.
+If a discovered module turns out not to bundle for a reason that is CORRECT — a deliberate
+node-only helper that no page imports — do not narrow the glob to exclude it by name: move it
+out of `test/harness/`, where a browser module belongs, or state the exclusion as a rule the
+next file will also be held to.
 
 - [ ] **Step 2: Run it against the PRE-FIX tree to watch it fail**
 
@@ -941,7 +1009,7 @@ Then restore: `cp /tmp/release-fixed.ts test/helpers/release.ts`.
 - [ ] **Step 3: Run it against the fixed tree**
 
 Run: `npx vitest run test/harness/bundles.test.ts`
-Expected: PASS, four cases.
+Expected: PASS — the discovery case plus one per discovered module.
 
 - [ ] **Step 4: Write the bug note**
 
