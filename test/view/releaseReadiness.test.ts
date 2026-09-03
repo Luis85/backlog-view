@@ -100,9 +100,10 @@ describe("a release's readiness on screen", () => {
 
 	it('keeps the effort figures when progress is unconfigured', () => {
 		// They read the ESTIMATE key, not the state workflow, so the summary's early return
-		// for unconfigured progress must not take them with it. No `capacityUnit` here, so
-		// the unlabelled twin is what draws.
-		const { containerEl } = openScope({ ...RELEASE_CONFIG, estimateProperty: 'note.effort', stateProperty: '' });
+		// for unconfigured progress must not take them with it. `capacityUnit` is CLEARED
+		// rather than left to `RELEASE_CONFIG`'s own binding (✨ binds `points` since the
+		// product owner's reversal), so this is still the unlabelled twin's own case.
+		const { containerEl } = openScope({ ...RELEASE_CONFIG, estimateProperty: 'note.effort', stateProperty: '', capacityUnit: '' });
 		const strip = containerEl.querySelector('.pbl-rel-summary') as HTMLElement;
 		expect(strip.textContent).toContain('unestimated');
 		expect(strip.querySelector('.pbl-rel-unreadable')).not.toBeNull();

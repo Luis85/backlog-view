@@ -71,10 +71,13 @@ too. The commitment is the estimate summed over the members
   feature is told about the unbound key and not about the unit as well. Unlabelled arithmetic
   is two numbers whose meaning the reader supplies, which is the thing this feature exists to
   prevent.
-- **3b — the initializer binds the key and never the unit.** A deliberate boundary of ✨
-  (`src/view/release/init.ts`): a unit is what a team already says, and there is no honest
-  default to guess. A press therefore leaves this feature one step short, and the strip names
-  that step — the same honest outcome the risk criterion's own vocabularies take.
+- **3b — the initializer binds the key and the unit both.** ✨ (`src/view/release/init.ts`)
+  used to bind the key alone, on the argument that there is no honest default for a unit a
+  team has not stated. The product owner weighed that against a press that could never fully
+  enable this feature and chose the press that finishes: it now binds `points`, the option's
+  own placeholder, same as it does for the released-status vocabulary and the notes folder.
+  A guessed unit is a real cost — it labels somebody else's numbers until they notice and
+  retype it — spent on purpose so one press is enough.
 - **4a — nothing in the release double counts.** The note is absent rather than present and
   empty.
 

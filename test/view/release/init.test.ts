@@ -307,6 +307,21 @@ describe('the press binds the options that are not properties', () => {
 		expect(view.config.get('releaseNotesFolder')).toBe('notes/ship');
 	});
 
+	it('binds the capacity unit to the option’s own placeholder, so one press fully enables the comparison', async () => {
+		// The product owner's reversal of `init.ts`'s own former boundary: a guessed unit is
+		// a real cost, spent on purpose so ✨ finishes enabling the feature in one press.
+		const { view } = mountRelease({ bindAll: false });
+		await runReleaseInit(view);
+		expect(view.config.get('capacityUnit')).toBe('points');
+	});
+
+	it('never overwrites a unit the reader already typed', async () => {
+		const { view } = mountRelease({ bindAll: false });
+		view.config.set('capacityUnit', 'story points');
+		await runReleaseInit(view);
+		expect(view.config.get('capacityUnit')).toBe('story points');
+	});
+
 	it('leaves a fully configured view with no configuration problems', async () => {
 		// The promise of the press, as one assertion rather than five.
 		const { view } = mountRelease({ bindAll: false });

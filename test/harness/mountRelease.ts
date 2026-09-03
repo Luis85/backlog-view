@@ -69,10 +69,10 @@ const FULL = {
 	releaseNotesFolder: 'Releases/Notes',
 	criticalRiskValues: 'High, Critical',
 	addressedRiskValues: 'Mitigated, Accepted',
-	// The two the capacity comparison needs bound, for the identical reason the risk pair
-	// above is: ✨ binds no key for either, so a fixture that bound them would describe a
-	// state no press can reach, and `RELEASE_CONFIG` is read by suites asking about the
-	// UNBOUND case. The harness is asking what the comparison LOOKS like.
+	// `capacityProperty` and `capacityUnit` are already in `RELEASE_CONFIG` (✨ binds both
+	// since the product owner's reversal), so these two lines are no longer load-bearing —
+	// only `pts` in place of `RELEASE_CONFIG`'s own `points`, kept explicit so the harness's
+	// unit reads distinctly from a plain press's.
 	capacityProperty: 'note.capacity',
 	capacityUnit: 'pts',
 };
