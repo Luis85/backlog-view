@@ -265,8 +265,17 @@ function doubleCountFigure(app: App, scope: ReleaseScope, settings: ReleaseSetti
 		if (row.context) continue;
 		if (!isEstimated(estimateOf(app, row.item, settings))) continue;
 		// EVERY open estimate may already contain this one, not just the nearest: an Epic
-		// whose grandchild is estimated is covering an estimate too.
-		for (const entry of open) entry.covers = true;
+		// whose grandchild is estimated is covering an estimate too — but that is a fact
+		// about `covers`'s own INVARIANT, not something this arrival has to re-establish by
+		// writing every entry. Each entry is pushed `covers: false`, and the arrival that
+		// pushed it is the same arrival that would have marked every entry already open at
+		// that moment — so every entry below the top is already `true` by the time a LATER
+		// arrival gets here, and only the top can still be `false`. Marking just the top is
+		// therefore the same result as marking all of them, in O(1) rather than O(open.length)
+		// — the walk this module's own header claims is a single pass over the rows, not
+		// quadratic in a chain's depth.
+		const top = open[open.length - 1];
+		if (top !== undefined) top.covers = true;
 		open.push({ depth: row.depth, covers: false });
 	}
 	// The last subtree has no row after it to close it.

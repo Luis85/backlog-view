@@ -203,13 +203,17 @@ describe('capacity against commitment on the strip', () => {
 	});
 
 	it('keeps a real difference at a tiny magnitude rather than normalizing it away', () => {
-		// The tolerance is RELATIVE to the operands, not a fixed number: an absolute one wide
-		// enough to absorb the float noise above would also erase this difference, which is
-		// real — two ordinary typed values, not a summation remainder — however small the
-		// magnitude both happen to share.
+		// A SINGLE estimate is never summed with anything -- zero additions happened, so zero
+		// noise could have accumulated, and the tolerance is exactly zero regardless of how
+		// small the two operands are. F2 keeps `capacityVault`'s own no-effort default, so
+		// `commitment` is this one typed value and not a sum.
+		//
+		// `over` is asserted rounded to 12 significant digits, matching what the renderer
+		// itself does to the raw subtraction (`9.999999999999991e-12` -> `1e-11`): that
+		// rounding is a second, separate artifact from the additions tolerance above it, and
+		// it is not what this test is about — see the dedicated subtraction-noise test below.
 		const commitment = 1.1e-10;
 		const capacity = 1e-10;
-		// F2 keeps `capacityVault`'s own no-effort default, so the sum is `commitment` alone.
 		const vault = capacityVault(capacity);
 		vault.setFrontmatter('F1.md', { type: 'Feature', parent: 'E', order: 1, release: '[[R]]', effort: commitment });
 		const { view, containerEl } = makeReleaseView(vault, CONFIGURED);
@@ -221,6 +225,55 @@ describe('capacity against commitment on the strip', () => {
 				capacity: formatNumber(capacity, true),
 				unit: 'pts',
 				pct: 110,
+				over: formatNumber(Number((commitment - capacity).toPrecision(12)), true),
+			}),
+		);
+	});
+
+	it("rounds a single subtraction's own float garbage out of the difference", () => {
+		// A SINGLE estimate performs no ADDITION, so the additions tolerance above is exactly
+		// zero and cannot touch this — `52.1 - 40` is `12.100000000000001`, garbage from the
+		// SUBTRACTION itself rather than from summing several typed estimates. `capacity` and
+		// `commitment` still show their full typed precision; only the derived `over` is
+		// rounded.
+		const capacity = 40;
+		const commitment = 52.1;
+		const vault = capacityVault(capacity);
+		vault.setFrontmatter('F1.md', { type: 'Feature', parent: 'E', order: 1, release: '[[R]]', effort: commitment });
+		const { view, containerEl } = makeReleaseView(vault, CONFIGURED);
+		view.pick('R.md');
+		const text = containerEl.querySelector('.pbl-rel-summary')?.textContent ?? '';
+		expect(text).toContain(
+			t('release.scope.capacityOver', {
+				commitment: formatNumber(commitment, true),
+				capacity: formatNumber(capacity, true),
+				unit: 'pts',
+				pct: 130,
+				over: formatNumber(12.1, true),
+			}),
+		);
+		expect(text).not.toContain('12.100000000000001');
+	});
+
+	it('reports a real difference at the top of the range too, rather than a fixed multiple over-collapsing it', () => {
+		// This is the case that fails if the tolerance is scaled by a fixed number of ULPs
+		// instead of by the additions actually performed: `2` here is comparable in size to
+		// what a constant multiple of `Number.EPSILON * capacity` would let through as noise,
+		// but a SINGLE estimate performed no addition at all, so the true tolerance is zero
+		// and this difference is exact.
+		const capacity = 10000000000000000;
+		const commitment = 10000000000000002;
+		const vault = capacityVault(capacity);
+		vault.setFrontmatter('F1.md', { type: 'Feature', parent: 'E', order: 1, release: '[[R]]', effort: commitment });
+		const { view, containerEl } = makeReleaseView(vault, CONFIGURED);
+		view.pick('R.md');
+		const text = containerEl.querySelector('.pbl-rel-summary')?.textContent ?? '';
+		expect(text).toContain(
+			t('release.scope.capacityOver', {
+				commitment: formatNumber(commitment, true),
+				capacity: formatNumber(capacity, true),
+				unit: 'pts',
+				pct: 100,
 				over: formatNumber(commitment - capacity, true),
 			}),
 		);

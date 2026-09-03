@@ -423,7 +423,7 @@ function drawCapacityFigures(
 	// capacity can subtract to `5.55e-17` rather than `0`. The default formatter's
 	// three-fraction-digit cap hid that; the precise one this figure now uses does not, and
 	// would print `100%, 5.55E-17 over` for a release that is honestly exactly full.
-	const over = normalizedOver(commitment - capacity.value, commitment, capacity.value);
+	const over = normalizedOver(commitment - capacity.value, commitment, capacity.value, estimatedMembers);
 	if (capacity.value === 0) {
 		figure(
 			sumEl,
@@ -478,19 +478,43 @@ function drawCapacityFigures(
 }
 
 /**
- * A few ULPs of slack around the subtraction that decides over/under, scaled off the
- * OPERANDS rather than a fixed count of decimal places. An absolute tolerance would erase a
- * real difference at the tiny capacities this feature explicitly accepts — a capacity of a
- * few thousandths is an ordinary bound key, not noise — while a relative one stays
- * proportionally tiny at every magnitude the comparison can see, `Number.MIN_VALUE`
- * (handled separately, by the overflow guard) included. `4` is a small integer multiple of
- * `Number.EPSILON`, wide enough to absorb one or two float additions' worth of remainder and
- * narrow enough that a genuine difference many orders of magnitude below the operands —
- * `0.0004` against `0.00032` — still clears it by a wide margin.
+ * Two different float artifacts land in `over`, and they need two different instruments —
+ * neither one alone is honest about both.
+ *
+ * **Summation noise** is a few ULPs of slack around the subtraction, scaled off the
+ * OPERANDS rather than a fixed count of decimal places — a fixed multiple over-collapses at
+ * the top of the range, where an EXACT difference (capacity `10000000000000000` against a
+ * single estimate two above it) is comparable in size to the slack a fixed multiple would
+ * allow, so it read as `0 over` when it was really `2`.
+ *
+ * **The missing term is how much noise could actually have accumulated**, which is not a
+ * property of the operands' size at all — it is the number of floating-point ADDITIONS that
+ * built `commitment`. Each addition can introduce at most about `Number.EPSILON` of relative
+ * error against the larger operand, so the slack has to scale with the addition COUNT, not
+ * just the magnitude: a single estimate is not summed with anything and carries none of that
+ * error, so its tolerance is exactly zero and any nonzero difference is real, however large
+ * the operands — Codex's `10000000000000002` example. `estimatedMembers` members were summed
+ * with `estimatedMembers - 1` `+=` operations (`effortFigures`), so that is the multiplier;
+ * `0.1 + 0.2` performs exactly one addition and its `5.55e-17` remainder clears comfortably
+ * under one `Number.EPSILON` scaled by the larger operand.
+ *
+ * **Subtraction noise is a separate artifact, and the tolerance above cannot see it.** A
+ * SINGLE estimate of `52.1` against a capacity of `40` performs no addition at all, so the
+ * additions tolerance is exactly zero — correctly, since `2` at `1e16` from that same
+ * single-estimate case must survive — and yet the bare subtraction is
+ * `12.100000000000001`, garbage in the last few of a double's ~16 significant digits that no
+ * ADDITION produced. The fix is to round the RESULT, never the operands: `capacity` and
+ * `commitment` are values someone typed and keep the precise formatter's full output, but
+ * `over` is DERIVED, and a derived value may be rounded to the precision its inputs justify.
+ * Twelve significant digits keeps every genuine difference this feature can produce —
+ * `2` at `1e16`, a parts-per-trillion difference at a tiny capacity — while discarding what
+ * a double cannot represent exactly to begin with.
  */
-function normalizedOver(over: number, commitment: number, capacity: number): number {
-	const tolerance = Number.EPSILON * Math.max(Math.abs(commitment), Math.abs(capacity)) * 4;
-	return Math.abs(over) <= tolerance ? 0 : over;
+function normalizedOver(over: number, commitment: number, capacity: number, estimatedMembers: number): number {
+	const additions = Math.max(estimatedMembers - 1, 0);
+	const tolerance = Number.EPSILON * Math.max(Math.abs(commitment), Math.abs(capacity)) * additions;
+	const cleared = Math.abs(over) <= tolerance ? 0 : over;
+	return Number(cleared.toPrecision(12));
 }
 
 /** Absent rather than present and empty — extension 4a. */
