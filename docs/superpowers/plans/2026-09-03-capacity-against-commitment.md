@@ -1249,7 +1249,7 @@ Expected: PASS — the discovery case plus one per discovered module.
 ---
 type: Bug
 parent: "[[A browser harness without Obsidian]]"
-order: 10
+order: 40
 status: Done
 area: test
 priority: P2
@@ -1271,9 +1271,20 @@ iteration: ""
 ---
 ```
 
-Pick `order` so it does not collide with an existing child of that parent
-(`grep -h '^order:' $(grep -l 'A browser harness without Obsidian' docs/bugs/*.md)`), and
-state in the body: the symptom (`npm run harness -- test/harness/release.ts` failing on
+**`order: 40` is free as of 2026-09-03, and it was chosen with an instrument that can see
+every sibling.** A parent's children are not all in one folder: this one's live in
+`docs/requirements/` (orders 10, 20, 30, 70) and a census of `docs/bugs/` alone reports no
+collision while `docs-check.mjs` rejects the note for duplicating order 10. Confirm before
+writing, over the whole register rather than one folder:
+
+```bash
+grep -rl "A browser harness without Obsidian" docs/ --include=*.md | while read f; do
+  grep -q 'parent: "\[\[A browser harness without Obsidian\]\]"' "$f" &&
+    echo "$(grep -m1 '^order:' "$f") $f"
+done | sort -n
+```
+
+Then state in the body: the symptom (`npm run harness -- test/harness/release.ts` failing on
 `node:fs`), the cause (a browser-bundled helper importing a vitest-and-node one for a one-line
 `setTimeout`), what it cost (the release view unlookable outside Obsidian, which is where
 appearance, focusability and geometry are answered), the fix, and the gate above.
