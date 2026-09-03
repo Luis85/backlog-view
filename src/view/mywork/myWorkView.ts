@@ -266,10 +266,38 @@ export class MyWorkView extends BasesView {
 		// and produces no `BacklogItem`, so a picked person's path is never a key in
 		// `byPath` and that guard would send every valid pick to the no-pick state.
 		if (this.pickedPerson === null || !pickedResource(this.model, this.pickedPerson)) {
-			guidanceShell(this.viewEl, 'user-round-search', t('mywork.empty.noPick.title'), t('mywork.empty.noPick.hint'));
+			const shellEl = guidanceShell(
+				this.viewEl,
+				'user-round-search',
+				t('mywork.empty.noPick.title'),
+				t('mywork.empty.noPick.hint'),
+			);
+			this.drawSoloPress(shellEl);
 			return;
 		}
 		this.treeDraw = drawMyWorkTree(this, this.viewEl);
+	}
+
+	/**
+	 * A roster of ONE has one answer, and this is the press that gives it — appended to
+	 * the no-pick guidance rather than drawn instead of it, so the picker above stays the
+	 * way to a different answer.
+	 *
+	 * **Never an auto-pick**, and that is the decision rather than the lazy half of one:
+	 * `pick(null)` stores nothing, so "never picked" and "deliberately cleared" are the
+	 * same stored state. An auto-pick would undo a clear on the next data update, and
+	 * telling the two apart costs a second stored value — the shape ADR 0011 already
+	 * charges for. One press buys the same "one person, no ceremony" with no new state.
+	 */
+	private drawSoloPress(shellEl: HTMLElement): void {
+		const roster = this.model?.resources ?? [];
+		if (roster.length !== 1) return;
+		const only = roster[0];
+		const btn = shellEl.createEl('button', {
+			cls: 'mod-cta pbl-mw-solo',
+			text: t('mywork.empty.noPick.cta', { name: only.title }),
+		});
+		btn.addEventListener('click', () => this.pick(only.file.path));
 	}
 
 	/**

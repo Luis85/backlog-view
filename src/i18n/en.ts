@@ -1921,6 +1921,9 @@ export const en = {
 	'mywork.empty.noRoster.hint': 'A person is a note of type Resource. Widen the filter, or make one.',
 	'mywork.empty.noPick.title': 'Pick a person',
 	'mywork.empty.noPick.hint': 'Their work appears below in plan order, with the next thing to do marked.',
+	/** The press a roster of ONE draws in the no-pick state (`view/mywork/myWorkView.ts`).
+	 *  The name is a parameter: it is vault data, never text this catalog spells. */
+	'mywork.empty.noPick.cta': 'Show {name}’s work',
 	'mywork.empty.noWork.title': 'Nothing is assigned to this person',
 	'mywork.empty.noWork.hint': 'Set the assignee on an item, in the backlog or on its own note, and it appears here.',
 	'mywork.empty.allDone.title': 'Everything here is done',
