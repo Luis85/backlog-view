@@ -95,6 +95,15 @@ export const RELEASE_SUGGESTED_KEYS: AdoptionCandidate[] = [
 	{ option: 'releasedDateProperty', suggested: 'released' },
 	{ option: 'descriptionProperty', suggested: 'description' },
 	{ option: 'estimateProperty', suggested: 'effort' },
+	// **`capacityUnit` is deliberately NOT beside this one**, and it is the one option this
+	// press leaves short on purpose. It is a text box rather than a property, so
+	// {@link RELEASE_SUGGESTED_VALUES} could carry it — and a value candidate has to name a
+	// literal. There is no honest literal to name: a unit is what a team already says, and a
+	// guessed one labels somebody else's numbers with it, which is the whole defect
+	// `Commitment against declared capacity` exists to prevent. So the press binds the key and
+	// the strip then names the single remaining step (`release.scope.capacityNoUnit`, drawn
+	// only once this key IS bound) — a state the reader can act on, rather than a unit they
+	// never chose sitting under four figures.
 	{ option: 'capacityProperty', suggested: 'capacity' },
 	{ option: 'dependsOnProperty', suggested: 'dependsOn' },
 	{ option: 'riskProperty', suggested: 'risk' },

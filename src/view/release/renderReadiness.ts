@@ -14,10 +14,17 @@ import { BacklogSettings } from '../../domain/settings';
  * this directory: this draws a different thing from a different model, and the 400-line cap
  * is a gate rather than a preference.
  *
- * **Nothing is derived here.** Every number and every verdict comes from
- * `domain/releaseReadiness.ts`, which computed them in one walk — a count written beside the
- * chip that reported it would be a second opinion about a number with one right answer,
- * which is the defect `Summing up a release` exists to prevent.
+ * **Every count and every verdict comes from `domain/releaseReadiness.ts`**, which computed
+ * them in one walk — a count written beside the chip that reported it would be a second
+ * opinion about a number with one right answer, which is the defect `Summing up a release`
+ * exists to prevent.
+ *
+ * **The COMPARISON is the one thing derived here**, and deliberately so
+ * (`docs/requirements/Commitment against declared capacity.md`): the difference between the
+ * commitment and the capacity, and the two percentages beside it. The difference is taken
+ * from `estimatedEffortExact`, the decimal that crosses the seam, so the rounding happens
+ * once and at the end — moving it into `domain/` would re-open the seam it was written to
+ * close. Nothing else is: no sum, no count, no verdict.
  */
 
 /** Each criterion's own name, read into the chip AND the collapsed row's hidden list. */
@@ -113,12 +120,6 @@ function drawChip(
 	if (provenance !== '') chipEl.createSpan({ cls: 'pbl-sr-only', text: provenance });
 }
 
-/**
- * One sentence per criterion, because the three do not read the same SHAPE of input — see
- * the catalog entries' own comment. The property is spelled as the frontmatter KEY rather
- * than the config's `note.`-prefixed id, since a reader who acts on this goes and edits
- * frontmatter.
- */
 /** A workflow kind's own translated name. All THREE, unlike `renderScope.ts`'s pair: a
  *  catalog note cannot be a release member, but it can be a member's prerequisite. */
 function workflowName(kind: WorkflowKind): string {
@@ -127,6 +128,12 @@ function workflowName(kind: WorkflowKind): string {
 	return t('release.scope.workflowRequirements');
 }
 
+/**
+ * One sentence per criterion, because the three do not read the same SHAPE of input — see
+ * the catalog entries' own comment. The property is spelled as the frontmatter KEY rather
+ * than the config's `note.`-prefixed id, since a reader who acts on this goes and edits
+ * frontmatter.
+ */
 function criterionProvenance(
 	key: ReleaseCriterion['key'],
 	settings: ReleaseSettings,
@@ -377,7 +384,13 @@ function drawCapacityFigures(
 	// a reader with two unbound mappings being told about one.
 	const unit = settings.capacityUnit;
 	if (unit === '') {
-		note(sumEl, t('release.scope.capacityNoUnit'));
+		// **Only once the key is bound.** An unset unit is a missing mapping worth reporting,
+		// but with no capacity property there is nothing to label and so nothing to say — and
+		// the unconfigured note above has already said the one thing that is true. Reported
+		// unconditionally it put THREE refusals on the strip for two unbound keys, beside the
+		// effort's own, on every vault that has never configured this: `drawCollapsed`'s rule
+		// one screen up, read here.
+		if (settings.capacityKey !== '') note(sumEl, t('release.scope.capacityNoUnit'));
 		return;
 	}
 	// **The EXACT commitment, and it is the only null this branch asks about.** It is null in

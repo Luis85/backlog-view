@@ -129,6 +129,16 @@ function verdictOf(cleared: number, outstanding: number): Verdict {
 const WORKFLOW_KINDS: WorkflowKind[] = ['requirements', 'deliverable', 'test'];
 
 /**
+ * The workflows that can clear a prerequisite in this vault — the same test `blockedCriterion`
+ * applies per prerequisite through `ownWorkflowKind`, asked of the configuration instead so a
+ * renderer can SAY what the criterion will consult. Exported because the alternative was the
+ * view naming `stateKey` alone, which is wrong for any prerequisite that is not ordinary work.
+ */
+export function clearingWorkflows(planSettings: BacklogSettings): WorkflowKind[] {
+	return WORKFLOW_KINDS.filter((kind) => workflowClears(kind, planSettings));
+}
+
+/**
  * **A key is half of a workflow; the other half is which values clear it** — the same rule
  * the risk criterion keeps, read here for the state vocabulary. A bound `stateKey` with an
  * empty `doneValues` clears nothing, so `ownWorkflowReading(...).done` is false for every
@@ -146,16 +156,6 @@ const WORKFLOW_KINDS: WorkflowKind[] = ['requirements', 'deliverable', 'test'];
  * Raised by a review bot against the plan, and confirmed at `settingsResolve.ts`'s
  * `effectiveDoneValues` before it was taken.
  */
-/**
- * The workflows that can clear a prerequisite in this vault — the same test `blockedCriterion`
- * applies per prerequisite through `ownWorkflowKind`, asked of the configuration instead so a
- * renderer can SAY what the criterion will consult. Exported because the alternative was the
- * view naming `stateKey` alone, which is wrong for any prerequisite that is not ordinary work.
- */
-export function clearingWorkflows(planSettings: BacklogSettings): WorkflowKind[] {
-	return WORKFLOW_KINDS.filter((kind) => workflowClears(kind, planSettings));
-}
-
 function workflowClears(kind: WorkflowKind, planSettings: BacklogSettings): boolean {
 	const info = workflowStateInfo(kind, planSettings);
 	return info.key !== '' && info.doneValues.length > 0;

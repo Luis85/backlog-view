@@ -66,8 +66,15 @@ too. The commitment is the estimate summed over the members
 - **2b — the estimate key is unconfigured.** There is no commitment and therefore no
   comparison; both halves are named as unconfigured.
 - **3a — the unit string is not set.** No comparison is shown at all, and the unit is listed as
-  missing exactly like an unbound key. Unlabelled arithmetic is two numbers whose meaning the
-  reader supplies, which is the thing this feature exists to prevent.
+  missing exactly like an unbound key — but only once the capacity key is bound. With no
+  capacity property there is nothing to label, so a vault that has never configured this
+  feature is told about the unbound key and not about the unit as well. Unlabelled arithmetic
+  is two numbers whose meaning the reader supplies, which is the thing this feature exists to
+  prevent.
+- **3b — the initializer binds the key and never the unit.** A deliberate boundary of ✨
+  (`src/view/release/init.ts`): a unit is what a team already says, and there is no honest
+  default to guess. A press therefore leaves this feature one step short, and the strip names
+  that step — the same honest outcome the risk criterion's own vocabularies take.
 - **4a — nothing in the release double counts.** The note is absent rather than present and
   empty.
 

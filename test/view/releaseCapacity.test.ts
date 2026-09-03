@@ -49,12 +49,12 @@ describe('capacity against commitment on the strip', () => {
 		// A positive capacity is not enough on its own — the guard is on the RESULT.
 		const text = stripText(Number.MIN_VALUE);
 		expect(text).toContain(t('release.scope.capacityPctOverflow'));
+		// These two carry the whole check: without the guard the comparison draws its
+		// percentage as `Infinity%`. NOT `not.toContain('%')`, which fails however correctly
+		// this figure behaves — the strip carries the progress percentage and the effort
+		// figure's own.
 		expect(text).not.toContain('Infinity');
 		expect(text).not.toContain('NaN');
-		// NOT `not.toContain('%')`: the strip carries the progress percentage and the effort
-		// figure's own, so that assertion fails however correctly this figure behaves. What
-		// must be absent is a capacity sentence carrying a percentage at all.
-		expect(text).not.toContain(t('release.scope.capacityOver', { commitment: 52, capacity: 0, unit: 'pts', pct: 0, over: 52 }));
 	});
 
 	it('withholds the percentage at zero capacity, and says why', () => {
@@ -83,6 +83,15 @@ describe('capacity against commitment on the strip', () => {
 		expect(text).not.toContain(t('release.scope.capacityOver', { commitment: 52, capacity: 40, unit: '', pct: 130, over: 12 }));
 	});
 
+	it('says nothing about the unit when no capacity key is bound', () => {
+		// Every existing vault after an upgrade: two unbound keys must not report three
+		// refusals. The unbound key is still named — the capacity half is always named — but
+		// a unit for a feature nobody has enabled labels nothing and so says nothing.
+		const text = stripText(40, { ...CONFIGURED, capacityProperty: '', capacityUnit: '' });
+		expect(text).toContain(t('release.scope.capacityUnconfigured'));
+		expect(text).not.toContain(t('release.scope.capacityNoUnit'));
+	});
+
 	it('draws no comparison for a release nobody has estimated', () => {
 		// The sum is a real `0` there — absence presented as a measurement is the defect the
 		// effort figure beside this one already refuses.
@@ -92,6 +101,10 @@ describe('capacity against commitment on the strip', () => {
 		view.pick('R.md');
 		const text = containerEl.querySelector('.pbl-rel-summary')?.textContent ?? '';
 		expect(text).not.toContain(t('release.scope.capacityUnder', { commitment: 0, capacity: 40, unit: 'pts', pct: 0, left: 40 }));
+		// And the capacity is still NAMED on the way out — the missing half is the commitment,
+		// not this one. Asserted at this exit rather than only at the unbound estimate key's,
+		// because this is the one a configured vault reaches.
+		expect(text).toContain(t('release.scope.capacityAlone', { capacity: 40, unit: 'pts' }));
 	});
 
 	it('still compares a release whose members all estimate zero', () => {
