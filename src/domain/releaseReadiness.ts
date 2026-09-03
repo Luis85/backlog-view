@@ -1,5 +1,6 @@
 import { App } from 'obsidian';
 import { ownValue, readString, sameValue } from './noteFields';
+import { exactSum } from './decimal';
 import { ownWorkflowKind, ownWorkflowReading, WorkflowKind, workflowStateInfo } from './board';
 import { ReleaseFigure, ReleaseScope } from './releases';
 import { ReleaseSettings } from './releaseOptions';
@@ -410,14 +411,21 @@ function effortFigures(
 	const missing = weighed.filter((entry) => entry.value === null).length;
 	const counting = weighed.filter((entry): entry is { item: BacklogItem; value: number } => entry.value !== null);
 	const doneReadable = counting.every((entry) => workflowClears(ownWorkflowKind(entry.item), planSettings));
-	let estimated = 0;
-	let completed = 0;
+	// **Summed EXACTLY, never with `+=`** (`domain/decimal.ts`). Each estimate is a decimal
+	// somebody typed, and a running float total answers `0.30000000000000004` for `0.1` and
+	// `0.2` — a commitment the strip then draws beside a capacity of `0.3` and a difference of
+	// zero, contradicting itself in one sentence. Two terms are collected in one pass rather
+	// than two filters, because the done reading is the expensive half.
+	const all: number[] = [];
+	const done: number[] = [];
 	for (const entry of counting) {
-		estimated += entry.value;
+		all.push(entry.value);
 		// The member's OWN workflow, so a Deliverable answers by its own — the reader the
 		// progress bar above this already uses.
-		if (doneReadable && ownWorkflowReading(entry.item).done) completed += entry.value;
+		if (doneReadable && ownWorkflowReading(entry.item).done) done.push(entry.value);
 	}
+	const estimated = exactSum(all);
+	const completed = exactSum(done);
 	// **A finite estimate can still overflow a finite TOTAL.** `estimateValue` refuses a
 	// non-finite value, which closes that door per member and not for their sum: two members
 	// at `1e308` are each accepted and add to `Infinity`, which reaches the strip as an

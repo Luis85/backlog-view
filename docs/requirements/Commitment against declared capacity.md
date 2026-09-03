@@ -94,3 +94,15 @@ The capacity key, the estimate key and the unit string are declared in
 so a value import back the other way would be a runtime cycle, and that module already owns
 the other half of this comparison (the commitment), which is its stated reason for existing.
 The panel is the release summary's own render module, `src/view/release/renderReadiness.ts`.
+
+Both halves of the comparison are arithmetic on decimals somebody TYPED, so both go through
+`src/domain/decimal.ts` — `exactSum` for the commitment and `exactDifference` for the
+difference. It parses each double's shortest round-trip decimal representation (what `String`
+gives, which is the number the user typed) into digits and a scale, adds and subtracts them in
+`BigInt`, and converts back to a double once at the end. A new file rather than a helper
+beside either caller: it is the whole of one concern, it is the layer's own kind of pure
+function, and the two callers sit in different layers. What it replaced was a tolerance scaled
+by the number of additions performed and a rounding of the difference to twelve significant
+digits, each of which reported a real difference as none — a `1e-16` shortfall as exactly
+filled, and `1000000000001` over as `1000000000000`. Exact arithmetic needs neither, which is
+why there is no threshold left to tune.

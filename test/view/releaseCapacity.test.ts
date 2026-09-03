@@ -176,77 +176,69 @@ describe('capacity against commitment on the strip', () => {
 		expect(text).not.toContain('0 of 0');
 	});
 
-	it('reads an exactly-filled release as exactly filled, not as a float remainder over', () => {
-		// `0.1 + 0.2` is `0.30000000000000004`, never exactly `0.3` — so a release estimated
-		// at 0.1 and 0.2 against a capacity of 0.3 is honestly exactly full, and the raw
-		// subtraction is a few ULPs of noise rather than a real overage. The default
-		// formatter's three-digit cap hid this before the precise one existed; unnormalized,
-		// the precise one prints it.
-		const vault = capacityVault(0.3);
-		vault.setFrontmatter('F1.md', { type: 'Feature', parent: 'E', order: 1, release: '[[R]]', effort: 0.1 });
-		vault.setFrontmatter('F2.md', { type: 'Feature', parent: 'E', order: 2, release: '[[R]]', effort: 0.2 });
+	/**
+	 * The six demonstrated cases of `Commitment against declared capacity`'s arithmetic, one
+	 * test each. Two of them — the `1e-16` shortfall and the `1000000000001` overage — are
+	 * what the tolerance and the twelve-significant-digit rounding this feature used to carry
+	 * each got wrong, and they are the acceptance criteria for replacing both with exact
+	 * decimal arithmetic (`src/domain/decimal.ts`). The other four are the cases those
+	 * heuristics got right and must keep getting right.
+	 */
+	function estimatedStrip(capacity: number, efforts: number[]): string {
+		const vault = capacityVault(capacity);
+		efforts.forEach((effort, index) => {
+			vault.setFrontmatter(`F${index + 1}.md`, {
+				type: 'Feature',
+				parent: 'E',
+				order: index + 1,
+				release: '[[R]]',
+				effort,
+			});
+		});
 		const { view, containerEl } = makeReleaseView(vault, CONFIGURED);
 		view.pick('R.md');
-		const text = containerEl.querySelector('.pbl-rel-summary')?.textContent ?? '';
+		return containerEl.querySelector('.pbl-rel-summary')?.textContent ?? '';
+	}
+
+	it('reads an exactly-filled release as exactly filled, not as a float remainder over', () => {
+		// `0.1 + 0.2` is `0.30000000000000004` and the raw subtraction from `0.3` is
+		// `5.55e-17`, which the precise formatter this figure uses would print in full. Summed
+		// as decimals there is no remainder to hide: the total IS `0.3` and the difference is
+		// exactly zero.
+		const text = estimatedStrip(0.3, [0.1, 0.2]);
 		expect(text).toContain(
 			t('release.scope.capacityOver', {
-				commitment: formatNumber(0.1 + 0.2, true),
+				commitment: formatNumber(0.3, true),
 				capacity: formatNumber(0.3, true),
 				unit: 'pts',
 				pct: 100,
 				over: formatNumber(0, true),
 			}),
 		);
-		// Not merely "the right sentence is present": an unnormalized noise value would print
-		// in exponential form, which this guards against directly.
+		// Not merely "the right sentence is present": a float remainder prints in exponential
+		// form, which this guards against directly.
 		expect(text).not.toMatch(/[eE][+-]\d/);
 	});
 
-	it('keeps a real difference at a tiny magnitude rather than normalizing it away', () => {
-		// A SINGLE estimate is never summed with anything -- zero additions happened, so zero
-		// noise could have accumulated, and the tolerance is exactly zero regardless of how
-		// small the two operands are. F2 keeps `capacityVault`'s own no-effort default, so
-		// `commitment` is this one typed value and not a sum.
-		//
-		// `over` is asserted rounded to 12 significant digits, matching what the renderer
-		// itself does to the raw subtraction (`9.999999999999991e-12` -> `1e-11`): that
-		// rounding is a second, separate artifact from the additions tolerance above it, and
-		// it is not what this test is about — see the dedicated subtraction-noise test below.
-		const commitment = 1.1e-10;
-		const capacity = 1e-10;
-		const vault = capacityVault(capacity);
-		vault.setFrontmatter('F1.md', { type: 'Feature', parent: 'E', order: 1, release: '[[R]]', effort: commitment });
-		const { view, containerEl } = makeReleaseView(vault, CONFIGURED);
-		view.pick('R.md');
-		const text = containerEl.querySelector('.pbl-rel-summary')?.textContent ?? '';
-		expect(text).toContain(
-			t('release.scope.capacityOver', {
-				commitment: formatNumber(commitment, true),
-				capacity: formatNumber(capacity, true),
-				unit: 'pts',
-				pct: 110,
-				over: formatNumber(Number((commitment - capacity).toPrecision(12)), true),
-			}),
-		);
+	it('draws the commitment itself as the number the notes add up to', () => {
+		// The self-contradiction the exact sum removes, and a separate claim from the
+		// difference above it: the strip drew `0.30000000000000004` committed against `0.3`
+		// declared and `0 over` in one sentence. The COMMITMENT is what this asserts, so it
+		// fails on a renderer that normalized only the derived difference.
+		const text = estimatedStrip(0.3, [0.1, 0.2]);
+		expect(text).not.toContain('0.30000000000000004');
 	});
 
-	it("rounds a single subtraction's own float garbage out of the difference", () => {
-		// A SINGLE estimate performs no ADDITION, so the additions tolerance above is exactly
-		// zero and cannot touch this — `52.1 - 40` is `12.100000000000001`, garbage from the
-		// SUBTRACTION itself rather than from summing several typed estimates. `capacity` and
-		// `commitment` still show their full typed precision; only the derived `over` is
-		// rounded.
-		const capacity = 40;
-		const commitment = 52.1;
-		const vault = capacityVault(capacity);
-		vault.setFrontmatter('F1.md', { type: 'Feature', parent: 'E', order: 1, release: '[[R]]', effort: commitment });
-		const { view, containerEl } = makeReleaseView(vault, CONFIGURED);
-		view.pick('R.md');
-		const text = containerEl.querySelector('.pbl-rel-summary')?.textContent ?? '';
+	it('takes a single subtraction exactly rather than carrying its float garbage', () => {
+		// `52.1 - 40` is `12.100000000000001` — garbage from the SUBTRACTION rather than from
+		// summing anything, so no tolerance over the addition count could ever reach it, and
+		// the rounding that did reach it is what got the case below wrong. `capacity` and
+		// `commitment` still show their full typed precision.
+		const text = estimatedStrip(40, [52.1]);
 		expect(text).toContain(
 			t('release.scope.capacityOver', {
-				commitment: formatNumber(commitment, true),
-				capacity: formatNumber(capacity, true),
+				commitment: formatNumber(52.1, true),
+				capacity: formatNumber(40, true),
 				unit: 'pts',
 				pct: 130,
 				over: formatNumber(12.1, true),
@@ -255,26 +247,69 @@ describe('capacity against commitment on the strip', () => {
 		expect(text).not.toContain('12.100000000000001');
 	});
 
-	it('reports a real difference at the top of the range too, rather than a fixed multiple over-collapsing it', () => {
-		// This is the case that fails if the tolerance is scaled by a fixed number of ULPs
-		// instead of by the additions actually performed: `2` here is comparable in size to
-		// what a constant multiple of `Number.EPSILON * capacity` would let through as noise,
-		// but a SINGLE estimate performed no addition at all, so the true tolerance is zero
-		// and this difference is exact.
-		const capacity = 10000000000000000;
-		const commitment = 10000000000000002;
-		const vault = capacityVault(capacity);
-		vault.setFrontmatter('F1.md', { type: 'Feature', parent: 'E', order: 1, release: '[[R]]', effort: commitment });
-		const { view, containerEl } = makeReleaseView(vault, CONFIGURED);
-		view.pick('R.md');
-		const text = containerEl.querySelector('.pbl-rel-summary')?.textContent ?? '';
+	it('reports a real difference at the top of the range rather than collapsing it into slack', () => {
+		// A difference of `2` at `1e16` is the size a tolerance scaled off the operands would
+		// swallow. It is exact, and it survives.
+		const text = estimatedStrip(10000000000000000, [10000000000000002]);
 		expect(text).toContain(
 			t('release.scope.capacityOver', {
-				commitment: formatNumber(commitment, true),
-				capacity: formatNumber(capacity, true),
+				commitment: formatNumber(10000000000000002, true),
+				capacity: formatNumber(10000000000000000, true),
 				unit: 'pts',
 				pct: 100,
-				over: formatNumber(commitment - capacity, true),
+				over: formatNumber(2, true),
+			}),
+		);
+	});
+
+	it('reports a shortfall the additions tolerance used to zero away', () => {
+		// **An acceptance criterion.** `0.5 + 0.4999999999999999` is `0.9999999999999999`, one
+		// part in ten thousand trillion short of a capacity of `1`. The tolerance this feature
+		// carried scaled `Number.EPSILON` by the operands and by the one addition performed,
+		// which is larger than this real shortfall — so the strip said the release was exactly
+		// full. It is not: it is under, and the figure says by how much.
+		const text = estimatedStrip(1, [0.5, 0.4999999999999999]);
+		expect(text).toContain(
+			t('release.scope.capacityUnder', {
+				commitment: formatNumber(0.9999999999999999, true),
+				capacity: formatNumber(1, true),
+				unit: 'pts',
+				pct: 100,
+				left: formatNumber(1e-16, true),
+			}),
+		);
+	});
+
+	it('reports an overage the twelve-digit rounding used to get off by one', () => {
+		// **An acceptance criterion.** `1000000000002 - 1` is `1000000000001`, a value a double
+		// holds exactly. Rounding the derived difference to twelve significant digits made it
+		// `1000000000000` — a wrong number, drawn with the confidence of a right one.
+		const text = estimatedStrip(1, [1000000000002]);
+		expect(text).toContain(
+			t('release.scope.capacityOver', {
+				commitment: formatNumber(1000000000002, true),
+				capacity: formatNumber(1, true),
+				unit: 'pts',
+				pct: 100000000000200,
+				over: formatNumber(1000000000001, true),
+			}),
+		);
+		expect(text).not.toContain(formatNumber(1000000000000, true));
+	});
+
+	it('keeps a real difference at a tiny magnitude rather than normalizing it away', () => {
+		// `1.1e-10 - 1e-10` is `9.999999999999991e-12` by the operator and exactly `1e-11` as
+		// decimals. Neither the tolerance nor the rounding could produce that answer: the
+		// former left the garbage digits, the latter rounded them to `1e-11` by luck of the
+		// twelfth digit rather than by arithmetic.
+		const text = estimatedStrip(1e-10, [1.1e-10]);
+		expect(text).toContain(
+			t('release.scope.capacityOver', {
+				commitment: formatNumber(1.1e-10, true),
+				capacity: formatNumber(1e-10, true),
+				unit: 'pts',
+				pct: 110,
+				over: formatNumber(1e-11, true),
 			}),
 		);
 	});
