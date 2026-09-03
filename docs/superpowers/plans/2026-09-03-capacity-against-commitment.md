@@ -615,8 +615,11 @@ The seven states, and the sentence each draws:
 | capacity invalid | `committed` | `capacityUnreadable` |
 | capacity key unbound | `committed` | `capacityUnconfigured` |
 | capacity absent on the note | `committed` | `capacityAbsent` |
-| unit unset (whatever the capacity is) | — | `capacityNoUnit` |
-| commitment unreadable or unconfigured | — | the capacity's own note only |
+| unit unset (whatever the capacity is, and whether or not there is a commitment) | — | `capacityNoUnit` |
+| commitment unreadable or unconfigured | — | the capacity's own note, and the unit's if unset |
+
+The double count is drawn **outside this table**, once, on every path — it counts estimates
+and reads neither the capacity nor the unit, so no state above suppresses it.
 
 - [ ] **Step 1: Write the failing test**
 
@@ -675,7 +678,11 @@ describe('capacity against commitment on the strip', () => {
 		const text = stripText(Number.MIN_VALUE);
 		expect(text).toContain(t('release.scope.capacityPctOverflow'));
 		expect(text).not.toContain('Infinity');
-		expect(text).not.toContain('%');
+		expect(text).not.toContain('NaN');
+		// NOT `not.toContain('%')`: the strip carries the progress percentage and the effort
+		// figure's own, so that assertion fails however correctly this figure behaves. What
+		// must be absent is a capacity sentence carrying a percentage at all.
+		expect(text).not.toContain(t('release.scope.capacityOver', { commitment: 52, capacity: 0, unit: 'pts', pct: 0, over: 52 }));
 	});
 
 	it('withholds the percentage at zero capacity, and says why', () => {
@@ -702,6 +709,24 @@ describe('capacity against commitment on the strip', () => {
 		const text = stripText(40, { ...CONFIGURED, capacityUnit: '' });
 		expect(text).toContain(t('release.scope.capacityNoUnit'));
 		expect(text).not.toContain(t('release.scope.capacityOver', { commitment: 52, capacity: 40, unit: '', pct: 130, over: 12 }));
+	});
+
+	it('reports a missing unit even with no commitment to label', () => {
+		// Two unbound mappings, two notes. Behind the commitment return the reader was told
+		// about one of them.
+		const text = stripText(40, { ...CONFIGURED, estimateProperty: '', capacityUnit: '' });
+		expect(text).toContain(t('release.scope.capacityNoUnit'));
+	});
+
+	it('names a double count even when no comparison can be drawn', () => {
+		// It counts estimates: neither the capacity nor the unit is an input to it.
+		const vault = capacityVault(40);
+		vault.setFrontmatter('E.md', { type: 'Epic', order: 1, release: '[[R]]', effort: 20 });
+		const { view, containerEl } = makeReleaseView(vault, { ...CONFIGURED, capacityUnit: '' });
+		view.pick('R.md');
+		expect(containerEl.querySelector('.pbl-rel-summary')?.textContent).toContain(
+			t('release.scope.doubleCount', { count: 1 }),
+		);
 	});
 
 	it('names the capacity property on every path with a bound key', () => {
@@ -860,6 +885,11 @@ function drawEffort(sumEl: HTMLElement, total: number, done: number | null, unit
  */
 function drawCapacity(sumEl: HTMLElement, readiness: ReleaseReadiness, settings: ReleaseSettings): void {
 	drawCapacityFigures(sumEl, readiness, settings);
+	// **Outside the comparison, and drawn once.** The double count is a count of ESTIMATES:
+	// it does not read the capacity, it does not read the unit, and it answers on every path
+	// where the comparison cannot be drawn at all. Inside those branches it was suppressed
+	// for reasons that have nothing to do with it — an unset unit, an overflowed effort sum.
+	drawDoubleCount(sumEl, readiness);
 	// **Every path with a bound key, not just the one that draws a percentage.** The
 	// provenance is what tells the reader WHICH frontmatter key to go and repair, so the
 	// unreadable state is the one that needs it most and the one five early returns would
@@ -878,29 +908,33 @@ function drawCapacity(sumEl: HTMLElement, readiness: ReleaseReadiness, settings:
 }
 
 function drawCapacityFigures(sumEl: HTMLElement, readiness: ReleaseReadiness, settings: ReleaseSettings): void {
-	const commitment = readiness.estimatedEffort.value;
 	const capacity = readiness.capacity;
 	// The capacity's own state is named even with no commitment to compare it against —
 	// extension 2b's "both halves are named" — but a comparison needs both numbers.
 	if (capacity.unconfigured) note(sumEl, t('release.scope.capacityUnconfigured'));
 	else if (capacity.invalid) note(sumEl, t('release.scope.capacityUnreadable'));
 	else if (capacity.value === null) note(sumEl, t('release.scope.capacityAbsent'));
-	if (commitment === null) return;
+	// **The unit is checked BEFORE the commitment, and that order is the requirement.**
+	// Extension 3a makes an unset unit a missing MAPPING, reported like an unbound key — so
+	// it is reported whether or not there is a commitment to label. Behind the commitment
+	// return it went unreported exactly when the effort sum was itself unreadable, which is
+	// a reader with two unbound mappings being told about one.
 	const unit = settings.capacityUnit;
 	if (unit === '') {
 		note(sumEl, t('release.scope.capacityNoUnit'));
 		return;
 	}
+	const commitment = readiness.estimatedEffort.value;
+	// The effort figures beside this one already said why there is no total.
+	if (commitment === null) return;
 	if (capacity.value === null) {
 		figure(sumEl, t('release.scope.committed', { commitment, unit }));
-		drawDoubleCount(sumEl, readiness);
 		return;
 	}
 	const over = commitment - capacity.value;
 	if (capacity.value === 0) {
 		figure(sumEl, t('release.scope.capacityNoPct', { commitment, capacity: capacity.value, unit, over }));
 		note(sumEl, t('release.scope.capacityZero'));
-		drawDoubleCount(sumEl, readiness);
 		return;
 	}
 	// **Divide BEFORE multiplying, and check the result** — `drawEffort`'s own reason, plus
@@ -913,7 +947,6 @@ function drawCapacityFigures(sumEl: HTMLElement, readiness: ReleaseReadiness, se
 		// is fine. Same three figures as the zero case, a different reason for the fourth.
 		figure(sumEl, t('release.scope.capacityNoPct', { commitment, capacity: capacity.value, unit, over }));
 		note(sumEl, t('release.scope.capacityPctOverflow'));
-		drawDoubleCount(sumEl, readiness);
 		return;
 	}
 	figure(
@@ -922,7 +955,6 @@ function drawCapacityFigures(sumEl: HTMLElement, readiness: ReleaseReadiness, se
 			? t('release.scope.capacityOver', { commitment, capacity: capacity.value, unit, pct, over })
 			: t('release.scope.capacityUnder', { commitment, capacity: capacity.value, unit, pct, left: -over }),
 	);
-	drawDoubleCount(sumEl, readiness);
 }
 
 /** Absent rather than present and empty — extension 4a. */
