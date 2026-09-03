@@ -207,6 +207,17 @@ function verdictClass(verdict: ReleaseCriterion['verdict']): string {
 	return 'unset';
 }
 
+/** The effort figures, then the capacity comparison beside them. ONE call site for the
+ *  second, so it cannot be forgotten on one of the first's three exits. */
+export function drawReadinessFigures(
+	sumEl: HTMLElement,
+	readiness: ReleaseReadiness,
+	settings: ReleaseSettings,
+): void {
+	drawEffortFigures(sumEl, readiness, settings);
+	drawCapacity(sumEl, readiness, settings);
+}
+
 /**
  * The three figures joining the existing summary strip. The estimate progress is ONE figure
  * with its denominator named inside it (`9 of 15 pts (60%)`) rather than a sum and a second
@@ -215,7 +226,7 @@ function verdictClass(verdict: ReleaseCriterion['verdict']): string {
  * All three read the same key, so all three are absent together — the count included. A
  * `2 unestimated` beside `Effort is not configured` contradicts itself.
  */
-export function drawReadinessFigures(
+function drawEffortFigures(
 	sumEl: HTMLElement,
 	readiness: ReleaseReadiness,
 	settings: ReleaseSettings,
@@ -249,7 +260,7 @@ export function drawReadinessFigures(
 	// the figure was simply omitted, which is the absent-and-unnamed defect every other case
 	// in this module exists to prevent — and the repository's own "a comment that states a
 	// rule is not a check".
-	if (estimatedMembers > 0) drawEffort(sumEl, total, done);
+	if (estimatedMembers > 0) drawEffort(sumEl, total, done, settings.capacityUnit);
 	else sumEl.createSpan({ cls: 'pbl-rel-unreadable', text: t('release.scope.effortNothingToSum') });
 	drawUnestimated(sumEl, readiness);
 	drawEstimateProvenance(sumEl, settings);
@@ -279,12 +290,15 @@ function drawUnestimated(sumEl: HTMLElement, readiness: ReleaseReadiness): void 
 	});
 }
 
-function drawEffort(sumEl: HTMLElement, total: number, done: number | null): void {
+function drawEffort(sumEl: HTMLElement, total: number, done: number | null, unit: string): void {
 	// `done === null` is the estimate key bound with no workflow that can say done: there is
 	// a real total and no progress through it, so the total is stated alone rather than
 	// against a zero that would read as measured.
 	if (done === null) {
-		sumEl.createSpan({ cls: 'pbl-rel-figure', text: t('release.scope.effortEstimated', { total }) });
+		const text = unit === ''
+			? t('release.scope.effortEstimatedNoUnit', { total })
+			: t('release.scope.effortEstimated', { total, unit });
+		sumEl.createSpan({ cls: 'pbl-rel-figure', text });
 		return;
 	}
 	// A real total of zero has no percentage to compute, and dividing by it produces the
@@ -297,5 +311,135 @@ function drawEffort(sumEl: HTMLElement, total: number, done: number | null): voi
 	// `∞%`. `done / total` is bounded by 1 (estimates are non-negative and `done <= total`),
 	// so the multiplication after it cannot overflow.
 	const pct = total === 0 ? 0 : Math.round(100 * (done / total));
-	sumEl.createSpan({ cls: 'pbl-rel-figure', text: t('release.scope.effort', { done, total, pct }) });
+	const text = unit === ''
+		? t('release.scope.effortNoUnit', { done, total, pct })
+		: t('release.scope.effort', { done, total, pct, unit });
+	sumEl.createSpan({ cls: 'pbl-rel-figure', text });
+}
+
+/**
+ * The capacity comparison — `docs/requirements/Commitment against declared capacity.md`.
+ *
+ * **The commitment is `estimatedEffort` and is never re-summed here.** That figure and the
+ * `estimated` criterion are one walk in `releaseReadiness.ts`; a second sum in the renderer
+ * is the drift that module exists to prevent.
+ */
+function drawCapacity(sumEl: HTMLElement, readiness: ReleaseReadiness, settings: ReleaseSettings): void {
+	// The SAME count `drawEffortFigures` reads, computed once and passed to both, so the two
+	// can never disagree about whether this release has been estimated at all.
+	const estimatedMembers = readiness.criteria.find((criterion) => criterion.key === 'estimated')?.cleared ?? 0;
+	drawCapacityFigures(sumEl, readiness, settings, estimatedMembers);
+	// **Outside the comparison, and drawn once.** The double count is a count of ESTIMATES:
+	// it does not read the capacity, it does not read the unit, and it answers on every path
+	// where the comparison cannot be drawn at all. Inside those branches it was suppressed
+	// for reasons that have nothing to do with it — an unset unit, an overflowed effort sum.
+	drawDoubleCount(sumEl, readiness);
+	// **Every path with a bound key, not just the one that draws a percentage.** The
+	// provenance is what tells the reader WHICH frontmatter key to go and repair, so the
+	// unreadable state is the one that needs it most and the one five early returns would
+	// skip. Omitted only where the key itself is unbound — there is no property to name.
+	// This is `drawEstimateProvenance`'s own lesson, which a review bot had to teach once
+	// already on the path above.
+	if (settings.capacityKey === '') return;
+	const property = settings.capacityKey;
+	sumEl.createSpan({
+		cls: 'pbl-sr-only',
+		text:
+			settings.capacityUnit === ''
+				? t('release.scope.provenanceCapacityNoUnit', { property })
+				: t('release.scope.provenanceCapacity', { property, unit: settings.capacityUnit }),
+	});
+}
+
+function drawCapacityFigures(
+	sumEl: HTMLElement,
+	readiness: ReleaseReadiness,
+	settings: ReleaseSettings,
+	estimatedMembers: number,
+): void {
+	const capacity = readiness.capacity;
+	// The capacity's own state is named even with no commitment to compare it against —
+	// extension 2b's "both halves are named" — but a comparison needs both numbers.
+	if (capacity.unconfigured) note(sumEl, t('release.scope.capacityUnconfigured'));
+	else if (capacity.invalid) note(sumEl, t('release.scope.capacityUnreadable'));
+	else if (capacity.value === null) note(sumEl, t('release.scope.capacityAbsent'));
+	// **The unit is checked BEFORE the commitment, and that order is the requirement.**
+	// Extension 3a makes an unset unit a missing MAPPING, reported like an unbound key — so
+	// it is reported whether or not there is a commitment to label. Behind the commitment
+	// return it went unreported exactly when the effort sum was itself unreadable, which is
+	// a reader with two unbound mappings being told about one.
+	const unit = settings.capacityUnit;
+	if (unit === '') {
+		note(sumEl, t('release.scope.capacityNoUnit'));
+		return;
+	}
+	const commitment = readiness.estimatedEffort.value;
+	// **A readable capacity is drawn even with nothing to compare it against.** This
+	// function's own rule two branches up is that the capacity half is named whatever the
+	// other half does — and a VALID capacity has no state note, so returning here showed
+	// nothing at all for a release whose capacity is perfectly readable and whose estimate
+	// key happens to be unbound. Naming the number is what "the missing half is named"
+	// means from this side.
+	const alone = (): void => {
+		if (capacity.value !== null) figure(sumEl, t('release.scope.capacityAlone', { capacity: capacity.value, unit }));
+	};
+	// The effort figures beside this one already said why there is no total.
+	if (commitment === null) {
+		alone();
+		return;
+	}
+	// **A release nobody has estimated sums to zero, and that zero is not a measurement.**
+	// `effortFigures` starts its total at 0 and adds nothing, so `estimatedEffort` is a real
+	// `0` rather than a null — which would draw `0 of 40 pts committed (0%, 40 left)` and
+	// report a completely unsized release as having its whole capacity free. Decided from
+	// the COUNT of estimated members, never from the sum, for the reason `drawEffortFigures`
+	// states one function above: `0` is a valid estimate, so a release whose members all
+	// estimate zero is a genuine zero commitment and still compares.
+	if (estimatedMembers === 0) {
+		alone();
+		return;
+	}
+	if (capacity.value === null) {
+		figure(sumEl, t('release.scope.committed', { commitment, unit }));
+		return;
+	}
+	const over = commitment - capacity.value;
+	if (capacity.value === 0) {
+		figure(sumEl, t('release.scope.capacityNoPct', { commitment, capacity: capacity.value, unit, over }));
+		note(sumEl, t('release.scope.capacityZero'));
+		return;
+	}
+	// **Divide BEFORE multiplying, and check the result** — `drawEffort`'s own reason, plus
+	// one this figure adds: a capacity below 1 with a huge commitment overflows the ratio
+	// itself, and `∞%` is a percentage nobody can act on.
+	const pct = Math.round(100 * (commitment / capacity.value));
+	if (!Number.isFinite(pct)) {
+		// The capacity IS a number and IS positive — it is the ratio that overflowed — so
+		// this is not `capacityUnreadable`, which would send the reader to fix a value that
+		// is fine. Same three figures as the zero case, a different reason for the fourth.
+		figure(sumEl, t('release.scope.capacityNoPct', { commitment, capacity: capacity.value, unit, over }));
+		note(sumEl, t('release.scope.capacityPctOverflow'));
+		return;
+	}
+	figure(
+		sumEl,
+		over >= 0
+			? t('release.scope.capacityOver', { commitment, capacity: capacity.value, unit, pct, over })
+			: t('release.scope.capacityUnder', { commitment, capacity: capacity.value, unit, pct, left: -over }),
+	);
+}
+
+/** Absent rather than present and empty — extension 4a. */
+function drawDoubleCount(sumEl: HTMLElement, readiness: ReleaseReadiness): void {
+	const count = readiness.doubleCounted.value;
+	if (count === null || count === 0) return;
+	figure(sumEl, t('release.scope.doubleCount', { count }));
+}
+
+function figure(sumEl: HTMLElement, text: string): void {
+	sumEl.createSpan({ cls: 'pbl-rel-figure', text });
+}
+
+function note(sumEl: HTMLElement, text: string): void {
+	sumEl.createSpan({ cls: 'pbl-rel-unreadable', text });
 }

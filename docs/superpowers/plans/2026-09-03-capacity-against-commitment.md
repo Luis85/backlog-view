@@ -1377,10 +1377,18 @@ kept meeting, with what it cost:
 - The rule is `CLAUDE.md`'s own — *measure with an instrument that can see all of it, and test
   the instrument first* — met by a spelling that rule did not name. The fix is
   `cmd; echo "EXIT=$?"`, never a pipe, wherever an exit code is the answer.
-- Note the second instrument error beside it: two concurrent `npm run check` runs share
-  `coverage/.tmp`, so a parallel run fails with `ENOENT` or "something removed the coverage
-  directory". That is a collision, not a defect in the tree, and deleting the directory to
-  fix it makes it worse.
+- Note the other instrument errors beside it, because the species matters more than any one
+  spelling. Two concurrent `npm run check` runs share `coverage/.tmp`, so a parallel run
+  fails with `ENOENT` or "something removed the coverage directory" — a collision, not a
+  defect in the tree, and deleting the directory to fix it makes it worse. And a census of a
+  parent's children scoped to `docs/bugs/` reported no order collision while the siblings sat
+  in `docs/requirements/`, so `docs-check.mjs` would have refused the note the census had
+  just cleared.
+- **What the four have in common is the finding.** Each measurement was scoped to where the
+  answer was expected rather than to where it could be: the pipe's status instead of the
+  command's, one folder instead of the register, one process's coverage directory instead of
+  the machine's. `CLAUDE.md` already states the rule and these are four spellings it does not
+  name, which is the argument for the note existing at all.
 
 Frontmatter as the folder's neighbours carry it (`type: Issue`, a `parent`, an `order`,
 `status: Done`), and the note states the evidence rather than the moral.

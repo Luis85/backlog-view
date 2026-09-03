@@ -69,6 +69,12 @@ const FULL = {
 	releaseNotesFolder: 'Releases/Notes',
 	criticalRiskValues: 'High, Critical',
 	addressedRiskValues: 'Mitigated, Accepted',
+	// The two the capacity comparison needs bound, for the identical reason the risk pair
+	// above is: ✨ binds no key for either, so a fixture that bound them would describe a
+	// state no press can reach, and `RELEASE_CONFIG` is read by suites asking about the
+	// UNBOUND case. The harness is asking what the comparison LOOKS like.
+	capacityProperty: 'note.capacity',
+	capacityUnit: 'pts',
 };
 
 function configValues(variant: ReleaseConfigVariant): Record<string, unknown> {
@@ -138,6 +144,10 @@ function releaseHarnessVault(variant: ReleaseConfigVariant): FakeVault {
 			status: 'In progress',
 			description: 'Everything the private beta asked for: passwordless sign-in, and the billing rewrite behind it.',
 			order: 1,
+			// Below the members' summed 8 points (5 + 3), so the scope screen shows the
+			// OVER-COMMITTED sentence — the state with the most text in it, and therefore the
+			// one that wraps first at full width, which is the reason to look.
+			capacity: 5,
 		});
 		release('Releases/0.9.md', { version: '0.9.0', 'target-date': inDays(60), status: 'Planned', order: 2 });
 		// The long band: a 60-character name, the longest version and the longest status on

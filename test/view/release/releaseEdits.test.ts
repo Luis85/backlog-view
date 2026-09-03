@@ -549,9 +549,20 @@ describe('what an edit is, and is not', () => {
 		// The third is the summary strip's own effort note (2026-09-02): an unconfigured figure
 		// is NAMED rather than merely absent, the same rule the two above keep. The key is
 		// CLEARED at the fixture rather than left to `RELEASE_CONFIG`'s silence, which stopped
-		// saying it on 2026-09-01 when ✨ began binding one. Listed rather than filtered out,
-		// so the exact list still says no OTHER field went quietly unreadable.
-		expect(said).toEqual(['Status unreadable', 'Description unreadable', 'Effort is not configured']);
+		// saying it on 2026-09-01 when ✨ began binding one. The last two are the capacity
+		// comparison, added by Task 4: `RELEASE_CONFIG` binds `capacityProperty` but not
+		// `capacityUnit`, and this fixture's `R.md` declares no `capacity` — so the capacity
+		// half is named ("declares no capacity") and the unit half is named separately
+		// ("unit is not set"), the same "named rather than merely absent" rule as the third.
+		// Listed rather than filtered out, so the exact list still says no OTHER field went
+		// quietly unreadable.
+		expect(said).toEqual([
+			'Status unreadable',
+			'Description unreadable',
+			'Effort is not configured',
+			'This release declares no capacity',
+			'The capacity unit is not set',
+		]);
 	});
 
 	it('refuses every edit while two release properties name one key', async () => {
