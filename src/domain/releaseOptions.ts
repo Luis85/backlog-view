@@ -53,6 +53,8 @@ export interface ReleaseSettings {
 	 * so a vault pressing ✨ in both views lands on one property rather than two.
 	 */
 	estimateKey: string;
+	/** The release note's own declared capacity, in {@link ReleaseSettings.capacityUnit}. */
+	capacityKey: string;
 	/** The member's prerequisites. What CLEARS one is this view's own `stateKey` and its
 	 *  done values — see `releaseReadiness.ts` for why that is not a sixth option. */
 	dependsOnKey: string;
@@ -449,6 +451,9 @@ export function resolveReleaseSettings(config: BasesViewConfig): ReleaseSettings
 		// `propKey`, not `clearablePropKey`: their default is `''`, so the two resolve the
 		// same value for every input — the reason already stated above for `versionKey`.
 		estimateKey: propKey('estimateProperty', ''),
+		// `propKey`, not `clearablePropKey`: their default is `''`, so the two resolve the
+		// same value for every input — the reason already stated above for `versionKey`.
+		capacityKey: propKey('capacityProperty', ''),
 		dependsOnKey: propKey('dependsOnProperty', ''),
 		riskKey: propKey('riskProperty', ''),
 		// `dedupe` for both: a vault listing `High, high` means one value, and a criterion

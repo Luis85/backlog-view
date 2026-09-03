@@ -55,6 +55,17 @@ export interface ReleaseReadiness {
 	completedEffort: ReleaseFigure<number>;
 	blocked: ReleaseFigure<number>;
 	criticalRisks: ReleaseFigure<number>;
+	/**
+	 * What the release note itself declares it can take, in the view's own unit.
+	 *
+	 * Four readings, not three: unconfigured is no key bound, `invalid` is a bound key
+	 * holding something no reader will make a number of — **a negative among them**, since
+	 * nothing in this plugin writes a capacity and extension 1b therefore judges one on
+	 * READ — and value-null-with-neither-flag is a bound key the note is silent at. The last
+	 * two are drawn differently because they send the reader to different places: one is a
+	 * property to bind, the other a number to type.
+	 */
+	capacity: ReleaseFigure<number>;
 }
 
 const UNCONFIGURED: ReleaseFigure<number> = { value: null, invalid: false, unconfigured: true };
@@ -194,7 +205,24 @@ export function releaseReadiness(
 		...effortFigures(app, members, settings, planSettings),
 		blocked: figureFrom(blocked),
 		criticalRisks: figureFrom(risk),
+		capacity: capacityFigure(app, scope, settings),
 	};
+}
+
+/**
+ * The release's own declared capacity. `estimateValue` is the reader on purpose: it already
+ * refuses a non-finite value and a negative one, and its own comment names this feature as
+ * the reason it refuses negatives — so "an unreadable capacity and an unreadable estimate
+ * are the same judgement" is true by construction rather than by two readers agreeing.
+ */
+function capacityFigure(app: App, scope: ReleaseScope, settings: ReleaseSettings): ReleaseFigure<number> {
+	if (settings.capacityKey === '') return UNCONFIGURED;
+	const item = scope.release?.item;
+	if (item === undefined) return UNCONFIGURED;
+	const raw: unknown = ownValue(app.metadataCache.getFileCache(item.file)?.frontmatter, settings.capacityKey);
+	if (raw === null || raw === undefined) return { value: null, invalid: false, unconfigured: false };
+	const value = estimateValue(raw);
+	return value === null ? { value: null, invalid: true, unconfigured: false } : counted(value);
 }
 
 /** The figure beside a criterion IS its outstanding count — never a second walk. */
