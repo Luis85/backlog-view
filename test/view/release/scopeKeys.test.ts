@@ -308,4 +308,11 @@ describe('the scope tree’s keyboard', () => {
 		expect(document.activeElement).toBe(view.viewEl.querySelector('.pbl-tree'));
 		expect(active(view)).not.toBeNull();
 	});
+
+	it('marks the row a click lands on', () => {
+		const { view } = mountKeys();
+		row(view, 'Passwordless sign-in.md').dispatchEvent(new MouseEvent('mousedown', { bubbles: true }));
+
+		expect(active(view)).toBe('Passwordless sign-in.md');
+	});
 });

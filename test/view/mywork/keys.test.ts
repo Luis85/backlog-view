@@ -97,4 +97,28 @@ describe('the my-work tree’s keyboard', () => {
 		expect(view.activeRowFile).toBeNull();
 		expect(mwActive(view)).toBeNull();
 	});
+
+	it('marks the row a click lands on, not the row the keyboard left behind', () => {
+		const { view } = makeMyWorkView(myWorkVault());
+		view.pick('People/Ada.md');
+
+		mwRow(view, 'PBI Ada.md').dispatchEvent(new MouseEvent('mousedown', { bubbles: true }));
+
+		expect(mwActive(view)).toBe('PBI Ada.md');
+		expect(view.activeRowFile?.path).toBe('PBI Ada.md');
+	});
+
+	it('leaves the clicked row marked when the click focuses the tree', () => {
+		const { view } = makeMyWorkView(myWorkVault());
+		view.pick('People/Ada.md');
+
+		// The browser's own order: `mousedown`, then focus lands on the tree (one tab
+		// stop, so the nearest focusable ancestor takes it), then `click`. jsdom does
+		// neither the focus nor the click for us, so the focus is dispatched by hand —
+		// it is the event whose listener used to repaint row 0 and scroll to the top.
+		mwRow(view, 'PBI Ada.md').dispatchEvent(new MouseEvent('mousedown', { bubbles: true }));
+		treeEl(view).dispatchEvent(new FocusEvent('focus'));
+
+		expect(mwActive(view)).toBe('PBI Ada.md');
+	});
 });

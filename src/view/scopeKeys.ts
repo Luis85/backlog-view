@@ -198,6 +198,38 @@ export function wireScopeKeys(
 		}
 		evt.preventDefault();
 	});
+	/**
+	 * The POINTER's own route into the same roving selection — `render/rows.ts`'s
+	 * `host.selectItem(item, false)` on the backlog tree's own click, owed here and
+	 * missing from BOTH scope trees until now: a click opened one note and marked
+	 * another.
+	 *
+	 * `mousedown` rather than `click`, and that is the whole of the fix rather than an
+	 * incidental choice. Clicking a row focuses `treeEl` — the tree is one tab stop, so
+	 * the browser gives focus to the nearest focusable ancestor — and the `focus`
+	 * listener below runs `show()` over whatever `active` still names, which is row 0
+	 * until a key has moved it. Focus lands BETWEEN `mousedown` and `click`, so a
+	 * correction wired on `click` arrives after the wrong row has been painted and
+	 * `scrollIntoView` has taken the pane back to the top.
+	 *
+	 * `show()`'s own `scrollIntoView({ block: 'nearest' })` is left in place on this path
+	 * rather than parameterised away: `nearest` moves nothing for a row already fully in
+	 * view, and a row the reader clicked while it was half cut off is one they meant to
+	 * act on.
+	 *
+	 * A `mousedown` on a control INSIDE the row (the disclosure, the row menu button) is
+	 * deliberately not excluded — both act on that row, so marking it is right.
+	 */
+	treeEl.addEventListener('mousedown', (evt) => {
+		// Asserted rather than tested, `renderTree.ts`'s own reason for the identical
+		// lookup: this listener is on `treeEl`, so a dispatched event always reports an
+		// element under it.
+		const rowEl = (evt.target as Element).closest('.pbl-row');
+		const at = rows.findIndex((r) => rowEls.get(r.item.file.path) === rowEl);
+		// `-1` is a click on the tree's own padding, between rows: it marks nothing,
+		// rather than moving the selection somewhere the reader did not point at.
+		if (at !== -1) moveTo(at);
+	});
 	treeEl.addEventListener('focus', show);
 	// The active row SURVIVES the re-render, and the tree takes focus back when it was the
 	// thing focused before. A fold calls `host.render()`, which `empty()`s `viewEl` —
