@@ -87,6 +87,19 @@ button.pbl-mw-toggle-on {
 	opacity: 0.62;
 }
 
+/* The note the workspace has open — a different fact from `.pbl-selected`, which is the
+   row the keyboard is on, and drawn differently for it: the selection keeps `tree.css`'s
+   inset accent bar, and this is a faint ground with the title at full strength. Obsidian's
+   own file explorer marks its active file the same way, with the same token. */
+.pbl-mw-open {
+	background-color: var(--nav-item-background-active, var(--background-modifier-hover));
+}
+
+.pbl-mw-open .pbl-title {
+	color: var(--text-normal);
+	font-weight: var(--font-medium);
+}
+
 /* The chip's own end-anchored cell. It was a fixed `inline-size: 92px` until 2026-09-01,
    and both of that reservation's jobs had gone: the row is anchored at its END (the spacer
    before it takes every spare pixel), so nothing slides when a row draws no chip, and the

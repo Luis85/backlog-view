@@ -14,6 +14,7 @@ import { loadViewState, updateViewPrefs } from '../../storage/viewStateStore';
 import { resolveViewIdentity } from '../../storage/viewIdentity';
 import { guidanceShell } from '../render/emptyStates';
 import { OpenContext, OpenController } from '../openTarget';
+import type { TreeDraw } from '../scopeKeys';
 import { drawMyWorkTree } from './renderTree';
 import { drawMyWorkToolbar } from './toolbar';
 
@@ -48,6 +49,11 @@ export class MyWorkView extends BasesView {
 	planSettings: BacklogSettings = defaultSettings();
 	activeRowFile: TFile | null = null;
 	treeHadFocus = false;
+	/** The last draw's own row index, kept so `syncOpenRow` can mark a row without
+	 *  querying the tree — `TREE_SCAN`'s own ban, and the reason `wireScopeKeys` takes
+	 *  this index rather than building one. Null in every state that draws no tree. */
+	private treeDraw: TreeDraw | null = null;
+	private watchedApp = false;
 	readonly opener = new OpenController();
 	readonly gate: WriteGate<ItemWrite>;
 
@@ -80,6 +86,7 @@ export class MyWorkView extends BasesView {
 	}
 
 	onDataUpdated(): void {
+		this.watchApp();
 		if (this.gate.deferUpdate()) return;
 		this.refresh();
 	}
@@ -88,6 +95,38 @@ export class MyWorkView extends BasesView {
 		this.settings = resolveMyWorkSettings(this.config);
 		this.restorePick();
 		this.render();
+	}
+
+	/**
+	 * What this view subscribes to on the APP, wired on the first data update rather
+	 * than in the constructor — `backlogView.ts`'s own `watchApp` and its reason: a Bases
+	 * view is handed its `app` afterwards, so there is nothing to subscribe to yet when it
+	 * is built. `registerEvent` takes it off with the view.
+	 *
+	 * `file-open` is the only one this view needs. A note opened from a link, the graph or
+	 * another pane changes which row is the one the reader is looking at, and NOTHING else
+	 * tells this view that: opening a note is not a data update, so no render follows one.
+	 */
+	private watchApp(): void {
+		if (this.watchedApp) return;
+		this.watchedApp = true;
+		this.registerEvent(this.app.workspace.on('file-open', () => this.syncOpenRow()));
+	}
+
+	/**
+	 * Mark the row whose note the workspace has open, through the last draw's own index.
+	 *
+	 * A class of its own, never `.pbl-selected`: the selection is the row the KEYBOARD is
+	 * on, and this is the note the WORKSPACE has open. Reusing the selection would move a
+	 * reader's cursor because a note opened somewhere else, and `wireScopeKeys` would then
+	 * be reading a selection it did not set.
+	 *
+	 * Called from the listener AND from the end of `render()`, because a redraw builds
+	 * fresh elements that carry no class of ours.
+	 */
+	private syncOpenRow(): void {
+		const openPath = this.app.workspace.getActiveFile()?.path ?? null;
+		for (const [path, el] of this.treeDraw?.rowEls ?? []) el.toggleClass('pbl-mw-open', path === openPath);
 	}
 
 	openContext(): OpenContext {
@@ -156,6 +195,7 @@ export class MyWorkView extends BasesView {
 		const previousTop = this.drawnPerson === this.pickedPerson ? (treeEl?.scrollTop ?? 0) : 0;
 		const focusHandle = this.focusedHandle();
 		this.viewEl.empty();
+		this.treeDraw = null;
 		this.draw();
 		this.drawnPerson = this.pickedPerson;
 		const drawnEl = this.viewEl.querySelector('.pbl-mw-tree');
@@ -164,6 +204,7 @@ export class MyWorkView extends BasesView {
 		// pane below its own last row.
 		if (drawnEl !== null) drawnEl.scrollTop = Math.min(previousTop, drawnEl.scrollHeight);
 		this.restoreFocus(focusHandle);
+		this.syncOpenRow();
 	}
 
 	/** Draw whichever state applies, over the current `settings`/`data` — the four
@@ -228,7 +269,7 @@ export class MyWorkView extends BasesView {
 			guidanceShell(this.viewEl, 'user-round-search', t('mywork.empty.noPick.title'), t('mywork.empty.noPick.hint'));
 			return;
 		}
-		drawMyWorkTree(this, this.viewEl);
+		this.treeDraw = drawMyWorkTree(this, this.viewEl);
 	}
 
 	/**
