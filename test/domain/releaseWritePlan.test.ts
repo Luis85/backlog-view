@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { TFile } from '../helpers/obsidian-mock';
 import {
 	reconfiguredKey,
+	releaseCapacityWrites,
 	releaseClosureWrites,
 	releaseDescriptionWrites,
 	releaseReleasedWrites,
@@ -112,8 +113,49 @@ describe('planning a release description', () => {
 	});
 });
 
+describe('releaseCapacityWrites', () => {
+	const file = { path: 'R.md' } as TFile;
+
+	it('writes the number the reader typed', () => {
+		expect(releaseCapacityWrites(file, 'capacity', null, ' 40 ')).toEqual([
+			{ file, sets: [{ key: 'capacity', value: '40', role: 'capacity' }], requiresType: 'Release' },
+		]);
+	});
+
+	it('plans nothing for the value the note already holds', () => {
+		expect(releaseCapacityWrites(file, 'capacity', 40, '40')).toEqual([]);
+		// The same number spelled differently is the same number — never a rewrite.
+		expect(releaseCapacityWrites(file, 'capacity', 40, '40.0')).toEqual([]);
+	});
+
+	it('writes a genuinely different number over the one the note already holds', () => {
+		// The `current !== null` half of the no-op test, exercised with its OTHER outcome:
+		// `plans nothing for the value the note already holds` above never changes an
+		// existing capacity, only re-confirms or clears one.
+		expect(releaseCapacityWrites(file, 'capacity', 40, '55')).toEqual([
+			{ file, sets: [{ key: 'capacity', value: '55', role: 'capacity' }], requiresType: 'Release' },
+		]);
+	});
+
+	it('clears the key on an emptied box', () => {
+		expect(releaseCapacityWrites(file, 'capacity', 40, '  ')).toEqual([
+			{ file, sets: [{ key: 'capacity', value: null, role: 'capacity' }], requiresType: 'Release' },
+		]);
+	});
+
+	it('plans nothing when the key is unbound, and nothing for a clear of an absent value', () => {
+		expect(releaseCapacityWrites(file, '', null, '40')).toEqual([]);
+		expect(releaseCapacityWrites(file, 'capacity', null, '')).toEqual([]);
+	});
+
+	it('refuses a value the reader of this figure would not count', () => {
+		expect(releaseCapacityWrites(file, 'capacity', null, '40 pts')).toEqual([]);
+		expect(releaseCapacityWrites(file, 'capacity', null, '-1')).toEqual([]);
+	});
+});
+
 describe('the keys this view may write', () => {
-	const settings = { statusKey: 'status', descriptionKey: 'summary', releasedDateKey: 'released' };
+	const settings = releaseSettingsWith({ statusKey: 'status', descriptionKey: 'summary', releasedDateKey: 'released' });
 	const write = (role: ReleaseField, key: string): ReleaseWrite[] => [
 		{ file: file, sets: [{ key, value: 'x', role }], requiresType: 'Release' },
 	];

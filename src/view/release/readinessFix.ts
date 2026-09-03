@@ -25,13 +25,19 @@ export type Remedy = { kind: 'bind'; option: string } | { kind: 'open'; file: TF
  * `dataset.fix` carries the option a bind remedy names, so a test and a reader's own
  * inspector can tell two fix buttons apart; the visible text is the figure's sentence and
  * is never rewritten here.
+ *
+ * `extraCls` is the call site's own selector, not a class this module invents — the
+ * capacity figure's `run` remedy opens a dialog whose focus restore has to find the exact
+ * button that opened it, and `pbl-rel-fix` alone is shared by every fix button on the
+ * strip. Optional because the other two remedies are found again by class alone.
  */
-export function drawFixNote(view: ReleaseView, parentEl: HTMLElement, text: string, remedy: Remedy | null): void {
+export function drawFixNote(view: ReleaseView, parentEl: HTMLElement, text: string, remedy: Remedy | null, extraCls?: string): void {
 	if (remedy === null) {
 		parentEl.createSpan({ cls: 'pbl-rel-unreadable', text });
 		return;
 	}
-	const btn = parentEl.createEl('button', { cls: 'pbl-rel-unreadable pbl-rel-fix', attr: { type: 'button' }, text });
+	const cls = extraCls === undefined ? 'pbl-rel-unreadable pbl-rel-fix' : `pbl-rel-unreadable pbl-rel-fix ${extraCls}`;
+	const btn = parentEl.createEl('button', { cls, attr: { type: 'button' }, text });
 	if (remedy.kind === 'bind') btn.dataset.fix = remedy.option;
 	setTooltip(btn, tooltipFor(remedy));
 	btn.addEventListener('click', (evt) => runRemedy(view, remedy, evt));

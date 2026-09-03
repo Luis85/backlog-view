@@ -3,8 +3,8 @@ import { describe, expect, it, vi } from 'vitest';
 import { en } from '../../../src/i18n/en';
 import { drawFixNote } from '../../../src/view/release/readinessFix';
 import { Notice, TFile } from '../../helpers/obsidian-mock';
-import { makeReleaseView, mountRelease, RELEASE_CONFIG, scopeVault } from '../../helpers/release';
-import { flush, useViewHarness } from '../../helpers/view';
+import { button, makeReleaseView, mountRelease, RELEASE_CONFIG, releaseScreen, scopeVault } from '../../helpers/release';
+import { flush, submitPrompt, useViewHarness } from '../../helpers/view';
 
 useViewHarness();
 
@@ -101,5 +101,50 @@ describe('drawFixNote', () => {
 		await vi.waitFor(() => expect(Notice.messages).toHaveLength(1));
 		expect(Notice.messages[0]).toBe(en['release.init.nothing']);
 		expect(renderSpy).not.toHaveBeenCalled();
+	});
+});
+
+/**
+ * The capacity figure's own two red states, driven through the real screen (Task 3) rather
+ * than through `drawFixNote` directly — `renderReadiness.ts`'s `drawCapacityFigures` is what
+ * wires them, and this is the file `drawFixNote`'s own header above already named for it.
+ */
+describe('the capacity figure’s own fix buttons', () => {
+	it('opens the number dialog for an absent capacity, and writes what the reader types', async () => {
+		const { view, vault } = releaseScreen({ capacity: undefined });
+		button(view, '.pbl-rel-capacity-fix').click();
+		await flush();
+		// A `ValuePromptModal`, this dialog's own shape — one field, submitted through the
+		// generic `title` slot `submitPrompt` reads for any single-input prompt.
+		submitPrompt({ title: '40' });
+		await flush();
+
+		expect(vault.fm('0.9.md').capacity).toBe('40');
+	});
+
+	it('lands on the header’s Open button once the fix button that opened it is gone', async () => {
+		// The one control among this screen's four editors that a SUCCESSFUL write always
+		// removes: unlike the status chip and the released date's own button, which persist
+		// across a write in a different visual state, a set capacity replaces the fix button
+		// with a plain figure — nothing this view can put focus back on. Without
+		// `releaseEdits.ts`'s `OPEN_BUTTON` fallback, this landed on `document.body`.
+		const { view, containerEl } = releaseScreen({ capacity: undefined });
+		button(view, '.pbl-rel-capacity-fix').click();
+		await flush();
+		submitPrompt({ title: '40' });
+		await flush();
+
+		expect(containerEl.querySelector('.pbl-rel-capacity-fix')).toBeNull();
+		expect(document.activeElement).toBe(containerEl.querySelector('.pbl-rel-open'));
+	});
+
+	it('opens the release note for an unreadable capacity, rather than a dialog that could not tell the two apart', async () => {
+		const { view, vault } = releaseScreen({ capacity: 'lots' });
+		button(view, '.pbl-rel-fix').click();
+		await flush();
+
+		expect(vault.opened.map((o) => o.path)).toContain('0.9.md');
+		// No dialog opened, and no write happened — a plain navigation.
+		expect(vault.writeLog).toEqual([]);
 	});
 });

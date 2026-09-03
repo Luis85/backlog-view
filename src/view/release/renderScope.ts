@@ -498,7 +498,7 @@ function drawSummary(
 		// key rather than the state workflow, so a release with an estimate key bound and no
 		// workflow that can say done would otherwise lose readable figures along with the one
 		// that really is unreadable.
-		drawReadinessFigures(settings.view, sumEl, readiness, settings.release);
+		drawReadinessFigures(settings.view, sumEl, readiness, settings.release, release);
 		return;
 	}
 	const done = release.done.value;
@@ -516,7 +516,7 @@ function drawSummary(
 	// No `aria-hidden` either: with no description to double against, this text is meant to
 	// be read exactly once, as ordinary content of the strip.
 	sumEl.createSpan({ cls: 'pbl-sr-only', text: provenance });
-	drawReadinessFigures(settings.view, sumEl, readiness, settings.release);
+	drawReadinessFigures(settings.view, sumEl, readiness, settings.release, release);
 }
 
 /**

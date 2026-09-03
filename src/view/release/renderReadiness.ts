@@ -5,8 +5,10 @@ import { ReleaseCriterion, ReleaseReadiness, clearingWorkflows } from '../../dom
 import { WorkflowKind } from '../../domain/board';
 import { exactDifference, toNumber } from '../../domain/decimal';
 import { ReleaseSettings } from '../../domain/releaseOptions';
+import { ReleaseRow } from '../../domain/releases';
 import { BacklogSettings } from '../../domain/settings';
 import { drawFixNote } from './readinessFix';
+import { editReleaseCapacity } from './releaseEdits';
 
 /**
  * The readiness chip row, and the figures that join the summary strip beside the bar
@@ -219,16 +221,19 @@ function verdictClass(verdict: ReleaseCriterion['verdict']): string {
 
 /** The effort figures, then the capacity comparison beside them. ONE call site for the
  *  second, so it cannot be forgotten on one of the first's three exits. `view` is threaded
- *  through to the two red states that name an unbound key of their own — see
- *  `readinessFix.ts` — and reaches no further than the branch that draws one. */
+ *  through to the red states that name an unbound key of their own or open a dialog — see
+ *  `readinessFix.ts` — and reaches no further than the branch that draws one. `release` is
+ *  threaded the same way, for the capacity dialog and the unreadable capacity's own `open`
+ *  remedy, both of which need the release note itself rather than only its settings. */
 export function drawReadinessFigures(
 	view: ReleaseView,
 	sumEl: HTMLElement,
 	readiness: ReleaseReadiness,
 	settings: ReleaseSettings,
+	release: ReleaseRow,
 ): void {
 	drawEffortFigures(view, sumEl, readiness, settings);
-	drawCapacity(view, sumEl, readiness, settings);
+	drawCapacity(view, sumEl, readiness, settings, release);
 }
 
 /**
@@ -346,11 +351,17 @@ function drawEffort(sumEl: HTMLElement, total: number, done: number | null, unit
  * `estimated` criterion are one walk in `releaseReadiness.ts`; a second sum in the renderer
  * is the drift that module exists to prevent.
  */
-function drawCapacity(view: ReleaseView, sumEl: HTMLElement, readiness: ReleaseReadiness, settings: ReleaseSettings): void {
+function drawCapacity(
+	view: ReleaseView,
+	sumEl: HTMLElement,
+	readiness: ReleaseReadiness,
+	settings: ReleaseSettings,
+	release: ReleaseRow,
+): void {
 	// The SAME count `drawEffortFigures` reads, computed once and passed to both, so the two
 	// can never disagree about whether this release has been estimated at all.
 	const estimatedMembers = readiness.criteria.find((criterion) => criterion.key === 'estimated')?.cleared ?? 0;
-	drawCapacityFigures(view, sumEl, readiness, settings, estimatedMembers);
+	drawCapacityFigures({ view, release }, sumEl, readiness, settings, estimatedMembers);
 	// **Outside the comparison, and drawn once.** The double count is a count of ESTIMATES:
 	// it does not read the capacity, it does not read the unit, and it answers on every path
 	// where the comparison cannot be drawn at all. Inside those branches it was suppressed
@@ -374,7 +385,7 @@ function drawCapacity(view: ReleaseView, sumEl: HTMLElement, readiness: ReleaseR
 }
 
 function drawCapacityFigures(
-	view: ReleaseView,
+	ctx: { view: ReleaseView; release: ReleaseRow },
 	sumEl: HTMLElement,
 	readiness: ReleaseReadiness,
 	settings: ReleaseSettings,
@@ -384,11 +395,25 @@ function drawCapacityFigures(
 	// The capacity's own state is named even with no commitment to compare it against —
 	// extension 2b's "both halves are named" — but a comparison needs both numbers.
 	// Unconfigured names `capacityProperty`, this screen's own option, so the note draws
-	// as the button that binds it (`readinessFix.ts`); the other two are read-only refusals
-	// about a bound key's own content and stay the plain span they always were.
-	if (capacity.unconfigured) drawFixNote(view, sumEl, t('release.scope.capacityUnconfigured'), { kind: 'bind', option: 'capacityProperty' });
-	else if (capacity.invalid) note(sumEl, t('release.scope.capacityUnreadable'));
-	else if (capacity.value === null) note(sumEl, t('release.scope.capacityAbsent'));
+	// as the button that binds it (`readinessFix.ts`). The other two are read-only refusals
+	// about a bound key's own content, and both are buttons now too (Task 3): unreadable
+	// opens the note — a dialog cannot tell the reader's "leave it empty" from "it already
+	// is" on a value it never offered to type — and absent opens the number dialog itself,
+	// carrying its own selector (`pbl-rel-capacity-fix`) so the dialog's focus restore can
+	// find the exact button that opened it among the strip's other fix buttons.
+	if (capacity.unconfigured) {
+		drawFixNote(ctx.view, sumEl, t('release.scope.capacityUnconfigured'), { kind: 'bind', option: 'capacityProperty' });
+	} else if (capacity.invalid) {
+		drawFixNote(ctx.view, sumEl, t('release.scope.capacityUnreadable'), { kind: 'open', file: ctx.release.item.file });
+	} else if (capacity.value === null) {
+		drawFixNote(
+			ctx.view,
+			sumEl,
+			t('release.scope.capacityAbsent'),
+			{ kind: 'run', run: () => editReleaseCapacity(ctx.view, ctx.release, null) },
+			'pbl-rel-capacity-fix',
+		);
+	}
 	// **The unit is checked BEFORE the commitment, and that order is the requirement.**
 	// Extension 3a makes an unset unit a missing MAPPING, reported like an unbound key — so
 	// it is reported whether or not there is a commitment to label. Behind the commitment

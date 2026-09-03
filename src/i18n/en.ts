@@ -2294,6 +2294,12 @@ export const en = {
 	/** Extension 3a: unlabelled arithmetic is two numbers whose meaning the reader supplies,
 	 *  which is the thing this feature exists to prevent. */
 	'release.scope.capacityNoUnit': 'The capacity unit is not set',
+	/** The number dialog `capacityAbsent` above opens, Task 3's own fourth field this view
+	 *  edits. `{name}` is the release's own — never re-spelled, taken as a parameter from
+	 *  `ReleaseRow.name`. */
+	'release.scope.capacityTitle': 'Capacity for {name}',
+	'release.scope.capacityPlaceholder': 'A number, in the unit this view is configured with',
+	'release.scope.capacitySave': 'Set capacity',
 	'release.scope.doubleCount': {
 		one: '{count} member may double count',
 		other: '{count} members may double count',

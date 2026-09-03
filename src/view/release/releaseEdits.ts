@@ -3,6 +3,7 @@ import type { ReleaseView } from './releaseView';
 import { t } from '../../i18n/t';
 import { ReleaseIndex, releaseStatusChoices, ReleaseRow } from '../../domain/releases';
 import {
+	releaseCapacityWrites,
 	releaseDescriptionWrites,
 	releaseReleasedWrites,
 	releaseStatusWrites,
@@ -63,6 +64,17 @@ const RELEASED_BUTTON = '.pbl-rel-released';
  *  condition — see `focusControl`'s own note on why this is the fallback rather than the
  *  body. */
 const CLOSE_BUTTON = '.pbl-rel-close';
+/** The capacity dialog's own opening control — see {@link editReleaseCapacity}. A
+ *  SUCCESSFUL write here is the one exit none of the other three controls has: it always
+ *  removes this button (`renderReadiness.ts`'s `capacity.value === null` branch stops
+ *  matching), replacing it with a plain figure rather than another control — there is no
+ *  "control that now covers the field" the way `Mark as released` covers the released
+ *  button. `OPEN_BUTTON` is its fallback for exactly that reason: the header's own Open
+ *  release note control, drawn on every scope screen (`renderScope.ts`'s `drawOpenNote`),
+ *  so a reader who just set a capacity lands somewhere on the header rather than on the
+ *  body. */
+const CAPACITY_FIX = '.pbl-rel-capacity-fix';
+const OPEN_BUTTON = '.pbl-rel-open';
 
 export function showReleaseStatusMenu(view: ReleaseView, evt: MouseEvent, release: ReleaseRow, index: ReleaseIndex): void {
 	const key = view.settings.statusKey;
@@ -208,9 +220,45 @@ export function editReleaseReleased(view: ReleaseView, release: ReleaseRow): voi
 }
 
 /**
- * Apply a batch and put focus back on the control that opened it — its three callers'
- * controls are the status chip, the description's line and the released date's own button,
- * which is why `control` is a parameter rather than a constant here.
+ * The capacity a release declares, typed straight into the figure that reports it missing.
+ *
+ * The fourth field this view edits on the release note, and it joins the other three here
+ * rather than beside the figure that opens it — `releaseEdits.ts`'s own rule.
+ *
+ * Prefilled with nothing, deliberately: this dialog opens only from the ABSENT branch
+ * (`renderReadiness.ts`'s `capacity.value === null`), so there is never a value on the note
+ * for a prefill to lose — unlike the released date, which opens on an already-empty key too
+ * but shares its dialog with nothing that carries a value.
+ *
+ * `ValuePromptModal` refuses a blank entry, so *clearing* a capacity is not reachable from
+ * this dialog — that is accepted: the route to clearing one is editing the note directly,
+ * which an UNREADABLE capacity's own `open` remedy is one press from. If clearing turns out
+ * to be wanted, `SchedulePromptModal`'s pattern (a field that submits `''`) is the upgrade
+ * path.
+ *
+ * An UNREADABLE capacity reaches this function's callers as `null`, exactly as an absent one
+ * does — and that is why this dialog is offered only for the absent case: a reader who
+ * opened it on an unreadable value could not tell "leave it empty" from "it already is".
+ */
+export function editReleaseCapacity(view: ReleaseView, release: ReleaseRow, capacity: number | null): void {
+	const key = view.settings.capacityKey;
+	new ValuePromptModal(view.app, {
+		title: t('release.scope.capacityTitle', { name: release.name }),
+		fieldName: key,
+		placeholder: t('release.scope.capacityPlaceholder'),
+		ctaLabel: t('release.scope.capacitySave'),
+		known: [],
+		onClosed: () => focusControl(view, CAPACITY_FIX, OPEN_BUTTON),
+		onSubmit: (value) =>
+			void save(view, releaseCapacityWrites(release.item.file, key, capacity, value), CAPACITY_FIX, OPEN_BUTTON),
+	}).open();
+}
+
+/**
+ * Apply a batch and put focus back on the control that opened it — its four callers'
+ * controls are the status chip, the description's line, the released date's own button and
+ * the capacity fix's own button, which is why `control` is a parameter rather than a
+ * constant here.
  *
  * `FOCUS_HANDLE_CLASSES` covers neither of the two shapes that reach this: a MENU pick
  * (the comment at the Set-status entries above), and a DIALOG — `TextPromptModal` CLOSES
@@ -226,7 +274,7 @@ export function editReleaseReleased(view: ReleaseView, release: ReleaseRow): voi
  * still on screen and still focused — this call finds that same element and no-ops.
  *
  * `fallback` is `focusControl`'s own — passed through rather than decided here, since this
- * function does not know which of its three callers' controls can vanish with the write it
+ * function does not know which of its four callers' controls can vanish with the write it
  * just caused.
  */
 async function save(view: ReleaseView, writes: ReleaseWrite[], control: string, fallback?: string): Promise<void> {
@@ -255,8 +303,12 @@ async function save(view: ReleaseView, writes: ReleaseWrite[], control: string, 
  * button, and `refocus` (`shelfControls.ts`) is the shape this follows rather than a
  * general mechanism: a stable neighbour, never the body. Unlike a fold's pane, this
  * header has no single composite to fall back to, so the neighbour is the specific control
- * that now covers the field — `Mark as released` — passed in by the one caller whose
- * control can vanish, rather than guessed at here for controls that never do.
+ * that now covers the field — `Mark as released` — passed in by that caller. The capacity
+ * dialog's own vanishing button (Task 3) has no such replacement to name — a successful
+ * write there leaves a plain figure, not a control — so its fallback is the header's own
+ * Open release note button instead: the same "a stable neighbour, never the body" rule,
+ * pointed at the one control every scope screen always draws rather than at a control that
+ * happens to cover the field this time.
  */
 function focusControl(view: ReleaseView, control: string, fallback?: string): void {
 	const target = view.viewEl.querySelector<HTMLElement>(control) ?? (fallback ? view.viewEl.querySelector<HTMLElement>(fallback) : null);

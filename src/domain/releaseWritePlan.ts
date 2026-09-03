@@ -4,6 +4,7 @@ import { ReleaseSettings } from './releaseOptions';
 import { CivilDate, sameValue } from './noteFields';
 import { formatCivil } from './timeline';
 import { RELEASE_TYPE } from './typeVocabulary';
+import { estimateValue } from './releaseReadiness';
 
 /**
  * What editing a release's own fields WOULD write — the release view's planner, and the
@@ -58,7 +59,7 @@ function fieldWrite(file: TFile, role: ReleaseField, key: string, value: string 
  * under a single role would compare the date key against the status key and refuse every
  * release. See `reconfiguredKey`.
  */
-export type ReleaseField = 'status' | 'description' | 'released';
+export type ReleaseField = 'status' | 'description' | 'released' | 'capacity';
 
 /** One key to set, carrying the FIELD it was planned for. `expects` is `PropertySet`'s
  *  own field — `applyPropertyWrites` is what reads it, so it lives with the type that
@@ -145,6 +146,32 @@ export function releaseDescriptionWrites(
 }
 
 /**
+ * What the release declares it can take, typed into the header's own dialog.
+ *
+ * **Judged by `estimateValue`, the reader that COUNTS it** — the same predicate
+ * `capacityFigure` applies (`domain/releaseReadiness.ts`), so a value this dialog accepts
+ * is a value the strip beside it will compare. `40 pts` and a negative are refused here
+ * because they are refused there: a control that wrote a capacity its own figure then
+ * reported as unreadable would be manufacturing the red state it exists to clear.
+ *
+ * A refusal plans NOTHING rather than throwing — the dialog validates before it submits
+ * (`SchedulePromptModal`'s `validate`), so this is the second half of one rule and not a
+ * silent swallow.
+ *
+ * The no-op test is NUMERIC, never textual: `40` and `40.0` are one capacity, and a
+ * string comparison would rewrite the note for a spelling nobody sees. Same trade the
+ * released date makes by comparing against `formatCivil`.
+ */
+export function releaseCapacityWrites(file: TFile, key: string, current: number | null, entry: string): ReleaseWrite[] {
+	const trimmed = entry.trim();
+	if (trimmed === '') return current === null ? [] : fieldWrite(file, 'capacity', key, null);
+	const value = estimateValue(trimmed);
+	if (value === null) return [];
+	if (current !== null && current === value) return [];
+	return fieldWrite(file, 'capacity', key, trimmed);
+}
+
+/**
  * Whether a batch names a key the CURRENT settings no longer give this view to edit — the
  * question `ReleaseView.applyRelease` asks before it hands anything to the gate.
  *
@@ -180,12 +207,14 @@ export function releaseDescriptionWrites(
  * Both are right; this one is loud.
  *
  * Answers the offending KEY rather than a flag, because the refusal names it: a reader told
- * only that something was wrong has to guess which of three editors to reopen.
+ * only that something was wrong has to guess which editor to reopen.
+ *
+ * **Takes the whole `ReleaseSettings` bag, not the three keys this function used to name.**
+ * Every existing caller already holds `this.settings` and passes it whole, so the widening
+ * costs nothing at a call site — it is what lets a fourth role (`capacity`) join `ROLE_KEYS`
+ * without a second parameter shape to keep in step with the first.
  */
-export function reconfiguredKey(
-	settings: { statusKey: string; descriptionKey: string; releasedDateKey: string },
-	writes: ReleaseWrite[],
-): string | null {
+export function reconfiguredKey(settings: ReleaseSettings, writes: ReleaseWrite[]): string | null {
 	for (const write of writes)
 		for (const set of write.sets) if (set.key !== settings[ROLE_KEYS[set.role]]) return set.key;
 	return null;
@@ -195,6 +224,7 @@ const ROLE_KEYS = {
 	status: 'statusKey',
 	description: 'descriptionKey',
 	released: 'releasedDateKey',
+	capacity: 'capacityKey',
 } as const;
 
 /**
