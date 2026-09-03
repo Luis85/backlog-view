@@ -5,9 +5,9 @@
 	"main": "main.js",
 	"scripts": {
 		"dev": "node scripts/esbuild.config.mjs",
-		"build": "tsc -noEmit -skipLibCheck && node scripts/esbuild.config.mjs production",
-		"typecheck:test": "tsc -p tsconfig.test.json --noEmit",
-		"test-build": "tsc -noEmit -skipLibCheck && node scripts/test-build.mjs",
+		"build": "tsc -noEmit -skipLibCheck --incremental --tsBuildInfoFile node_modules/.cache/tsc/src.tsbuildinfo && node scripts/esbuild.config.mjs production",
+		"typecheck:test": "tsc -p tsconfig.test.json --noEmit --incremental --tsBuildInfoFile node_modules/.cache/tsc/test.tsbuildinfo",
+		"test-build": "tsc -noEmit -skipLibCheck --incremental --tsBuildInfoFile node_modules/.cache/tsc/src.tsbuildinfo && node scripts/test-build.mjs",
 		"harness": "node scripts/harness.mjs",
 		"perf": "node scripts/perf.mjs",
 		"test": "vitest run",
