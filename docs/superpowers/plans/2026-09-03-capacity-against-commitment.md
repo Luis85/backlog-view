@@ -974,21 +974,30 @@ in `RELEASE_CONFIG`, which four init suites read as the unbound case):
 	capacityUnit: 'pts',
 ```
 
-and give `Releases/0.8.md` a `capacity` in `test/helpers/release.ts`'s scope fixture — a value
-BELOW that release's summed estimates, so the page shows the over-committed case, which is the
-one with the most text in it and therefore the one that wraps first.
+and give the release a `capacity` **in `releaseHarnessVault()`, the vault this mount actually
+builds** (`test/harness/mountRelease.ts`, the `release('Releases/0.8.md', { … })` call). NOT
+`scopeVault()` in `test/helpers/release.ts` — the browser entry never loads that one, and an
+edit there changes nothing on the page. This plan pointed at the wrong fixture twice before a
+review bot traced the mount to `releaseHarnessVault(variant)`; trace it yourself rather than
+trusting either sentence.
+
+Pick a value BELOW that release's summed member estimates, so the page shows the
+over-committed case: the state with the most text in it, and therefore the one that wraps
+first. Read the members `releaseHarnessVault` gives `Releases/0.8.md` and their estimate
+values before choosing the number — a capacity above the sum draws the under-committed
+sentence instead, which is shorter and answers less.
 
 Then run `npm run harness -- test/harness/release.ts` and open
 `.harness/index.html?pick=Releases/0.8.md`. Expected: the comparison on the strip, wrapping to
 a second line at full width, as the spec's mock showed. This is the check jsdom cannot make.
 
-Adding a capacity to that shared fixture changes what other release suites see, so re-run
-`npx vitest run test/domain test/view` after it rather than only the two files above.
+The harness vault is the harness's own, so this edit is invisible to the rest of the suite —
+but `npx vitest run test/harness` covers the mount, so run that before committing.
 
 - [ ] **Step 8: Commit**
 
 ```bash
-git add src/view/release/renderReadiness.ts src/i18n/en.ts test/view/releaseCapacity.test.ts test/view/releaseReadiness.test.ts
+git add src/view/release/renderReadiness.ts src/i18n/en.ts test/harness/mountRelease.ts test/view/releaseCapacity.test.ts test/view/releaseReadiness.test.ts
 git commit -m "State the capacity a release declared against what it committed"
 ```
 
