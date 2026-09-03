@@ -58,6 +58,10 @@ See [RELEASING.md](RELEASING.md) for how this file is kept in step with a releas
 - A release now states the capacity it declared against the effort committed to it — the
   difference, the utilization and any estimate that may already be inside another one — in a
   unit the view is told once.
+- A row menu button on every my-work row, so Set state is reachable by pointer and by
+  touch.
+- The my-work tree marks the row whose note is open, and a roster of one offers a press
+  to pick that person.
 
 ### Changed
 
@@ -131,6 +135,8 @@ See [RELEASING.md](RELEASING.md) for how this file is kept in step with a releas
 - A release's scope: a member's state chip shows its value in full rather than truncating
   it at a fixed column width, and carries the value as a tooltip where the row is too
   narrow to show it.
+- A click in the my-work and release scope trees marked the first row and scrolled the
+  pane to the top instead of marking the row it opened.
 
 ## [0.10.0] - 2026-08-30
 
