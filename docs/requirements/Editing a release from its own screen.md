@@ -28,7 +28,6 @@ start: ""
 due: ""
 risk: ""
 assignee: ""
-priority: ""
 iteration: ""
 ---
 

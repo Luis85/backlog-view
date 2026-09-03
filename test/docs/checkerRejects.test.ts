@@ -582,6 +582,7 @@ describe('the corpus covers every rule', () => {
 		const source = await readFile('scripts/docs-check.mjs', 'utf8');
 		const sites = source.match(/\bfail\(/g) ?? [];
 
-		expect(sites.length).toBe(64);
+		// 65 since 2026-09-02: the YAML parse error, planted in `checkerRejectsFrontmatter`.
+		expect(sites.length).toBe(65);
 	});
 });
