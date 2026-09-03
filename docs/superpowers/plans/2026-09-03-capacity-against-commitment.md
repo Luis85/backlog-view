@@ -360,10 +360,15 @@ In `src/domain/releaseReadiness.ts`, add to the interface after `capacity`:
 
 ```ts
 	/**
-	 * Members carrying an estimate while an ancestor member in the same release carries
+	 * Members carrying an estimate while a DESCENDANT member in the same release carries
 	 * one — a possible double count, NAMED and never resolved. Only the vault knows whether
 	 * its parent estimates are aggregates, and a view that guessed would be silently wrong
 	 * in whichever direction it guessed.
+	 *
+	 * **The direction is the contract, not a detail.** This counts the estimate that may
+	 * already CONTAIN the others, so one estimated Epic over two estimated PBIs is one, not
+	 * two. The reverse reading agrees on a chain and disagrees on a fan, which is why it
+	 * survived a test suite once already.
 	 */
 	doubleCounted: ReleaseFigure<number>;
 ```
@@ -550,16 +555,36 @@ prevent. It stays a box the reader fills.
 Update `test/view/release/init.test.ts`'s expectations for the adopted-key set — it asserts
 which options a press binds, so a new row fails it until the expectation names it.
 
-- [ ] **Step 7: Run the tests**
+- [ ] **Step 7: Register it among the release-owned properties**
 
-Run: `npx vitest run test/domain/releaseOptions.test.ts test/view/release/init.test.ts test/i18n && npx eslint src`
+`releaseOwnedProperties()` in `src/domain/settingsConsistency.ts` enumerates every property
+this view reads **on a release note**, and `releaseNoteProblems()` reports two roles sharing
+one key. Capacity is read on the release note, so it belongs there — without it, binding the
+capacity to the same key as the status is not reported, and a status word written over a
+numeric capacity makes it unreadable with nothing having warned. Add the row:
+
+```ts
+		{ role: 'releaseCapacity', key: settings.capacityKey },
+```
+
+widen the `ReleaseNoteRole` union with `'releaseCapacity'`, and add the catalog role
+`'property.releaseCapacity'` the collision sentence names it by. The estimate, dependency and
+risk keys are deliberately NOT in that list and stay out: they are read on MEMBERS, not on the
+release note, which is the distinction the table draws.
+
+Add a case to `test/domain/settingsConsistency.test.ts` binding `capacityProperty` to the same
+key as `releaseStatusProperty` and asserting the collision is reported.
+
+- [ ] **Step 8: Run the tests**
+
+Run: `npx vitest run test/domain/releaseOptions.test.ts test/domain/settingsConsistency.test.ts test/view/release/init.test.ts test/i18n && npx eslint src`
 Expected: PASS. `test/i18n/optionLabels.test.ts` will fail if any message quotes either
 label — it must be passed as a parameter instead.
 
-- [ ] **Step 8: Commit**
+- [ ] **Step 9: Commit**
 
 ```bash
-git add src/domain/releaseOptions.ts src/view/release/init.ts src/i18n/en.ts test/domain/releaseOptions.test.ts test/view/release/init.test.ts
+git add src/domain/releaseOptions.ts src/domain/settingsConsistency.ts src/view/release/init.ts src/i18n/en.ts test/domain/releaseOptions.test.ts test/domain/settingsConsistency.test.ts test/view/release/init.test.ts
 git commit -m "Offer the capacity property and the unit it is in"
 ```
 
@@ -932,11 +957,33 @@ Run: `npx vitest run test/view/releaseCapacity.test.ts test/view/releaseReadines
 Expected: PASS. `test/i18n/parity.ts` and `projections.test.ts` cover the new keys
 automatically — a key rendering UNMARKED there means a sentence escaped the catalog.
 
-- [ ] **Step 7: Look at it**
+- [ ] **Step 7: Give the harness something to draw, then look at it**
 
-Run: `npm run harness -- test/harness/release.ts` and open `.harness/index.html?pick=Releases/0.8.md`.
-Expected: the comparison on the strip, wrapping to a second line at full width, as the spec's
-mock showed. This is the check jsdom cannot make.
+**The page cannot show this figure as it stands, and the plan claimed otherwise.**
+`test/harness/mountRelease.ts`'s `FULL` spreads `RELEASE_CONFIG`, which binds neither
+`capacityProperty` nor `capacityUnit`, and `Releases/0.8.md` in `test/helpers/release.ts`
+declares no capacity — so the URL below would render the unconfigured and no-unit refusals
+rather than the comparison whose wrapping is the whole reason for looking.
+
+Bind them in `FULL` beside the two risk vocabularies that are already there for this exact
+reason (that file's own comment explains why a harness-only binding belongs there rather than
+in `RELEASE_CONFIG`, which four init suites read as the unbound case):
+
+```ts
+	capacityProperty: 'note.capacity',
+	capacityUnit: 'pts',
+```
+
+and give `Releases/0.8.md` a `capacity` in `test/helpers/release.ts`'s scope fixture — a value
+BELOW that release's summed estimates, so the page shows the over-committed case, which is the
+one with the most text in it and therefore the one that wraps first.
+
+Then run `npm run harness -- test/harness/release.ts` and open
+`.harness/index.html?pick=Releases/0.8.md`. Expected: the comparison on the strip, wrapping to
+a second line at full width, as the spec's mock showed. This is the check jsdom cannot make.
+
+Adding a capacity to that shared fixture changes what other release suites see, so re-run
+`npx vitest run test/domain test/view` after it rather than only the two files above.
 
 - [ ] **Step 8: Commit**
 
