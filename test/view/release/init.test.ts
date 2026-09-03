@@ -322,6 +322,18 @@ describe('the press binds the options that are not properties', () => {
 		expect(view.config.get('capacityUnit')).toBe('story points');
 	});
 
+	it('never refills a unit the reader deliberately cleared', async () => {
+		// Cleared is not untouched, and neither is set — `resolveReleaseSettings`'s own rule
+		// ("unset takes the suggestion, cleared means off"), applied to the one candidate
+		// that could silently drift past it: `wouldBindValue` reads `config.get() ===
+		// undefined`, so an empty string already survives a press, and this pins it rather
+		// than leaving that inherited.
+		const { view } = mountRelease({ bindAll: false });
+		view.config.set('capacityUnit', '');
+		await runReleaseInit(view);
+		expect(view.config.get('capacityUnit')).toBe('');
+	});
+
 	it('leaves a fully configured view with no configuration problems', async () => {
 		// The promise of the press, as one assertion rather than five.
 		const { view } = mountRelease({ bindAll: false });
