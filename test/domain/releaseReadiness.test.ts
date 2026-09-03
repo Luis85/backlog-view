@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { estimateValue, isEstimated, releaseReadiness } from '../../src/domain/releaseReadiness';
+import { ReleaseReadiness, estimateValue, isEstimated, releaseReadiness } from '../../src/domain/releaseReadiness';
 import { buildModel } from '../../src/domain/model';
 import { releaseIndex, releaseScope } from '../../src/domain/releases';
 import { CivilDate } from '../../src/domain/noteFields';
@@ -35,7 +35,27 @@ function readinessOf(
 	const model = buildModel(vault.app, vault.entries(), plan);
 	const index = releaseIndex(vault.app, model, settings, { stateKey: plan.stateKey, today: TODAY });
 	const scope = releaseScope(vault.app, model, settings, index, path);
-	return releaseReadiness(vault.app, scope, settings, plan);
+	const readiness = releaseReadiness(vault.app, scope, settings, plan);
+	// **Asked of every scenario this suite drives, not only of the test named for it.**
+	// The pairing below is an invariant `renderReadiness.ts` depends on structurally, and a
+	// new exit of `effortFigures` setting one half and not the other is exactly how it would
+	// break — so the check rides the fixture builder every test already goes through rather
+	// than sitting in one test that a new exit need not visit. It still cannot see an exit
+	// nothing drives; the paired-exits test below is what drives today's four.
+	expectPairedCommitment(readiness);
+	return readiness;
+}
+
+/**
+ * **The commitment's two readings are null together, or neither is.**
+ * `estimatedEffortExact` is the exact decimal that `estimatedEffort.value` is the rounded
+ * reading of, and `drawCapacityFigures` narrows on the exact one ALONE — deliberately, so
+ * that no second null can disagree with the first. An exit that set one and not the other
+ * therefore either draws a capacity comparison against a commitment the figure beside it
+ * calls unreadable, or withholds one it could perfectly well compute.
+ */
+function expectPairedCommitment(readiness: ReleaseReadiness): void {
+	expect(readiness.estimatedEffortExact === null).toBe(readiness.estimatedEffort.value === null);
 }
 
 /** Three members: 6 done, 9 not done, and one carrying no estimate at all. */
@@ -566,6 +586,36 @@ describe('the critical risk predicate', () => {
 		expect(readiness.completedEffort.invalid).toBe(true);
 		// The COUNT of unestimated members is still readable: nothing overflowed there.
 		expect(readiness.unestimated.value).toBe(0);
+	});
+
+	it('keeps the commitment and its exact decimal in step on every exit', () => {
+		// One assertion over four scenarios rather than four assertions about four exits: the
+		// pairing is stated once, in `expectPairedCommitment`, and each way out of
+		// `effortFigures` is driven through it. A future exit needs a scenario added here —
+		// nothing can drive a path nothing calls — but it needs no new assertion, and every
+		// other test in this suite asks the same question of its own fixture through
+		// `readinessOf`, so the exit only has to be reached, not remembered.
+		const overflowed = new FakeVault();
+		overflowed.addFile('R.md', { frontmatter: { type: 'Release' } });
+		overflowed.addFile('A.md', { frontmatter: { type: 'PBI', order: 1, release: '[[R]]', effort: 1e308 } });
+		overflowed.addFile('B.md', { frontmatter: { type: 'PBI', order: 2, release: '[[R]]', effort: 1e308 } });
+		const exits = [
+			// No estimate key bound at all.
+			readinessOf(effortVault(), 'R.md'),
+			// A key bound and the sum past what a double holds.
+			readinessOf(overflowed, 'R.md', { estimateKey: 'effort' }),
+			// A key bound that no member carries: nothing to sum, and a real zero total.
+			readinessOf(effortVault(), 'R.md', { estimateKey: 'nothing' }),
+			// An ordinary sum.
+			readinessOf(effortVault(), 'R.md', { estimateKey: 'effort' }),
+		];
+		for (const readiness of exits) expectPairedCommitment(readiness);
+		// **Non-vacuous.** The pairing is trivially true of a suite where every exit answers
+		// null, so the scenarios have to reach BOTH sides of it — two exits with no commitment
+		// and two with one. Without this a fixture change that quietly stopped binding the
+		// estimate key would leave the check passing and testing nothing.
+		expect(exits.filter((readiness) => readiness.estimatedEffortExact === null)).toHaveLength(2);
+		expect(exits.filter((readiness) => readiness.estimatedEffortExact !== null)).toHaveLength(2);
 	});
 
 	it('counts a prerequisite value it cannot read as unreadable, never as cleared', () => {
