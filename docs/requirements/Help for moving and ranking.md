@@ -45,23 +45,47 @@ lands, the three ways to make the same move, and where `order` comes from.
    child. The drop indicator is named as the cue that says which is about to happen.
 2. It notes that a between-drop is a *reorder* only when the item is already in that
    group — drop it between two rows under a different parent and it is reparented as well
-   as ranked, which is the fastest way to move and rank in one gesture.
+   as ranked, which is the fastest way to move and rank in one gesture. **A FOCUSED view
+   is the exception, and the section states it in the same breath**: the focus rows are one
+   rung of the tree rather than one parent's children, so `dropTargetFor`'s focus branch
+   restates `dragged.parent` and marks the target `parentUnchanged` — the drop writes the
+   rank and nothing else. Left unqualified the entry promises the opposite of the gesture
+   this epic added, which is what it did until 2026-09-02.
 3. It lists the same moves without a mouse: <kbd>Alt</kbd>+arrows to move, indent and
    outdent in the tree, and the context menu's move up / down / to top / to bottom /
    indent / outdent.
-4. It explains `order`: a number ranking siblings, maintained by the view, with unranked
-   items sorting last in whatever the Base's own sort produces.
+4. It explains `order`: **one** number ranking every note the Base returns, maintained by
+   the view rather than scoped to a parent. It says what that buys the reader — a
+   between-drop takes a value between the two neighbours, so it writes the dropped note
+   alone and the rows around it keep the numbers they had
+   ([ADR 0034](../adrs/0034-order-is-a-global-rank.md)) — and it separates the two things
+   a missing rank does, which are not the same and read as one until they are told apart.
+   In a SIBLING group the unranked row sorts last, in the Base's own order. A FOCUSED list
+   is all or nothing: `inRankOrder` keeps the whole list in tree order while any row lacks
+   a rank or two share one, rather than sorting the odd row last, so an order set by hand
+   there would not show. The refusal is narrower than that fallback, and the section says so:
+   a drop whose own row holds the only shared number SETTLES it and lands where it was
+   dropped, and what is refused is a move that would leave the list in tree order anyway,
+   because a row it does not touch has no number or shares one
+   ([[Ranking at the focused level]] 2d).
 5. It closes with what a move does *not* do: re-type anything, ever.
 
 **Extensions**
 
 - **1a — the drop is refused.** A row cannot be dropped onto itself or into its own
-  subtree, and a group with no shared ranking takes no between-drop: the top row of a
-  focused view, and a context row, whose real siblings were never loaded. None of these
-  is a rule about types.
-- **1b — a quick filter is active.** Dragging is off entirely, because visual neighbours
-  under a filter are not siblings. The section says so, since a row that will not lift is
-  otherwise indistinguishable from a broken one.
+  subtree, and a row whose own neighbours are not all on screen takes no between-drop: a
+  context row, whose real siblings were never loaded, and a row this projection promoted
+  because its real parent belongs to the other one. None of these is a rule about types.
+  **The focused view left this list on 2026-08-30** and the note said otherwise for one
+  epic: a global rank made the focus rows a ranking destination, so a between-drop there
+  is the feature rather than the refusal, and it writes the rank and never the parent.
+  So did the sibling group containing a context row — nothing is renumbered any more, so
+  there is no write to that row to skip.
+- **1b — a quick filter is active.** *Withdrawn 2026-08-17, with the quick filter itself*
+  ([[Remove the quick filter, now that Bases has its own search]]). Dragging was off
+  entirely under one, because visual neighbours under a filter are not siblings, and the
+  section said so. Kept as a numbered entry so 1c's account of the list growing and
+  shrinking still reads against the numbers it names.
 - **1c — the move would change which screen the row is on.** A `Task`, or a note with no
   `type`, reads its level from whatever it hangs from, so moving one between the plan and
   the test catalog would take it off the screen it was moved on. `dropTargetFor`,
@@ -72,11 +96,20 @@ lands, the three ways to make the same move, and where `order` comes from.
   (2026-08-11) — the list is per gate that asks `keepsProjection`, and it is rebuilt from
   that call rather than edited. It is not a rule about types — every other type keeps its own ladder wherever it
   lands, and a backlog with no tests in it is refused none of this.
+- **1d — the drop is accepted and then has no number.** The two rows it landed between
+  hold the same rank, the gap between them is spent, or one of them is unranked. The
+  view says so and names the remedy (Seed, Respace, or the set-up button); the menu and
+  <kbd>Alt</kbd>+arrow ask the same question before they offer the move, so there the
+  entry is withheld instead. Listed because it is the one refusal that is NOT a state the
+  section can enumerate ahead of the gesture — it is a fact about the two numbers.
 - **3a — the user is on a keyboard throughout.** The keyboard and menu forms are listed
   beside the drag rather than in a footnote, so the section doubles as the keyboard
   reference at the moment someone wants it.
-- **3b — the view is focused on one type.** Indent and outdent are disabled at the top
-  row, for the same reason a between-drop is: no shared ranking.
+- **3b — the view is focused on one type.** A between-drop between two focus rows ranks
+  them against each other — that is what the focus level is for — while Indent and
+  Outdent stay disabled there, and no longer for 1a's reason: the row HAS a previous
+  sibling on screen now, and what the screen cannot answer is which parent nesting it
+  under that row would mean.
 - **5a — the reader expects a move to fix a mismatched type.** It does not, and the
   section says so rather than staying silent: a drop, an indent, an outdent and both
   parent-link entries write the parent and the rank, and a type is what the note says or
@@ -88,11 +121,14 @@ lands, the three ways to make the same move, and where `order` comes from.
 - The between-versus-onto distinction is stated first, with the drop indicator named as
   the cue to read, and **between** is described as sibling placement rather than as
   reordering: `siblingPosition` takes the hovered row's parent, so a cross-parent
-  between-drop reparents as well as ranks.
+  between-drop reparents as well as ranks — with the focused view named as the one place
+  it does not, since there the same gesture writes the rank alone.
 - Every move is listed in all three forms — drag, keyboard, menu — so the section doubles
   as the keyboard reference at the moment someone wants it.
 - The section names every state where a drop is deliberately unavailable, so an absent
-  gesture reads as a rule rather than a bug.
+  gesture reads as a rule rather than a bug — and, since 1d, also the refusal that can
+  only be known once the drop is planned, so a message on an accepted gesture reads the
+  same way.
 - No claim about a move being refused for **type compatibility** — those rules are
   advisory — and no claim that nothing is refused at all. Both would contradict
   [[A help button for the item types]], in opposite directions. The projection boundary

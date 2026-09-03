@@ -2,7 +2,7 @@
 import { describe, expect, it } from 'vitest';
 import { FakeVault } from '../helpers/vault';
 import { Menu } from '../helpers/obsidian-mock';
-import { fixture, flush, key, makeView, refresh, rowByTitle, treeOf, useViewHarness } from '../helpers/view';
+import { clickExpandAll, fixture, flush, key, makeView, refresh, rowByTitle, treeOf, useViewHarness } from '../helpers/view';
 import { cardByTitle } from '../helpers/board';
 
 useViewHarness();
@@ -50,7 +50,9 @@ describe('context menu', () => {
 		Menu.lastShown?.item('Move to top')?.click();
 		await flush();
 
-		expect(vault.fm('Feature B2.md')['order']).toBe(0);
+		// The midpoint of Epic B (20) and Feature B1 (30): top of its own group is still a
+		// place in the GLOBAL population, so the number comes from the rows either side.
+		expect(vault.fm('Feature B2.md')['order']).toBe(25);
 	});
 
 	/**
@@ -68,7 +70,9 @@ describe('context menu', () => {
 	 */
 	it('swaps an item with its neighbour rather than sending it to the edge', async () => {
 		const vault = fixture();
-		vault.addFile('Feature B3.md', { frontmatter: { type: 'Feature', order: 30 }, parentLink: 'Epic B' });
+		// 50, not 30: `fixture()` already ranks Feature B1 there, and two rows sharing a
+		// rank is a spent gap the placement refuses.
+		vault.addFile('Feature B3.md', { frontmatter: { type: 'Feature', order: 50 }, parentLink: 'Epic B' });
 		const { view, containerEl } = makeView(vault);
 		const order = (title: string): number => vault.fm(`${title}.md`)['order'] as number;
 
@@ -91,6 +95,59 @@ describe('context menu', () => {
 		await flush();
 		expect(order('Feature B3')).toBeLessThan(order('Feature B1'));
 		expect(order('Feature B1')).toBeLessThan(order('Feature B2'));
+	});
+
+	/**
+	 * The edge moves anchor on the FIRST or LAST peer; the adjacent swap anchors on the
+	 * neighbour one slot away. Different anchors, so they must be asked as different
+	 * questions — one flag covering both offers a `Move to bottom` that does nothing
+	 * because `Move down` happened to work. Reachable with one un-backfilled note in the
+	 * group: ranking after it is refused (`unranked`), ranking after C2 is not.
+	 */
+	it('asks the edge moves their own question, not the adjacent swap’s', () => {
+		const vault = new FakeVault();
+		vault.addFile('Epic.md', { frontmatter: { type: 'Epic', order: 10 } });
+		vault.addFile('C1.md', { frontmatter: { type: 'Feature', order: 20 }, parentLink: 'Epic' });
+		vault.addFile('C2.md', { frontmatter: { type: 'Feature', order: 30 }, parentLink: 'Epic' });
+		vault.addFile('C3.md', { frontmatter: { type: 'Feature', order: 40 }, parentLink: 'Epic' });
+		// No order at all, so it sorts last among its siblings AND last in the global
+		// population — the anchor `Move to bottom` would take, and the one it must refuse.
+		vault.addFile('C4.md', { frontmatter: { type: 'Feature' }, parentLink: 'Epic' });
+		const { containerEl } = makeView(vault);
+		clickExpandAll(containerEl);
+
+		rowByTitle(containerEl, 'C1').dispatchEvent(new MouseEvent('contextmenu', { bubbles: true }));
+		const titles = Menu.lastShown?.items.map((i) => i.titleText) ?? [];
+		expect(titles).toContain('Move down');
+		expect(titles).not.toContain('Move to bottom');
+	});
+
+	/**
+	 * Indent is the last structural command to get a preflight, and it needed one for the
+	 * same reason `Move to bottom` did: it appends after the new parent's last child — or
+	 * after the parent itself, childless — which is a placement the global population can
+	 * refuse. Gated on `prev` alone the entry was offered, did nothing and said nothing.
+	 *
+	 * Two-sided, because a gate that is simply off passes the withholding half: C2 indents
+	 * under C1, whose append runs into the un-backfilled C4 and refuses; C4 indents under
+	 * C2, whose append is past the end of the population and works.
+	 */
+	it('withholds indent when the nesting would refuse, and offers it where it works', () => {
+		const vault = new FakeVault();
+		vault.addFile('Epic.md', { frontmatter: { type: 'Epic', order: 10 } });
+		vault.addFile('C1.md', { frontmatter: { type: 'Feature', order: 20 }, parentLink: 'Epic' });
+		vault.addFile('C2.md', { frontmatter: { type: 'Feature', order: 30 }, parentLink: 'Epic' });
+		// No order, so it sorts last in the group AND last globally — the row an append
+		// after C1 lands next to, and the one that makes the rank `unranked`.
+		vault.addFile('C4.md', { frontmatter: { type: 'Feature' }, parentLink: 'Epic' });
+		const { containerEl } = makeView(vault);
+		clickExpandAll(containerEl);
+
+		rowByTitle(containerEl, 'C2').dispatchEvent(new MouseEvent('contextmenu', { bubbles: true }));
+		expect(Menu.lastShown?.items.map((i) => i.titleText)).not.toContain('Indent under "C1"');
+
+		rowByTitle(containerEl, 'C4').dispatchEvent(new MouseEvent('contextmenu', { bubbles: true }));
+		expect(Menu.lastShown?.items.map((i) => i.titleText)).toContain('Indent under "C2"');
 	});
 
 	it('sets the type through the submenu', async () => {
@@ -155,7 +212,7 @@ describe('context menu', () => {
 		rowByTitle(containerEl, 'Feature B1').dispatchEvent(new MouseEvent('contextmenu', { bubbles: true }));
 		Menu.lastShown?.item('Move to bottom')?.click();
 		await flush();
-		expect(vault.fm('Feature B1.md')['order']).toBe(30);
+		expect(vault.fm('Feature B1.md')['order']).toBe(1040);
 	});
 
 	it('clears a stale parent link through the menu', async () => {
@@ -281,26 +338,50 @@ describe('focused structure operations', () => {
 	});
 });
 
-describe('move commands that do not rank', () => {
+/**
+ * A sibling group holding a context row. It used to offer no ranking command at all —
+ * `reorderableGroup` refused the whole group, because renumbering it would have written
+ * to the excluded note. A rank is a midpoint in the global population now, so nothing
+ * but the moved note is ever written and the refusal has gone with the function. What
+ * has NOT changed is the rule these tests are here for: whichever command is taken, the
+ * context row is never in the write log.
+ */
+describe('move commands in a group holding a context row', () => {
 	/** Epic over Feature A (context, its PBI matched) and Feature B (a result). */
 	function mixedSiblings() {
 		const vault = new FakeVault();
+		// Distinct ranks throughout — see `fixture()`: a shared number is a spent gap, and
+		// a refusal for arithmetic would hide the context-row question this block asks.
 		vault.addFile('Epic.md', { frontmatter: { type: 'Epic', order: 10 } });
-		vault.addFile('Feature A.md', { frontmatter: { type: 'Feature', order: 10 }, parentLink: 'Epic' });
-		vault.addFile('Feature B.md', { frontmatter: { type: 'Feature', order: 20 }, parentLink: 'Epic' });
-		vault.addFile('PBI.md', { frontmatter: { type: 'PBI', order: 10 }, parentLink: 'Feature A' });
+		vault.addFile('Feature A.md', { frontmatter: { type: 'Feature', order: 20 }, parentLink: 'Epic' });
+		vault.addFile('Feature B.md', { frontmatter: { type: 'Feature', order: 30 }, parentLink: 'Epic' });
+		vault.addFile('PBI.md', { frontmatter: { type: 'PBI', order: 40 }, parentLink: 'Feature A' });
 		const { view, containerEl } = makeView(vault, {}, { only: ['Feature B.md', 'PBI.md'] });
 		return { view, containerEl, vault };
 	}
 
-	it('still offers indent, which appends instead of ranking', () => {
+	it('offers both reordering and indent beside a context row', () => {
 		const { containerEl } = mixedSiblings();
 
 		rowByTitle(containerEl, 'Feature B').dispatchEvent(new MouseEvent('contextmenu', { bubbles: true }));
 		const titles = Menu.lastShown?.items.map((i) => i.titleText) ?? [];
-		// Reordering stays out, but indenting under the previous sibling is safe
-		expect(titles).not.toContain('Move up');
+		// Move up ranks Feature B before Feature A by taking a number between it and the
+		// Epic — one write, to Feature B. The context row is read for its rank and left
+		// alone, which is what `src/CLAUDE.md`'s context-row rule asks of a ranking peer.
+		expect(titles).toContain('Move up');
 		expect(titles).toContain('Indent under "Feature A"');
+	});
+
+	it('ranks past a context row without writing to it', async () => {
+		const { containerEl, vault } = mixedSiblings();
+
+		rowByTitle(containerEl, 'Feature B').dispatchEvent(new MouseEvent('contextmenu', { bubbles: true }));
+		Menu.lastShown?.item('Move up')?.click();
+		await flush();
+
+		// The midpoint of Epic (10) and Feature A (20), written to the result alone.
+		expect(vault.writeLog.map((w) => w.path)).toEqual(['Feature B.md']);
+		expect(vault.fm('Feature B.md').order).toBe(15);
 	});
 
 	it('indents into a mixed group without writing to the context row', async () => {

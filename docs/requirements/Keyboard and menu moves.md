@@ -79,8 +79,34 @@ usable rather than merely viewable when dragging is not an option.
   doing nothing.
 - **3b — finished work is hidden and the neighbour is a hidden row.** The move targets the
   nearest *visible* neighbour instead. A command whose effect is invisible reads as broken.
+  **The rule binds the CLICK, not only the offer**, and that is the correction of
+  2026-09-02: the menu withholds each edge entry on `&& next`, which is a visible
+  neighbour, but the toggle can hide that peer between the offer and the pick — a menu is
+  built from the model of its moment. `moveToEdge` re-resolves the subject for exactly
+  that reason and then asked `edgeTarget`, which compared a raw index into a sibling list
+  the hidden row is still IN (hiding is a render decision, and the row stays a ranking
+  neighbour — [[Rollups and hiding finished work]]). So the last visible row read as "not
+  yet at the bottom", was ranked past a row nobody can see, and redrew unchanged with an
+  undo slot spent. `edgeTarget` reads `visibleNeighbor` now, the same walk the adjacent
+  swap always used, so both commands hold one idea of a neighbour at both moments.
 - **3c — the row came from outside the Base's filter.** The move commands are withheld
   from its menu entirely.
+- **3d — an outdent would land right after a PARENT that carries no rank of its own**
+  (an unranked context row). `Outdent` is withheld from the menu, as 3a's rule says, but
+  `Alt`+`←` is not disabled: a keypress draws no label and promises no note, so it still
+  reaches the write path and reports rather than going quiet — the placement cannot be
+  expressed, not merely refused, and a silent key there would read as broken rather than
+  inexpressible.
+- **3e — the SUBJECT is what the toggle hid**, not the neighbour. Every one of the four
+  commands refuses and says so. Same rule as 3b and the other side of it: a note completed
+  in another pane while its menu sat open is still a result, so the path resolves and the
+  write gate has nothing to object to — but the row is off the screen, and ranking or
+  reparenting it spends the undo slot on movement nobody can see. Measured before the
+  refusal existed: all six entries a leaf's menu offers wrote, in six separate batches. The
+  question is asked in `liveItem`, beside the path lookup, because that is the one gate
+  every captured handler routes through — and it gets its own sentence rather than the
+  gone-from-the-base one, which would be false here.
+  **Checked by** `test/view/staleSubject.test.ts` — "writes nothing and names the note for every entry the menu offered", in the "a structural command whose subject stopped being drawn" group
 
 ## Acceptance criteria
 

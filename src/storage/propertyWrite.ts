@@ -35,7 +35,7 @@ export async function applyPropertyWrites(
 	onProgress?: (done: number, total: number) => void,
 	onInverse?: (inverse: RestoreWrite) => void,
 ): Promise<WriteOutcome> {
-	const outcome: WriteOutcome = { changed: false, dates: null };
+	const outcome: WriteOutcome = { changed: false, written: 0, dates: null };
 	let done = 0;
 	for (const write of writes) {
 		// An UNCONFIGURED key is never written to — the rule `axisEntries` keeps for the
@@ -112,10 +112,15 @@ export async function applyPropertyWrites(
 				inverse = captureInverse(write.file, keys, prior, fm, {});
 			});
 		}
+		// `written` counts the files this batch GOT THROUGH, never the ones it walked past:
+		// a refusal here skips one file and carries on (`applyWrites` stops instead), so the
+		// two writers disagree about how far a batch gets and only the count can say. A file
+		// with nothing left to set counts, the same way a no-op write does — the plan was
+		// satisfied, which is what a caller stating a number is claiming.
 		if (refusal !== null) {
 			console.error('Product Backlog: refused a property write', write);
 			new Notice(refusal);
-		}
+		} else outcome.written++;
 		if (inverse) {
 			outcome.changed = true;
 			onInverse?.(inverse);

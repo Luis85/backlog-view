@@ -13,6 +13,13 @@ export interface ConfirmOptions {
 	/** Rows the reader may open — rendered as buttons, never as text, so a keyboard
 	 *  reader reaches each one. Empty draws no list at all. */
 	links?: ConfirmLink[];
+	/**
+	 * A second paragraph under `message`, for a caveat the reader has to see before
+	 * answering. Its own element rather than text appended to the first: two sentences
+	 * joined at a call site cannot be reordered by any translation, and the one carrying
+	 * the warning is the one a locale is most likely to want first.
+	 */
+	note?: string;
 	cta: string;
 	onConfirm: () => void;
 	onCancel?: () => void;
@@ -42,6 +49,7 @@ export function openConfirm(app: App, options: ConfirmOptions): void {
 	const modal = new Modal(app);
 	modal.titleEl.setText(options.title);
 	modal.contentEl.createEl('p', { cls: 'pbl-confirm-message', text: options.message });
+	if (options.note) modal.contentEl.createEl('p', { cls: 'pbl-confirm-message', text: options.note });
 	for (const link of options.links ?? []) {
 		const row = modal.contentEl.createEl('button', {
 			cls: 'pbl-confirm-link',

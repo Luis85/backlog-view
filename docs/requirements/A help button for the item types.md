@@ -69,7 +69,7 @@ the surface every other section then lands in.
   used to be about stating its default correctly.
 - **4b — the user drags a Task under an Epic.** Nothing refuses it. The section says the
   type rules are advisory, and scopes that to type compatibility: other drops *are* refused
-  (onto an item's own descendant, into a group with no shared ranking) and those belong to
+  (onto an item's own descendant, beside a row whose own neighbours are off screen) and those belong to
   [[Help for moving and ranking]].
 - **4c — the user drags a `Task` out of a `Test suite` and onto the plan's top level.**
   That one *is* refused, and it is the only class of move refused for a **type** reason —

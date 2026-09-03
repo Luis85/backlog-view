@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { dropTargetFor, isInvalidParent, zoneForRatio } from '../../src/domain/dropTargets';
+import { computeDropWrites } from '../../src/domain/writePlan';
 import { BacklogItem, buildModel } from '../../src/domain/model';
 import { defaultSettings } from '../../src/domain/settings';
 import { FakeVault } from '../helpers/vault';
@@ -59,7 +60,7 @@ describe('dropTargetFor', () => {
 		const target = dropTargetFor(model, get('Epic B'), 'inside', get('Epic A'), plan);
 		expect(target?.parent?.title).toBe('Epic B');
 		expect(target?.insertIndex).toBe(2);
-		expect(target?.siblings.map((s) => s.title)).toEqual(['Feature B1', 'Feature B2']);
+		expect(target?.peers.map((s) => s.title)).toEqual(['Feature B1', 'Feature B2']);
 	});
 
 	it('rejects drops into the dragged item’s own subtree', () => {
@@ -101,17 +102,94 @@ describe('dropTargetFor', () => {
 		expect(target?.parent).toBeNull();
 	});
 
-	it('disallows sibling drops relative to focus roots', () => {
+	it('leaves an unresolved parent link UNTOUCHED on a focused rank, writing only order', () => {
+		// Fix round 2 (Codex, rated P2 — the coordinator called that wrong): the focus
+		// branch sets `target.parent = dragged.parent`, which for an unresolved link is
+		// `null`. `computeParentField` used to read that as `parent === null,
+		// dragged.parent === null, hasParentValue === true` — indistinguishable from an
+		// EXPLICIT top-level drop — and deleted the property. `DropTarget.parentUnchanged`
+		// is what tells them apart now: the focus branch sets it, so `computeParentField`
+		// never runs the stale-link heuristic against a restated value at all.
+		const vault = new FakeVault();
+		vault.addFile('PBI Other.md', { frontmatter: { type: 'PBI', order: 10 } });
+		vault.addFile('PBI Orphan.md', { frontmatter: { type: 'PBI', order: 30 }, parentLink: 'Missing' });
+		const model = buildModel(vault.app, vault.entries(), { ...settings, focusLevel: 'PBI' });
+		const get = (title: string) => model.items.find((i) => i.title === title) as BacklogItem;
+		const orphan = get('PBI Orphan');
+		const other = get('PBI Other');
+		expect(orphan.parent).toBeNull();
+		expect(orphan.hasParentValue).toBe(true);
+
+		const target = dropTargetFor(model, other, 'before', orphan, plan);
+		expect(target).not.toBeNull();
+		const writes = computeDropWrites(orphan, target!, model.ranked);
+
+		expect(writes).toHaveLength(1);
+		// The write's parent field, not the note's eventual value — `undefined` here means
+		// `storage/frontmatter.ts` never touches the key at all, which a note's own read-back
+		// value cannot distinguish from "written back to what it already was".
+		expect(writes[0].parent).toBeUndefined();
+		expect(typeof writes[0].order).toBe('number');
+	});
+
+	it('still clears a stale parent link on an ordinary root drop — the write, not just the target shape', () => {
+		// The behaviour the fix above must not break: dragging a stale-link root among
+		// the other roots is an EXPLICIT top-level placement, and `parentUnchanged` is
+		// unset here (this is the plain tree path), so the stale-link heuristic still
+		// runs and still clears the key.
+		const vault = new FakeVault();
+		vault.addFile('Root.md', { frontmatter: { type: 'Epic', order: 10 } });
+		vault.addFile('Orphan.md', { frontmatter: { order: 20 }, parentLink: 'Missing' });
+		const model = buildModel(vault.app, vault.entries(), settings);
+		const root = model.roots[0];
+		const orphan = model.roots.find((r) => r.title === 'Orphan') as BacklogItem;
+
+		const target = dropTargetFor(model, root, 'after', orphan, plan);
+		expect(target).not.toBeNull();
+		const writes = computeDropWrites(orphan, target!, model.ranked);
+
+		expect(writes).toHaveLength(1);
+		expect(writes[0].parent).toBeNull();
+	});
+
+	it('ranks a sibling drop between focus roots — a legal move now, not a refusal', () => {
+		// Task 5: a focus row is a ranking destination, so `siblingPosition` no longer
+		// refuses on `item.focusRoot`. b1 and b2 share a real parent here (both are
+		// `Epic B`'s features), so the parent this plans is the one they already have.
 		const { vault } = fixture();
 		const focusSettings = { ...settings, focusLevel: 'Feature' };
 		const model = buildModel(vault.app, vault.entries(), focusSettings);
 		const [b1, b2] = model.roots;
 
-		expect(dropTargetFor(model, b1, 'before', b2, plan)).toBeNull();
+		const before = dropTargetFor(model, b1, 'before', b2, plan);
+		expect(before?.parent).toBe(b2.parent);
+		expect(before?.insertIndex).toBe(0);
+		// After b1 is the slot b2 already occupies (`model.roots` is `[b1, b2]`) — a
+		// no-op, asked against the focus list rather than refused for a different reason.
 		expect(dropTargetFor(model, b1, 'after', b2, plan)).toBeNull();
 		// Nesting under a focus root stays a legitimate reparent
 		const inside = dropTargetFor(model, b1, 'inside', b2, plan);
 		expect(inside?.parent).toBe(b1);
+	});
+
+	it('refuses a descendant dropped beside its own focus-root parent — it is not itself a focus row', () => {
+		// Focus at PBI. PBI B1 is a focus root; its own child Task is drawn and fully
+		// draggable (only ancestors above the focus level are hidden). Dropping Task
+		// after its own parent must still refuse: `item` (PBI B1) is a `model.roots`
+		// member but `dragged` (Task) is not, and checking `item` alone would let the
+		// branch fire, keeping Task's real parent while ranking it among the two
+		// unrelated top-level PBIs — a descendant silently promoted to a rank it does
+		// not belong to.
+		const vault = new FakeVault();
+		vault.addFile('Epic A.md', { frontmatter: { type: 'Epic', order: 10 } });
+		vault.addFile('PBI A1.md', { frontmatter: { type: 'PBI', order: 20 }, parentLink: 'Epic A' });
+		vault.addFile('Epic B.md', { frontmatter: { type: 'Epic', order: 30 } });
+		vault.addFile('PBI B1.md', { frontmatter: { type: 'PBI', order: 40 }, parentLink: 'Epic B' });
+		vault.addFile('Task.md', { frontmatter: { type: 'Task', order: 10 }, parentLink: 'PBI B1' });
+		const model = buildModel(vault.app, vault.entries(), { ...settings, focusLevel: 'PBI' });
+		const get = (title: string) => model.items.find((i) => i.title === title) as BacklogItem;
+
+		expect(dropTargetFor(model, get('PBI B1'), 'after', get('Task'), plan)).toBeNull();
 	});
 
 	it('treats a drop between visually adjacent roots as the no-op it looks like', () => {
@@ -210,18 +288,164 @@ describe('reordering a group that holds an outside-filter row', () => {
 		};
 	}
 
-	it('refuses positional drops even when the hovered row is a result', () => {
+	it('positions a drop even when the sibling group holds a context row', () => {
+		// `DropTarget.peers` is intent, never arithmetic (see its own doc comment):
+		// `dropTargetFor` states WHERE among the rendered siblings the drop lands, and
+		// says nothing about whether ranking it would write anything. That question —
+		// and the guarantee that it can never write to the context row itself — is
+		// `computeDropWrites`'s, asked separately (see `test/domain/writePlan.test.ts`
+		// and `writePlanContextRows.test.ts`).
 		const { model, epic, featureB, mover } = mixedGroup();
 		// Feature B is an ordinary result, but its sibling group holds a context row
 		expect(featureB.outsideFilter).toBe(false);
 		expect(epic.children.some((c) => c.outsideFilter)).toBe(true);
 
-		expect(dropTargetFor(model, featureB, 'before', mover, plan)).toBeNull();
-		expect(dropTargetFor(model, featureB, 'after', mover, plan)).toBeNull();
+		const before = dropTargetFor(model, featureB, 'before', mover, plan);
+		expect(before?.parent).toBe(epic);
+		expect(before?.peers.some((p) => p.outsideFilter)).toBe(true);
+		expect(dropTargetFor(model, featureB, 'after', mover, plan)).not.toBeNull();
 	});
 
 	it('still allows appending into the parent', () => {
 		const { model, epic, mover } = mixedGroup();
 		expect(dropTargetFor(model, epic, 'inside', mover, plan)?.parent).toBe(epic);
+	});
+});
+
+describe('the tree branch of siblingPosition drops an unranked context row from its population', () => {
+	/**
+	 * Two context siblings in the SAME group, one ranked (an `order` frontmatter value)
+	 * and one not — so a single fixture answers both halves of the rule: the unranked one
+	 * is never a peer to rank among, and the ranked one still is, because its order is a
+	 * real placement constraint. `rankablePeers` is asked of `model.realRoots` here, the
+	 * ROOT population — `nestedFixture` below asks the same question of `parent.children`.
+	 */
+	function rootFixture() {
+		const vault = new FakeVault();
+		vault.addFile('Epic A.md', { frontmatter: { type: 'Epic', order: 1000 } });
+		vault.addFile('Epic B.md', { frontmatter: { type: 'Epic', order: 2000 } });
+		vault.addFile('Epic Ranked.md', { frontmatter: { type: 'Epic', order: 1500 } });
+		vault.addFile('Feature R1.md', { frontmatter: { type: 'Feature', order: 1600 }, parentLink: 'Epic Ranked' });
+		vault.addFile('Epic Unranked.md', { frontmatter: { type: 'Epic' } });
+		vault.addFile('Feature U1.md', { frontmatter: { type: 'Feature', order: 3000 }, parentLink: 'Epic Unranked' });
+		const filtered = vault
+			.entries()
+			.filter((e) => !['Epic Ranked.md', 'Epic Unranked.md'].includes(e.file.path));
+		const model = buildModel(vault.app, filtered, settings);
+		const get = (title: string) => model.items.find((i) => i.title === title) as BacklogItem;
+		return { model, get };
+	}
+
+	/** Same shape, one level down: an Epic parent holding the four Feature-level siblings. */
+	function nestedFixture() {
+		const vault = new FakeVault();
+		vault.addFile('Epic.md', { frontmatter: { type: 'Epic', order: 10 } });
+		vault.addFile('Feature A.md', { frontmatter: { type: 'Feature', order: 1000 }, parentLink: 'Epic' });
+		vault.addFile('Feature B.md', { frontmatter: { type: 'Feature', order: 2000 }, parentLink: 'Epic' });
+		vault.addFile('Feature Ranked.md', { frontmatter: { type: 'Feature', order: 1500 }, parentLink: 'Epic' });
+		vault.addFile('Task R1.md', { frontmatter: { type: 'Task', order: 1600 }, parentLink: 'Feature Ranked' });
+		vault.addFile('Feature Unranked.md', { frontmatter: { type: 'Feature' }, parentLink: 'Epic' });
+		vault.addFile('Task U1.md', { frontmatter: { type: 'Task', order: 3000 }, parentLink: 'Feature Unranked' });
+		const filtered = vault
+			.entries()
+			.filter((e) => !['Feature Ranked.md', 'Feature Unranked.md'].includes(e.file.path));
+		const model = buildModel(vault.app, filtered, settings);
+		const get = (title: string) => model.items.find((i) => i.title === title) as BacklogItem;
+		return { model, get };
+	}
+
+	it('drops the unranked context row and keeps the ranked one, at model.realRoots', () => {
+		const { model, get } = rootFixture();
+		const ranked = get('Epic Ranked');
+		const unranked = get('Epic Unranked');
+		expect(ranked.outsideFilter).toBe(true);
+		expect(ranked.order).toBe(1500);
+		expect(unranked.outsideFilter).toBe(true);
+		expect(unranked.order).toBeNull();
+
+		// A plain reorder among the two writable roots — the population it ranks among is
+		// the assertion, not the write itself.
+		const target = dropTargetFor(model, get('Epic A'), 'after', get('Epic B'), plan);
+		expect(target).not.toBeNull();
+		expect(target?.peers).toContain(ranked);
+		expect(target?.peers).not.toContain(unranked);
+	});
+
+	it('drops the unranked context row and keeps the ranked one, at parent.children', () => {
+		const { model, get } = nestedFixture();
+		const ranked = get('Feature Ranked');
+		const unranked = get('Feature Unranked');
+		expect(ranked.outsideFilter).toBe(true);
+		expect(ranked.order).toBe(1500);
+		expect(unranked.outsideFilter).toBe(true);
+		expect(unranked.order).toBeNull();
+
+		const target = dropTargetFor(model, get('Feature A'), 'after', get('Feature B'), plan);
+		expect(target).not.toBeNull();
+		expect(target?.peers).toContain(ranked);
+		expect(target?.peers).not.toContain(unranked);
+	});
+});
+
+describe('insidePosition drops an unranked trailing context row from its population', () => {
+	/**
+	 * Task 4: `insidePosition` built `peers` from `item.children` unfiltered, so an
+	 * `inside` drop whose hovered parent's last child is an unranked context row anchored
+	 * on that row — `anchoredOrder` skips it as a candidate anchor and recurses to
+	 * "append after the END of the whole ranked population" instead of after the parent's
+	 * own last real child. `Far` is ranked far above everything under `Epic`, so the two
+	 * readings land on visibly different numbers rather than agreeing by coincidence.
+	 *
+	 * `Ctx Ranked` is the control the same fixture buys for free: a RANKED context row
+	 * (its own `order`) stays a peer and is the anchor the fix actually lands on, so this
+	 * one fixture proves both halves of the rule at once.
+	 */
+	function fixtureWithTrailingContext() {
+		const vault = new FakeVault();
+		vault.addFile('Epic.md', { frontmatter: { type: 'Epic', order: 10 } });
+		vault.addFile('Feature A.md', { frontmatter: { type: 'Feature', order: 100 }, parentLink: 'Epic' });
+		vault.addFile('Ctx Ranked.md', { frontmatter: { type: 'Feature', order: 150 }, parentLink: 'Epic' });
+		vault.addFile('Ctx Ranked Task.md', { frontmatter: { type: 'Task', order: 1 }, parentLink: 'Ctx Ranked' });
+		vault.addFile('Ctx Unranked.md', { frontmatter: { type: 'Feature' }, parentLink: 'Epic' });
+		vault.addFile('Ctx Unranked Task.md', { frontmatter: { type: 'Task', order: 2 }, parentLink: 'Ctx Unranked' });
+		vault.addFile('Other.md', { frontmatter: { type: 'Epic', order: 5 } });
+		vault.addFile('Far.md', { frontmatter: { type: 'Feature', order: 90000 }, parentLink: 'Other' });
+		vault.addFile('Mover.md', { frontmatter: { type: 'Epic', order: 20 } });
+		const filtered = vault
+			.entries()
+			.filter((e) => !['Ctx Ranked.md', 'Ctx Unranked.md'].includes(e.file.path));
+		const model = buildModel(vault.app, filtered, settings);
+		const get = (title: string) => model.items.find((i) => i.title === title) as BacklogItem;
+		return { model, get };
+	}
+
+	it('anchors on the last RANKED peer and drops the trailing unranked one, in both the target and the write', () => {
+		const { model, get } = fixtureWithTrailingContext();
+		const epic = get('Epic');
+		const ctxRanked = get('Ctx Ranked');
+		const ctxUnranked = get('Ctx Unranked');
+		const mover = get('Mover');
+		expect(ctxRanked.outsideFilter).toBe(true);
+		expect(ctxRanked.order).toBe(150);
+		expect(ctxUnranked.outsideFilter).toBe(true);
+		expect(ctxUnranked.order).toBeNull();
+
+		const target = dropTargetFor(model, epic, 'inside', mover, plan);
+		expect(target).not.toBeNull();
+		// Over-application check: a RANKED context row is still a real peer.
+		expect(target?.peers).toContain(ctxRanked);
+		// The unranked one is not — it constrains nothing and is dropped.
+		expect(target?.peers).not.toContain(ctxUnranked);
+
+		// The written NUMBER, not just the parent: anchored on `Ctx Ranked` (150), a
+		// midpoint against its own next neighbour in the GLOBAL population (`Far`, 90000) —
+		// 45075. The unfiltered anchor (`Ctx Unranked`, no rank) reads as "append past the
+		// end of the whole population" instead and writes one spacing past `Far` itself,
+		// 91000 — a different number entirely, and nowhere near either of `Epic`'s own
+		// children.
+		const writes = computeDropWrites(mover, target!, model.ranked);
+		expect(writes).toHaveLength(1);
+		expect(writes[0].parent).toBe(epic.file);
+		expect(writes[0].order).toBe(45075);
 	});
 });

@@ -369,7 +369,7 @@ export function addIterationItems(host: BacklogViewHost, menu: Menu, item: Backl
  * deliberately differ, so read both before making them match. That one asks the parsed
  * ENTRY because ✨ Assign missing properties stubs `iteration: ''` onto every eligible note,
  * so presence there would put a `None`-only menu on every row in a vault with no sprint yet.
- * `neverStubbed` (`domain/writePlan.ts`) refuses a release stub for its own reason — an
+ * `neverStubbed` (`domain/rankBackfill.ts`) refuses a release stub for its own reason — an
  * empty membership is not an empty slot — so presence here is true only where somebody
  * WROTE the key, and it is the same question `computeReleaseWrites` asks to plan the
  * removal. Asking the entry instead left the corner `canSetIteration` accepts: a value the

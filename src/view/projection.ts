@@ -137,11 +137,12 @@ export function toolbarPosition(projection: Projection): Projection {
  * with the screen, which is the failure this rule exists to prevent, arriving one surface
  * at a time.
  *
- * What it is NOT is the ranking group. An `order` is a number scoped to the notes sharing
- * a parent, and a `Test suite` and an `Epic` share the null one — so what number a new
- * root gets, and which notes a renumber rewrites, come from `model.realRoots` and no
- * projection may narrow that. Three lists, and conflating any two of them breaks
- * something; see `docs/requirements/A projection for the tests.md` 2d.
+ * What it is NOT is the ranking group. `order` is one rank over everything the Base
+ * returns (ADR 0034), and a `Test suite` and an `Epic` share the null parent — so a new
+ * root is POSITIONED among `model.realRoots` and takes its NUMBER from `model.ranked`,
+ * and no projection may narrow either. Those two parted company with the same ADR, which
+ * is why `src/domain/CLAUDE.md` now states four lists rather than three; conflating any
+ * two of them breaks something. See `docs/requirements/A projection for the tests.md` 2d.
  */
 export function projectionPopulation(projection: Projection, model: BacklogModel): ProjectionPopulation {
 	if (projection === 'catalog') return model.catalog;

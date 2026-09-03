@@ -96,9 +96,17 @@ export interface DateChange {
  * user hearing about a move that did not happen is the failure this exists to prevent.
  * `dates` is the first axis write's before/after, from the values the writer itself
  * saw: the model may be a refresh behind, so the caller cannot name them.
+ *
+ * `written` is how many of the batch's files the writer GOT THROUGH — the count a caller
+ * that states a number has to report, because a batch can stop partway (`applyWrites`
+ * below returns on the first note that no longer fits) and the planned length is then a
+ * number nothing wrote. A no-op file counts: the note was reached and matched the plan,
+ * which is the same rule `changed` already keeps for the batch as a whole. A refused one
+ * does not.
  */
 export interface WriteOutcome {
 	changed: boolean;
+	written: number;
 	dates: DateChange | null;
 }
 
@@ -121,8 +129,7 @@ export async function applyWrites(
 	onProgress?: (done: number, total: number) => void,
 	onInverse?: (inverse: RestoreWrite) => void,
 ): Promise<WriteOutcome> {
-	const outcome: WriteOutcome = { changed: false, dates: null };
-	let done = 0;
+	const outcome: WriteOutcome = { changed: false, written: 0, dates: null };
 	for (const write of writes) {
 		let inverse: RestoreWrite | null = null;
 		let refused = false;
@@ -208,7 +215,15 @@ export async function applyWrites(
 			outcome.changed = true;
 			onInverse?.(inverse);
 		}
-		onProgress?.(++done, writes.length);
+		// Counted on its own statement, NEVER inside the optional call's argument: an
+		// optional call short-circuits its ARGUMENTS when the callee is nullish, so
+		// `onProgress?.(++outcome.written, …)` leaves the count at zero for any caller
+		// that passes no progress reporter — and a zero count now means SILENCE at every
+		// caller that announces one. Unreachable through the view today, which always
+		// supplies one; the docblock above promises the count to every caller, so the
+		// count has to be a fact about the batch rather than about who is watching it.
+		outcome.written += 1;
+		onProgress?.(outcome.written, writes.length);
 	}
 	return outcome;
 }
@@ -637,7 +652,7 @@ export function refusesLiveAssignee(app: App, target: TFile | null | undefined, 
  * backfill's half of {@link refusesLiveType}'s question, and the reason it is not that
  * function: a stub is an empty key the reader is invited to fill, not a placement, so
  * refusing the batch over one would abandon every note after it for a key that carries no
- * decision. `missingKeyStubs` (`domain/writePlan.ts`) already declines to plan them;
+ * decision. `missingKeyStubs` (`domain/rankBackfill.ts`) already declines to plan them;
  * authorization at plan time is not authorization at write time, and a retype between the
  * plan and this callback is exactly the window that guard cannot see.
  *

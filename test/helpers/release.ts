@@ -347,14 +347,19 @@ function addToolbarReleases(vault: FakeVault): void {
  */
 function foldVault(): FakeVault {
 	const vault = new FakeVault();
+	// **Every note here carries an `order`, and that is load-bearing.** A creation from
+	// this screen is a placement over the whole ranked population now (`scopeCreate.ts`),
+	// and an anchor with no rank refuses rather than inventing a number — so an unranked
+	// release note two rows away is enough to make `New <child>` create nothing. The
+	// numbers below are the order these rows were already drawn in.
 	vault.addFile('Releases/0.8.md', {
-		frontmatter: { type: 'Release', version: '0.8.0', 'target-date': '2026-09-12', status: 'In progress' },
+		frontmatter: { type: 'Release', version: '0.8.0', order: 10, 'target-date': '2026-09-12', status: 'In progress' },
 	});
-	vault.addFile('Releases/0.9.md', { frontmatter: { type: 'Release', version: '0.9.0' } });
+	vault.addFile('Releases/0.9.md', { frontmatter: { type: 'Release', version: '0.9.0', order: 20 } });
 	// A MEMBER with member children — unlike `Sign-up flow` below, which stays context — so
 	// its own row draws a rollup (`context: false`) over what is BELOW it rather than never
 	// drawing one at all.
-	vault.addFile('Passwordless sign-in.md', { frontmatter: { type: 'Epic', release: '[[Releases/0.8]]' } });
+	vault.addFile('Passwordless sign-in.md', { frontmatter: { type: 'Epic', order: 30, release: '[[Releases/0.8]]' } });
 	// `parentLink`, not a bare `parent` string: these children need a REAL frontmatter
 	// link so `vault.renameFile`'s own rewrite (test 2) carries them with their parent
 	// rather than orphaning them — the fake's own documented distinction
@@ -367,7 +372,7 @@ function foldVault(): FakeVault {
 		frontmatter: { type: 'Task', order: 2, release: '[[Releases/0.8]]' },
 		parentLink: 'Passwordless sign-in',
 	});
-	vault.addFile('Sign-up flow.md', { frontmatter: { type: 'Epic' } });
+	vault.addFile('Sign-up flow.md', { frontmatter: { type: 'Epic', order: 40 } });
 	vault.addFile('Verify the email.md', {
 		frontmatter: { type: 'Task', order: 1, release: '[[Releases/0.8]]' },
 		parentLink: 'Sign-up flow',

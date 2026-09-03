@@ -728,6 +728,16 @@ export interface BacklogViewHost {
 	 * writer itself observed, which a truthy check treats exactly as the old boolean.
 	 */
 	applySafely(writes: ItemWrite[]): Promise<WriteOutcome | null>;
+	/**
+	 * A vault write that is not a frontmatter batch — note CREATION today — taken under
+	 * the same exclusive section every batch takes, and refused (loudly) when one is
+	 * already in flight. Reading `busy` instead is not the same as HOLDING the lock: a
+	 * creation awaits a folder create and a file write, and everything it plans from
+	 * `model` is planned against a model the gate is deliberately holding stale until the
+	 * running batch ends. Resolves null when the gate refused; otherwise the callback's
+	 * own answer. It installs no undo slot — a whole-file write reports no inverse.
+	 */
+	runFileWrite<T>(run: () => Promise<T>): Promise<T | null>;
 	performDrop(dragged: BacklogItem, target: DropTarget): Promise<void>;
 	/** True when a batch has landed this session and its inverses are held. */
 	canUndo(): boolean;

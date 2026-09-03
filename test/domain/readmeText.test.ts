@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { andList, cell, code, list, yamlScalar } from '../../src/domain/readmeText';
+import { andList, cell, cellList, code, yamlScalar } from '../../src/domain/readmeText';
 
 /**
  * Every value in the generated README is data somebody typed into the view's options or
@@ -69,14 +69,14 @@ describe('a value inside a table cell', () => {
 
 describe('a list of values in a sentence', () => {
 	it('says so when there are none, rather than trailing off', () => {
-		expect(list([])).toBe('*(nothing)*');
+		expect(cellList([])).toBe('*(nothing)*');
 	});
 
 	it('escapes the values and leaves the document own prose alone', () => {
 		// A starred entry is written by the generator ("*(nothing — it is a root)*"), so
 		// quoting it would show a reader the markup instead of the sentence.
-		expect(list(['Epic', 'a|b'])).toBe('`Epic`, `a\\|b`');
-		expect(list(['*(nothing — it is a root)*', 'Epic'])).toBe('*(nothing — it is a root)*, `Epic`');
+		expect(cellList(['Epic', 'a|b'])).toBe('`Epic`, `a\\|b`');
+		expect(cellList(['*(nothing — it is a root)*', 'Epic'])).toBe('*(nothing — it is a root)*, `Epic`');
 	});
 });
 

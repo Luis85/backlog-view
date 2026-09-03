@@ -537,7 +537,7 @@ function roadmapRows(model: BacklogModel, visible: (item: BacklogItem) => boolea
  * trusting the number.
  *
  * A TYPE NAME is all it reads, which is what lets the focus ask it with no row in hand.
- * The backfill is deliberately NOT a sixth reader: `missingKeyStubs` (`domain/writePlan.ts`)
+ * The backfill is deliberately NOT a sixth reader: `missingKeyStubs` (`domain/rankBackfill.ts`)
  * asks whether a TYPE may hold a planning key, which is `placementEnds`-shaped and has a
  * note of its own — `docs/issues/Creation seeds a placement the type may not hold.md`.
  * Two rules, and collapsing them would put a question about a note's keys behind a

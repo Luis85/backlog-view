@@ -40,7 +40,13 @@ of this paragraph got wrong was forbidding a *second* superlinear step outright 
 than bounding it: the rule that matters is that nothing here sorts a set
 that can outgrow the items, not that there is exactly one sort.
 
-Three of those properties are checks (`test/domain/modelCost.test.ts`) and the rest of the
+A **third** joined them with the global rank (ADR 0034): `rankedItems` (`rankOrder.ts`)
+sorts every loaded item by `order` once per build to make `model.ranked`. It is bounded
+exactly as the other two are — over the item set, once per build rather than per row — so
+three passes leave the build's bound at **O(n log n)**, which is the whole of what the
+paragraph above asks of a new sort.
+
+Four of those properties are checks (`test/domain/modelCost.test.ts`) and the rest of the
 paragraph above is prose. Checked: the vault is read **once per note loaded** — `addItem`
 holds the only `getFileCache` call site `buildModel` reaches, so a later phase re-reading
 the cache per item shows up as n² — **every item is sorted exactly once**, the sum of the
@@ -50,7 +56,10 @@ exactly once**, the same shape of check at the seam the item count is blind to: 
 `Resource` never becomes an item, so a fixture with no resources in it never exercises this
 sort at all, and the item-count check alone cannot see a duplicated or per-item roster
 sort. The two sorts are told apart by `typeName`, a field every `RawItem`/`LinkedItem`
-carries and no `ResourceNote` does. Not checked, and deliberately
+carries and no `ResourceNote` does. And **the whole item set is sorted exactly once for
+the global rank** — told apart from a sibling-group sort by GROUP SIZE alone, which is
+sound only while no sibling group is as large as the item set, so that check asserts the
+fixture stays hierarchical before it counts anything. Not checked, and deliberately
 not claimed: a traversal phase that turned quadratic without reading the vault again or
 sorting again. Nothing observes a walk from outside `buildModel`, and inventing a seam to
 count one would be a seam built for the test. Nothing here measures elapsed time either;
@@ -108,9 +117,11 @@ a node test that did would be measuring the runner.
 - `depth` is VISUAL only (focus mode re-roots it). Level math must use
   `effectiveLevelIndex`, which chains down the parent levels and carries unknown
   custom types through the ladder (see `childLevelIndex`). Never derive levels
-  from depth — now a lint rule (`VISUAL_DEPTH`) over the two files that decide
-  types (`writePlan.ts` and `interactions/create.ts`), since `rows.ts` legitimately reads
-  depth for `aria-level`. `nextLevelIndex` is the one statement of "a child sits one rung
+  from depth — now a lint rule (`VISUAL_DEPTH`) over the files that decide
+  types (`writePlan.ts`, `rankArithmetic.ts`, `rankBackfill.ts` and
+  `interactions/create.ts`; the ✨ backfill's implied type is `rankBackfill.ts`'s), since
+  `rows.ts` legitimately reads depth for `aria-level`. `nextLevelIndex` is the one
+  statement of "a child sits one rung
   below, clamped at the deepest level" and `childLevelIndex` is it applied to an item;
   both are what a type write asks, and neither has ever been allowed to ask depth. The
   last exception was the re-typing cascade, deleted 2026-08-11 with the feature it
@@ -122,18 +133,24 @@ a node test that did would be measuring the runner.
 - `model.roots` is the PLAN's rendered forest (synthetic under focus, and re-rooted past
   any catalog member); every data operation (backfill, ranking parentless items,
   root-level outdent) must use `model.realRoots`. That rule stopped being advice the day a
-  second projection existed: an `order` is a number scoped to the notes sharing a parent,
-  and a `Test suite` and an `Epic` share the null one, so ranking against one projection's
-  slice of that group takes a midpoint a hidden root may already hold. Three lists, and
-  conflating any two breaks something — the RENDERED roots (what is on screen), the
-  POSITIONABLE roots (what a move at the top level MEANS, which is a question about the
-  screen), and the RANKING group (`realRoots`, what number it gets), which is not a
-  projection's list at all and which no projection may narrow.
-  Checked by lint in `writePlan.ts` and `interactions/create.ts` — the two files that
-  rank. The two files that POSITION at the top level hold both lists at once and must not
+  second projection existed: a `Test suite` and an `Epic` share the null parent, so a
+  projection's slice of that group is not the group. **Four lists** now, and conflating
+  any two breaks something — the RENDERED roots (what is on screen), the POSITIONABLE
+  roots (what a move at the top level MEANS, which is a question about the screen), the
+  PEER group (`realRoots` at the top level, `parent.children` below it — the rows a move
+  is aimed among, which is intent and not arithmetic), and the RANK POPULATION
+  (`model.ranked`, what number the move gets). The last two parted company with ADR 0034:
+  a `DropTarget`'s `peers` says where the user aimed and `anchoredOrder` reads
+  `model.ranked` for the number, so neither the peer list nor any projection's slice of
+  it may be handed to the arithmetic as if it were the population.
+  Checked by lint in `writePlan.ts`, `rankArithmetic.ts`, `rankBackfill.ts` and
+  `interactions/create.ts` — the files that rank. The two files that POSITION at the top
+  level hold both lists at once and must not
   let either answer the other's question: `dropTargets.ts` ranks against `realRoots` while
-  asking its no-op question of the drawn order through the `member` predicate the view
-  hands it, and `structure.ts` ranks a root-level outdent the same way. That split is the
+  asking its no-op question of the drawn order through the `drawn` predicate the view
+  hands it — projection membership AND the completed toggle AND an emptied context
+  scaffold, which is `rowHidden` inverted, and it was projection ALONE until 2026-08-31 —
+  and `structure.ts` ranks a root-level outdent the same way. That split is the
   subtlety worth reading twice before editing.
 - Focus mode: the top row is a synthetic grouping — `focusRoot` items keep their real
   `parent` pointer, and reordering/outdent/indent across that row must stay disabled.
@@ -315,9 +332,11 @@ a node test that did would be measuring the runner.
   returns matches without their parents, which would flatten the tree, so `loadOutsideParents`
   walks each item's parent chain through the *metadata cache* and adds the missing notes with
   `entry: null` and `outsideFilter: true`. They are context, not results: no Bases row (so no
-  property chips), not draggable, excluded from every ranking path (`siblingPosition`,
-  `siblingContext`, `outdent`, the move menu) because their real siblings were never loaded,
-  and skipped by `computeInitWrites`. They ARE valid drop parents and can take new children.
+  property chips), not draggable, never written to, and skipped by `computeInitWrites`.
+  Every ranking path (`siblingPosition`, `siblingContext`, `outdent`, the move menu) declines
+  to move one, because its real siblings were never loaded — but a RANKED one is still
+  something the rows around it are ranked AGAINST, at the focus level, where the rank
+  changes no parent: see the two bullets on the context-row invariant below. They ARE valid drop parents and can take new children.
   Their rollups describe the visible subtree only. `entry` is nullable for exactly this
   reason — anything reading `item.entry` must handle null, which the compiler enforces.
   The seed for the walk is `outsideParentSeed`, which mirrors `linkAll`'s precedence
@@ -335,26 +354,85 @@ a node test that did would be measuring the runner.
   must therefore skip such a row's whole BRANCH rather than step over the row and carry
   on: half-updating a subtree past a note that may not be written to leaves the tree worse
   than not touching it.
-- Renumbering rewrites a whole sibling group, so `computeDropWrites` refuses that path
-  when the group holds an `outsideFilter` row and places the item after the highest known
-  order instead (`afterHighestKnown`) — the single choke point that makes the context-row
-  invariant hold. Because that fallback lands the item last, the *positional* operations
-  refuse such a group up front instead of landing somewhere other than aimed:
-  `siblingPosition` (before/after drops), `canReorder` (the move menu, Alt+arrow) and
-  `outdentTarget`. Appends — dropping *into* a parent, indent — stay
-  available, since last is what they mean anyway. Gate each command on what it actually
-  does: `canReorder` covers only the four move commands, while Indent follows its
-  neighbour and Outdent answers for its own destination — gating those on `canReorder`
-  too would make the menu offer less than Alt+arrow already allows.
-- Orders are sibling-scoped fractional ranks; when a gap `< MIN_GAP` the whole sibling
-  group renumbers. Missing orders sort last, in Bases result order (`entryIndex`) —
-  `data.data` arrives presorted by the user's Bases sort config, so never re-sort it.
-- Known limitation, not specific to context rows: in a filtered base any parent whose
-  children are partly excluded has a partial `children` list, so `insidePosition` +
-  `computeInsertOrder` can compute an order that duplicates an excluded sibling's. Equal
-  orders fall back to `entryIndex` and the group self-corrects on the next renumbering
-  drop. Fixing it properly needs the complete child set (backlinks + folder scan), which
-  `computeDropWrites` cannot reach without giving up its purity. Recorded in
+- **`order` is ONE fractional rank over everything the Base returns** (ADR 0034), not a
+  per-group number. There is no gap threshold and no renumbering path: `MIN_GAP`,
+  `renumberWrites`, `afterHighestKnown` and `reorderableGroup` are all deleted. A
+  placement is a midpoint between the anchor's two neighbours in `model.ranked`
+  (`anchoredOrder`, reached through `orderForTarget` and `dropPlacement`), so a drop, an
+  indent, an outdent and a keyboard move each write exactly ONE note. Missing orders sort
+  last, in Bases result order (`entryIndex`) — `data.data` arrives presorted by the user's
+  Bases sort config, so never re-sort it.
+- **When there is no room, the placement REFUSES; it never makes room.** `RankResult` is
+  a number or one of four refusals — `gapSpent`, `tied`, `unranked`, `parentGone` — and
+  `refusalKey` is the one `switch` that maps each to the sentence naming its own remedy,
+  so a fifth refusal is a compile error rather than a wrong message. `midpoint` asks
+  whether the ROUNDED value is strictly between both ends, which is the only form of the
+  question that stays right at large magnitudes; a fixed minimum gap does not, and that
+  is why there is no second test beside it.
+- **The context-row invariant no longer rests on a group-level refusal — it rests on
+  where a context row may be READ and may not be WRITTEN.** `anchoredOrder` SKIPS an
+  unranked one (it can never be given a rank, so refusing beside one would be a permanent
+  block behind advice that cannot work), `rankTaken` counts a RANKED one as occupying its
+  number, and `computeInitWrites` and `spreadAround` write neither. **`anchoredOrder`'s skip
+  is not the backfill's answer**, and reading it as one shipped a defect: one placement can
+  land elsewhere, while the backfill is the pass that would have had to rank the row later
+  and never can, so `allocateRanks` treats an unranked context row as a BARRIER — poisoning
+  its focus key and its sibling group, so a blank drawn after it stays blank rather than
+  taking a number that sorts the visible context row behind it
+  (`test/view/backfillFocusOrder.test.ts`). What refuses up front
+  is the ROW in hand, and since Tasks 1 and 4 its GROUP as well: `siblingPosition` (drag),
+  `siblingContext` (Alt+arrow and the move menu) and `outdentTarget` each decline an
+  `outsideFilter` row outright, and every population any ranking site reads — both
+  branches of both functions, plus `insidePosition`, `indentTarget` and the two creation
+  paths — is filtered through `rankablePeers` first, so an unranked context row is
+  dropped as a peer wherever it would otherwise sort last and become the anchor.
+  `outdentTarget` declines one row more than that: a PARENT that is itself an unranked
+  context row, a different refusal from `outsideFilter` and Task 7's own addition.
+- **A ranked context row is a legal ANCHOR at the focus level, and the drag and the
+  keyboard have to say so together.** The refusal above is about REPARENTING — an ancestor
+  from outside the filter has siblings the query never returned — and a focus rank writes
+  `order` alone, restating the parent. So `siblingPosition` asks its focus branch BEFORE
+  that refusal and `siblingContext` keeps a ranked context row among the focus peers; both
+  drop an UNRANKED one, and both do it by taking their peers from the ONE list —
+  `rankablePeers` in `dropTargets.ts`, because all three callers reach it there. They
+  disagreed twice, both times the read-side/write-side split this feature keeps producing.
+  Once about the ANCHOR: the keyboard ranked across a row the drag drew no indicator for
+  (`test/view/focusRanking.test.ts` drives all three inputs at that row). Once about the
+  PEERS, which is why one list rather than one predicate spelled twice: the drag kept
+  unranked context rows among its peers on the argument that `anchoredOrder` skips one as
+  an anchor anyway — half true, since that skip means *append to the end of the
+  population*, so a drop aimed just below such a row landed at the bottom of the backlog
+  (`test/view/focusedUnrankedContext.test.ts`). A no-op comparison beside such a list has
+  to read the SAME list, or it shifts by the rows the filter removed.
+  **And it has to be filtered to what is DRAWN, which is a second question over the same
+  list and was missed on both branches.** Hiding finished work is a RENDER decision, so a
+  done row stays in `model.roots` and stays a ranking neighbour — correct, and what
+  [[Rollups and hiding finished work]] guarantees — but counting it as a row a drop moved
+  PAST is not: with `A`, a hidden done `H` and `B` ranked in that order, dropping `B`
+  where it already appears wrote a rank and left the screen identical. `visibleNeighbor`
+  had skipped hidden rows for exactly this reason since long before; the drag caught up on
+  2026-08-31 (`test/view/hiddenRowNoOp.test.ts`, which drives both branches because both
+  had it — the tree's was older than the global rank).
+- **Every structural command asks the write path's own question before it is offered.**
+  `plans` (`interactions/structure.ts`) runs `dropPlacement` against that command's OWN
+  target, so `canReorder`, `canMoveToEdge`, `outdentTarget` and `indentTarget` each answer
+  for what they would actually write — one answer covering two commands offers a `Move to
+  top` that is inert because the adjacent swap happened to work. Indent was the last one
+  without that preflight and drew an `Indent under "X"` that did nothing and said nothing.
+- **An unseeded vault falls back to ranking among the destination's peers alone** — ADR
+  0008's arithmetic, kept as a bridge — and the fallback is gated on the `tied` refusal,
+  a fact about the two rows the placement landed between, never on a question asked of
+  the whole population. Both wider gates were built here and both were wrong; ADR 0034
+  records why, and `docs/issues/The unseeded fallback is silent.md` records what the
+  switch still does not tell the user.
+- Known limitation, not specific to context rows: **the rank space is the BASE's
+  population, not the vault.** A note the filter excludes and no result claims as a parent
+  is never loaded, so it is not in `model.ranked` and no placement can see the rank it
+  holds — a midpoint may duplicate it, invisibly until that note re-enters the results.
+  This is WIDER than the sibling-scoped rank it replaces, where only a hidden sibling
+  could collide. Reading every rank-bearing note from the metadata cache would make this
+  layer read the vault rather than what Bases hands it; `Respace ranks` is the repair once
+  a collision surfaces. Recorded in
   `docs/issues/Duplicate orders in a partially filtered group.md`.
 - `breakCycles` re-roots `cycleEntry(item)`, the node that actually closes the loop, not the
   first unreachable item found: with outside-filter ancestors the unreachable item is usually
@@ -370,6 +448,25 @@ a node test that did would be measuring the runner.
   why `DropTarget` and `DropZone` live in `dropTargets.ts` rather than with the writer and
   the view that read them. Both used to sit upstream and made this layer depend on the
   effectful one.
+- **`DropTarget.parentUnchanged` marks a RANK, never a PLACEMENT.** Set it only where
+  `parent` merely restates the moved item's own current parent because the parent is not
+  the user's subject at all (a focus rank); never where it happens to equal that value
+  because the drop IS an explicit placement, which must still clear a stale link even
+  when the position does not change (pinned by `test/domain/writePlan.test.ts`'s "clears
+  the stale link even when the orphan keeps its last-root position"). The distinction is
+  about INTENT and cannot be read off the value alone — `parent === null` looks the same
+  either way — so `computeParentField` asks the flag first rather than the values.
+  **The same producer answers both ways**, which is why the flag is carried rather than
+  spelled: `withinSiblingsTarget` and `edgeTarget` (`interactions/structure.ts`) build one
+  target for a focus rank and one for an ordinary reorder, and take the answer from
+  `siblingContext`'s `rankOnly` — the function that already knows which list the row is
+  being ranked in. A comparison written beside them could only re-derive it from the value
+  it cannot be read off.
+  `DROP_TARGET_RESTATEMENT` in `eslint.config.mjs` reaches both spellings — `dragged.parent`
+  in `dropTargets.ts` and `item.parent` in `structure.ts` — and asks for the flag to be
+  STATED rather than to be true, so a genuine placement passes by writing
+  `parentUnchanged: false`. What it still cannot see is a third subject name or a `parent`
+  put in a local first; those need the same reasoning applied by a person.
 - The roadmap's axis is DECLARED, never detected (`roadmap.ts`): a horizon property with
   a non-empty values list makes the bucket axis, either date property makes the timeline,
   and no property is ever picked by name-matching — nor is a date ever read as a horizon.

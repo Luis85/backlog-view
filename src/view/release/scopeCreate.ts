@@ -6,7 +6,9 @@ import { ReleaseRow, refusesLiveMembership } from '../../domain/releases';
 import { ScopeRow } from '../../domain/scopeRows';
 import { childTypeChoices, folderForType, inCatalog } from '../../domain/itemTypes';
 import { configProblems } from '../../domain/settingsConsistency';
-import { ORDER_SPACING } from '../../domain/writePlan';
+import { rankablePeers } from '../../domain/dropTargets';
+import { refusalKey } from '../../domain/rankArithmetic';
+import { dropPlacement } from '../../domain/writePlan';
 import { createBacklogItem } from '../../storage/createNote';
 import { TitlePromptModal } from '../../ui/prompts';
 import { showMenuAtElement, showMenuForClick } from '../interactions/menu';
@@ -187,12 +189,25 @@ interface NewMember {
 /**
  * The one place a note is created from this screen — both inputs above land here.
  *
- * The rank is `ORDER_SPACING` past the highest ranked child of the parent ROW's own
- * children, read from the model rather than from the tree: a scope row draws only this
- * release's members and their ancestors, so ranking against what is on screen would put a
- * new child on top of a sibling that belongs to another release and is merely not drawn
- * here. Same shape as `endOfSiblingsOrder` in `view/interactions/create.ts`, over the
- * item's full child list for that reason.
+ * The rank comes from `dropPlacement` — the same question the backlog's own creation and
+ * every drop ask, with a null `dragged` because the note does not exist yet. This screen
+ * used to compute it itself: one spacing past the highest ranked child of the parent row.
+ * That was right while `order` was a rank within a sibling group and became a duplicate
+ * generator the day it became one rank over the population, because both halves of it are
+ * functions of the PEER values alone — two subtrees whose children end at the same number
+ * are handed the same next number, and a note ranked between the peers is exactly where a
+ * peer midpoint lands.
+ *
+ * The PEERS are still the item's full child list read from the model rather than from the
+ * tree: a scope row draws only this release's members and their ancestors, so a peer group
+ * taken from the screen would put a new child on top of a sibling that belongs to another
+ * release and is merely not drawn here.
+ *
+ * **A refused rank refuses the note**, the same trade `view/interactions/create.ts` makes:
+ * a note at a number another row already holds, nowhere near the slot the reader asked
+ * for, is worse than no note. The remedies the notices name — the backlog toolbar's ✨,
+ * `Respace ranks` — are not on THIS screen, which is the honest state of it: they act on
+ * the same vault from one pane over.
  *
  * Unfolding is done AFTER the create and only when the parent is actually folded: a new
  * child under a closed row would otherwise land somewhere the reader cannot see it.
@@ -209,42 +224,82 @@ interface NewMember {
  * report of a note that should never have been made that way. Found by review
  * (Codex, PR #214), the same finding PR #201 made against the edit path.
  *
- * **The PARENT is deliberately not re-read beside it, and neither are the settings** —
- * `docs/issues/A creation outlives what it was planned against.md` states both, and why
- * the release is the one of the three that earned a guard: the edit path already had this
- * exact function, so the creation path was inconsistent with a rule already written down.
- * A parent refusal belongs in `createBacklogItem`, where one covers this caller and
- * `view/interactions/create.ts` together rather than making two creation paths disagree.
+ * **The settings are deliberately not re-read beside it** —
+ * `docs/issues/A creation outlives what it was planned against.md` states why the release
+ * is the one that earned a guard: the edit path already had this exact function, so the
+ * creation path was inconsistent with a rule already written down.
+ *
+ * The PARENT was on that list too until the rank became global. It is re-resolved now, and
+ * for a different reason than the release's: not "may this note still be written" but
+ * "where does the new note rank", which is a question about the LIVE population. The file
+ * written as the parent link is still the captured one; only the anchor is re-read. See
+ * the comment at the lookup.
  */
 async function createMember(view: ReleaseView, release: ReleaseRow, settings: BacklogSettings, row: ScopeRow, spec: NewMember): Promise<void> {
 	if (refusesLiveMembership(view.app, release.item.file, settings)) {
 		new Notice(t('release.scope.staleRelease'));
 		return;
 	}
-	try {
-		const file = await createBacklogItem(view.app, settings, {
-			folder: spec.folder,
-			title: spec.title,
-			typeName: spec.typeName,
-			parent: row.item.file,
-			order: endOfChildrenOrder(row),
-			release: release.item.file,
-		});
-		new Notice(t('create.created', { name: file.basename }));
-	} catch (e) {
-		console.error('Product Backlog: failed to create item', e);
-		new Notice(t('create.failed'));
+	// **Routing a caller through a shared helper transfers the helper's REQUIREMENTS, not
+	// only its behaviour**, and this is the third place that lesson has been learnt on this
+	// branch. `dropPlacement` finds its anchor by IDENTITY (`ranked.indexOf`), so the row
+	// the menu closed over is the wrong object the moment a Bases pass rebuilds the model
+	// under the open modal: it scores -1, and a fully ranked vault refuses `unranked` —
+	// a notice sending the reader to a backfill with nothing to fill. Re-resolved by path,
+	// with the peers AND the population read off that same live model.
+	// `view.model` is asserted, the way `row.item.file.parent` is two functions up: this runs
+	// from a menu on a row the scope tree DREW, and there is no tree before there is a model.
+	const model = view.model!;
+	const parent = model.byPath.get(row.item.file.path);
+	// A parent that no longer resolves is not a root request. The write below still names
+	// the CAPTURED file, so ranking it among the roots would make a note parented to
+	// something gone and ranked nowhere near it.
+	if (!parent) {
+		new Notice(t(refusalKey('parentGone')));
 		return;
 	}
-	const parentPath = row.item.file.path;
-	if (releaseFoldedPaths(view, release.path).has(parentPath)) toggleReleaseFold(view, release.path, parentPath);
+	// **The rank and the write are ONE exclusive section**, not two — `runFileWrite`'s own
+	// rule, which this screen's creation was outside of until 2026-09-02, the last ranked
+	// creation path that was. Locking the write alone leaves the half that actually
+	// misplaces the note: the rank below is read off `view.model`, which the gate holds
+	// stale for as long as the batch it is deferring runs, so a rank taken beside a running
+	// Seed or Respace is computed against numbers already replaced. The gate refuses
+	// (loudly) when a batch is in flight, so a refused creation still speaks.
+	await view.gate.runFileWrite(async () => {
+		// `rankablePeers` (`domain/dropTargets.ts`, own comment): a trailing unranked context
+		// row among the parent's real children is not a peer to append past.
+		const peers = rankablePeers(parent.children);
+		const placed = dropPlacement(null, { parent, peers, insertIndex: peers.length }, model.ranked);
+		if ('refusal' in placed) {
+			new Notice(t(refusalKey(placed.refusal)));
+			return;
+		}
+		// Caught INSIDE the section, like the release notes writer: `runExclusively` would
+		// otherwise report this as the generic apply failure and lose the creation's own
+		// sentence.
+		try {
+			const file = await createBacklogItem(view.app, settings, {
+				folder: spec.folder,
+				title: spec.title,
+				typeName: spec.typeName,
+				parent: row.item.file,
+				order: placed.order,
+				release: release.item.file,
+			});
+			new Notice(t('create.created', { name: file.basename }));
+		} catch (e) {
+			console.error('Product Backlog: failed to create item', e);
+			new Notice(t('create.failed'));
+			return;
+		}
+		// Inside the section too, and last: it must run only where the create SUCCEEDED,
+		// which is a fact the callback holds and `runFileWrite`'s `T | null` cannot carry
+		// out — a returned flag would be a second signal for what the early returns above
+		// already say. It writes nothing; it flips this screen's own fold state and redraws,
+		// and the redraw reads the lock for its disabled controls, which every gate
+		// re-publishes when the section ends.
+		const parentPath = row.item.file.path;
+		if (releaseFoldedPaths(view, release.path).has(parentPath)) toggleReleaseFold(view, release.path, parentPath);
+	});
 }
 
-/** An order value placing the new child after every ranked child the parent already has. */
-function endOfChildrenOrder(row: ScopeRow): number {
-	let maxOrder = 0;
-	for (const child of row.item.children) {
-		if (child.order !== null && child.order > maxOrder) maxOrder = child.order;
-	}
-	return Math.floor(maxOrder) + ORDER_SPACING;
-}

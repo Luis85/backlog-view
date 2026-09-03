@@ -58,7 +58,7 @@ structure that makes the answer mean anything.
 | | |
 | --- | --- |
 | A write target | Refused structurally, not by remembering |
-| A ranking peer | Never renumbered — though its `order` is **read**, so nothing lands above something visible |
+| A ranking peer | Never **written to** — though its `order` is still **read**, so nothing lands above something visible, and a RANKED one is a legal anchor to be dropped beside at the focus level ([ADR 0034](../adrs/0034-order-is-a-global-rank.md)). An **unranked** one is dropped from every peer population instead — never a peer, never an anchor — so a child drawn beneath one cannot outdent past it either: the command is withheld from its menu, and Alt+Left reports rather than writing a rank that lands before the row it named. |
 | Counted in a rollup | Traversed *through*, never counted |
 | A source of vocabulary | Not in the states, the tags, the level breakdown or the creation folder |
 

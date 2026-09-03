@@ -34,7 +34,14 @@ function backlog(notes: number, resources = 0): FakeVault {
 function costOf(
 	notes: number,
 	resources = 0,
-): { reads: number; sorted: number; resourcesSorted: number; items: number } {
+): {
+	reads: number;
+	sorted: number;
+	resourcesSorted: number;
+	rankSorts: number;
+	items: number;
+	maxSiblingGroup: number;
+} {
 	const vault = backlog(notes, resources);
 	const entries = vault.entries();
 	const reads = vi.spyOn(vault.app.metadataCache, 'getFileCache');
@@ -43,18 +50,35 @@ function costOf(
 	// Both counts are taken BEFORE restoring: `mockRestore` resets the recorded calls
 	// along with the implementation, so reading them afterwards reports zero — which
 	// looked exactly like the property holding.
-	// The vocabulary collectors sort STRINGS; only the sibling groups and the resource
-	// roster hold objects. An empty group has no first element to ask and contributes
-	// nothing either way. The two are told apart by `typeName`, a `RawItem`/`LinkedItem`
-	// field no `ResourceNote` carries — `readItems.ts`'s `divertResource` diverts a
-	// resource before it is ever an item, so this is the one shape distinguishing the
-	// build's two comparison sorts from outside it.
+	// The vocabulary collectors sort STRINGS; only the sibling groups, the global rank
+	// pass and the resource roster hold objects. An empty group has no first element to
+	// ask and contributes nothing either way. The two are told apart by `typeName`, a
+	// `RawItem`/`LinkedItem` field no `ResourceNote` carries — `readItems.ts`'s
+	// `divertResource` diverts a resource before it is ever an item, so this is the one
+	// shape distinguishing the build's comparison sorts from outside it.
 	const groups = sort.mock.contexts.filter((ctx): ctx is object[] => Array.isArray(ctx) && typeof ctx[0] === 'object');
-	const sorted = groups.filter((g) => 'typeName' in g[0]).reduce((total, group) => total + group.length, 0);
+	const itemGroups = groups.filter((g) => 'typeName' in g[0]);
+	// TWO passes over items now, each once: `sortSiblingsDeep` over the sibling groups,
+	// and the global rank sort. A third would still fail this.
+	const wholeSet = itemGroups.filter((g) => g.length === model.items.length);
+	const sorted = itemGroups.filter((g) => !wholeSet.includes(g)).reduce((total, g) => total + g.length, 0);
+	const rankSorts = wholeSet.length;
 	const resourcesSorted = groups
 		.filter((g) => !('typeName' in g[0]))
 		.reduce((total, group) => total + group.length, 0);
-	const cost = { reads: reads.mock.calls.length, sorted, resourcesSorted, items: model.items.length };
+	// The size-based split above (`wholeSet`) trusts that no SIBLING group in this fixture
+	// is as large as the whole item set — checked directly here, off the model rather than
+	// off the spy, so a fixture change that breaks that assumption fails this instead of
+	// silently letting a sibling-group sort get counted as the rank sort.
+	const maxSiblingGroup = Math.max(model.realRoots.length, ...model.items.map((item) => item.children.length));
+	const cost = {
+		reads: reads.mock.calls.length,
+		sorted,
+		resourcesSorted,
+		rankSorts,
+		items: model.items.length,
+		maxSiblingGroup,
+	};
 	sort.mockRestore();
 	reads.mockRestore();
 	return cost;
@@ -107,5 +131,16 @@ describe('model build cost', () => {
 		// The two sorts must not be conflated: an item is never counted as a resource sort
 		// and a resource is never counted as an item sort.
 		expect(cost.sorted).toBe(cost.items);
+	});
+
+	it('sorts the whole item set exactly once for the global rank', () => {
+		const cost = costOf(200);
+		// This fixture must stay hierarchical: `wholeSet` above tells the rank sort apart
+		// from a sibling-group sort only by group size, which is sound only as long as no
+		// sibling group is as large as the whole item set. If a later change flattens the
+		// fixture (every item a root), this fails here instead of silently letting the
+		// root sibling-group sort get counted as the rank sort below.
+		expect(cost.maxSiblingGroup).toBeLessThan(cost.items);
+		expect(cost.rankSorts).toBe(1);
 	});
 });

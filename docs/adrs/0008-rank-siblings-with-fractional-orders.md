@@ -8,6 +8,14 @@ area: domain
 
 # ADR 0008 — Rank siblings with fractional orders
 
+> **Partly overtaken by [ADR 0034](0034-order-is-a-global-rank.md)** on 2026-08-30, which
+> is why this is not marked `Superseded`. The SCOPE below is gone: `order` is now one rank
+> over everything the Base returns, and no group is renumbered by anything — the renumber
+> branch, its minimum gap and the symbols that served them were deleted. The ARITHMETIC
+> below is still live code: 0032 keeps it as the fallback that lets a vault whose ranks were
+> never seeded go on reordering. Read this for the midpoint, the spacing and the tie-break;
+> read 0032 for what a rank is compared against.
+
 ## Context
 
 The rank lives in the notes ([ADR 0002](0002-keep-the-hierarchy-in-frontmatter.md)), so
@@ -36,7 +44,8 @@ branch is expensive and rare, and it is the price of the common branch being one
   to be able to take a whole-group rewrite back
   ([ADR 0015](0015-undo-by-captured-inverses.md)).
 - Orders are **sibling-scoped**, so two items in different groups may hold the same number
-  and it means nothing.
+  and it means nothing. *(Reversed by [ADR 0034](0034-order-is-a-global-rank.md): the same
+  number in two groups now means a tie, and a tie is a refusal.)*
 - A missing `order` sorts last, in the Base's own result order — so an unranked backlog
   still renders in whatever order the user's Bases sort gives, and adopting the plugin does
   not require ranking everything first.
@@ -45,8 +54,10 @@ branch is expensive and rare, and it is the price of the common branch being one
   ([ADR 0010](0010-load-excluded-ancestors-as-context-rows.md)).
 - A known limitation follows from that same partial knowledge: in a filtered base, an
   insert can compute an order equal to an excluded sibling's. Equal orders fall back to
-  the result order, and the group self-corrects on the next renumbering drop. Recorded in
-  [[Duplicate orders in a partially filtered group]].
+  the result order. Recorded in [[Duplicate orders in a partially filtered group]].
+  *(The self-correction named here was the renumbering drop, which no longer exists: under
+  [ADR 0034](0034-order-is-a-global-rank.md) a duplicate is corrected by Seed or Respace,
+  run deliberately, and until then every insert between the tied pair is refused.)*
 - Rounding matters: orders are rounded to four decimals, well past the gap that triggers
   renumbering, so repeated midpoints cannot drift into float noise.
 

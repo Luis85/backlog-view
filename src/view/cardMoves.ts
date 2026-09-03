@@ -16,11 +16,15 @@ import {
 	computeResourceMoveWrites,
 	computeScheduleWrites,
 	computeStateWrites,
+	dropPlacement,
 	ItemWrite,
 	ScheduleGesture,
 	SchedulePlan,
 } from '../domain/writePlan';
+import { RankRefusal, refusalKey } from '../domain/rankArithmetic';
 import { todayCivil, todayStamp } from '../domain/noteFields';
+import { configProblems } from '../domain/settingsConsistency';
+import { BacklogSettings } from '../domain/settings';
 import { WriteOutcome } from '../storage/frontmatter';
 import { BacklogViewHost } from './host';
 import { bucketLabel, bucketOf, bucketRepresentative, IterationBucket } from '../domain/board';
@@ -277,9 +281,27 @@ export class CardMoveController {
 	}
 
 	async performDrop(dragged: BacklogItem, target: DropTarget): Promise<void> {
-		// Dropping into a collapsed parent reveals where the item landed.
+		const model = this.host.model;
+		if (!model) return;
+		const writes = computeDropWrites(dragged, target, model.ranked);
+		// Dropping into a collapsed parent reveals where the item landed — asked of the
+		// PLANNED batch, because a placement can refuse (a spent gap, an unranked
+		// neighbour, a fallback rank another row holds) and a gesture that moved nothing
+		// must not leave the tree opened up as if it had.
+		//
+		// An empty batch is a REFUSAL and never an inert drop: `dropTargets.ts` has already
+		// refused every destination that would write nothing, so the indicator the user
+		// followed looked valid and silence here reads as a broken gesture. The reason is
+		// asked of `dropPlacement` — the planner's own function, which carries the
+		// dragged-row filter and the peer fallback — rather than of `orderForTarget` beside
+		// it, which could report a number where the plan above refused.
+		if (writes.length === 0) {
+			const placed = dropPlacement(dragged, target, model.ranked);
+			if ('refusal' in placed) reportRefusal(this.host.settings, placed.refusal);
+			return;
+		}
 		if (target.parent) this.host.setCollapsed(target.parent.file.path, false);
-		await this.applyMove(dragged, computeDropWrites(dragged, target));
+		await this.applyMove(dragged, writes);
 	}
 
 	/**
@@ -327,6 +349,27 @@ export class CardMoveController {
 		row?.classList.remove('pbl-pending');
 		return applied;
 	}
+}
+
+/**
+ * Why a drop wrote nothing, said once — and the one refusal that outranks all three.
+ *
+ * The key comes from `refusalKey`'s own switch and never from a branch written here:
+ * three refusals name three different remedies, and a two-way test routes the third to
+ * the wrong one.
+ *
+ * **The CONFIGURATION is asked first, because it makes every one of those remedies
+ * unreachable.** With two roles on one key no note has a readable rank, so the placement
+ * refuses `unranked` and sends the user to the toolbar's set-up button — which refuses at
+ * the same gate, as does the Respace command `gapSpent` names. Advice that cannot work is
+ * worse than the silence it replaced, so the gate's own refusal is what is said. Asked
+ * here rather than left to `applySafely`: a refused placement plans no batch to take
+ * through it, and the gate never runs.
+ */
+function reportRefusal(settings: BacklogSettings, refusal: RankRefusal): void {
+	const problems = configProblems(settings);
+	if (problems.length > 0) new Notice(t('config.fixFirst', { problem: problems[0] }));
+	else new Notice(t(refusalKey(refusal)));
 }
 
 /**

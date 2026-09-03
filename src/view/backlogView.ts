@@ -162,7 +162,26 @@ export class ProductBacklogView extends ViewStateSurface implements BacklogViewH
 			{
 				app: () => this.app,
 				writeProblems: () => configProblems(this.settings),
-				outsideFilter: (path) => this.model?.byPath.get(path)?.outsideFilter === true,
+				// **Absent is unwritable, not merely unflagged.** `!== false` rather than
+				// `=== true`: a path the model does not hold has no flag to read, and reading
+				// its absence as "included" is what let a stale menu subject — a row a Bases
+				// refresh dropped, with nothing below it to pull it back as context — be
+				// planned against and written to. The release view's predicate exactly, for
+				// the same reason it answers true before the first model: a write nothing can
+				// have asked for yet is one to refuse.
+				//
+				// Every write path on this view was walked before this was narrowed, because
+				// the refusal is whole-batch and loud. All fifteen `applySafely` call sites
+				// plan from a `BacklogItem` this model produced — `item.file`, `dragged.file`
+				// — and note CREATION does not come through here at all: `createBacklogItem`,
+				// `createResourceNote` and the absence writers are `storage/`'s own creating
+				// modules, beside the gate. Undo is unaffected, since a replay skips this
+				// check by design. What is left is the rename window — a `TFile` is mutated
+				// in place, so a write captured before a rename carries a path `byPath` still
+				// keys the old way until the next data update — where this now refuses loudly
+				// rather than writing; the four structural commands already refused there
+				// themselves (`liveItem`).
+				outsideFilter: (path) => this.model?.byPath.get(path)?.outsideFilter !== false,
 			},
 			{ syncBusy: () => this.syncBusyUi(), flushDataUpdate: () => this.refreshFromData() },
 			lock,
@@ -594,6 +613,10 @@ export class ProductBacklogView extends ViewStateSurface implements BacklogViewH
 
 	applySafely(writes: ItemWrite[]): Promise<WriteOutcome | null> {
 		return this.gate.applySafely(writes);
+	}
+
+	runFileWrite<T>(run: () => Promise<T>): Promise<T | null> {
+		return this.gate.runFileWrite(run);
 	}
 
 	canUndo(): boolean {

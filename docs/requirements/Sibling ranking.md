@@ -26,48 +26,69 @@ across notes I never touched.
 | --- | --- |
 | **Actor** | The view, planning a move |
 | **Trigger** | Any move that changes an item's position among its siblings |
-| **Preconditions** | The destination sibling group is known and its members are all results |
-| **Guarantee** | The rendered order after the write is the order the user saw indicated before it — whichever branch below was taken. |
+| **Preconditions** | The destination is known, and the item being moved is a result |
+| **Guarantee** | **Either the rendered order after the write is the order the user saw indicated, or nothing is written at all and the view says why.** One note is written on the first path and none on the second; no other note is ever renumbered to make room. |
 
 **Main flow**
 
-1. `order` is a **fractional rank** within a sibling group, not an index.
-2. A drop between two items takes the **midpoint** of their two orders.
+1. `order` is a **fractional rank**, not an index — and since
+   [ADR 0034](../adrs/0034-order-is-a-global-rank.md) it is one rank over everything the
+   Base returns rather than a number scoped to a sibling group.
+2. A drop between two items takes the **midpoint** of the two ranks that neighbour that
+   position in the ranked population. Where the user aimed decides the anchor; the
+   population decides the number.
 3. That is one number, on one note: a single write, whatever the group's size.
 
 **Extensions**
 
-- **1a — the group holds a row the Base excluded.** Renumbering is **refused** and the item
-  is appended instead. The excluded row's real siblings were never loaded, so a renumber
-  would be assigning ranks in a group the view cannot see the whole of.
-- **1b — an excluded row is *visible* in the group.** Its `order` is still **read** — by
-  `afterHighestKnown`, by the end-of-siblings maths, by the backfill's max-order scan — so
-  the item does not land above something the user can see. Read, never written.
-- **2a — the two neighbours have no gap left between them.** The whole group renumbers to
-  spaced values, and the item takes its place among them. This is the expensive branch, and
-  it is why the orders are spaced rather than consecutive in the first place.
-- **2b — the item is dropped at the start or the end of the group.** It takes a value
-  before the first or after the last; no midpoint is needed.
+- **1a — an excluded row is *visible* among the rows being ranked.** Its `order` is still
+  **read** — by `anchoredOrder`'s neighbour walk, by `rankTaken`'s occupancy check, by the
+  backfill's own floor and ceiling — so the item does not land above something the user
+  can see, and no placement takes a number one of them already holds. Read, never written.
+  An UNRANKED excluded row is skipped instead of refused: it can never be GIVEN a rank, so
+  it constrains nothing and refusing beside one would be permanent.
+- **2a — the two neighbours have no gap left between them.** The move is **refused**:
+  nothing is written, and the notice names **Respace ranks**, which rewrites every rank
+  with even spacing and keeps the order on screen. Making room by renumbering the group is
+  what this used to do and no longer exists — one move writes one note, or none.
+- **2b — the item is dropped at the start or the end of the population.** It takes one
+  spacing clear of the outermost rank; no midpoint is needed. That, too, refuses rather
+  than approximating when the arithmetic cannot get clear of its neighbour, which is
+  reachable at magnitudes a hand-edited `order` can hold.
 
 **Guarantees**
 
-- Ranking always runs over the **real** roots, never the rendered ones. Focus mode makes
-  the rendered top row a synthetic group whose members are not siblings at all, and
-  ranking against it would write nonsense. This is a lint rule, not a convention.
+- The rank arithmetic never reads the **rendered** roots. Focus mode makes the top row a
+  synthetic group whose members are not siblings, and a number taken from one projection's
+  slice of a group can collide with a hidden root's. This is a lint rule (`RENDERED_ROOTS`)
+  and not a convention — and the sentence is narrowed to what the rule reaches: it bans
+  `model.roots` in the three domain files that rank (`writePlan.ts`, `rankArithmetic.ts`
+  and `rankBackfill.ts`) and in `interactions/create.ts`. `dropTargets.ts` and `interactions/structure.ts` read it deliberately, to answer
+  a different question — which rows a focus-level move is aimed among
+  ([[Ranking at the focused level]]) — and take the NUMBER from `model.ranked` like
+  everything else.
 
 ## Acceptance criteria
 
-- A drop writes as few notes as possible — usually one.
-- Renumbering is refused when the group holds a row the Base excluded, since its real
-  siblings were never loaded; the item is appended instead.
-- Ranking always runs over the real roots, never the rendered ones — enforced by lint,
-  because focus mode makes rendered roots a synthetic group.
-- An excluded row's `order` is read for placement and never written.
+- A drop writes exactly one note, or none.
+- A placement with no room left refuses and names a remedy; nothing is renumbered to make
+  room for it.
+- No rank is produced from the rendered roots — enforced by lint in every file that
+  produces one.
+- An excluded row's `order` is read for placement and never written, and the number it
+  holds is treated as taken.
 
 ## Where it lives
 
-`src/domain/writePlan.ts` (`orderBetween`, `computeInsertOrder`, `renumberWrites`,
-`afterHighestKnown`) ·
-`src/domain/dropTargets.ts` (`reorderableGroup`).
+`src/domain/writePlan.ts` (`anchoredOrder`, `orderForTarget`, `dropPlacement`,
+`computeDropWrites`) · `src/domain/rankArithmetic.ts` (the one arithmetic under them —
+`rankBetween` over `midpoint` and `edgeRank`, on `roundOrder`'s grid) ·
+`src/domain/dropTargets.ts` (`dropTargetFor`, and `DropTarget.peers` as intent rather
+than arithmetic).
 Tests: `test/domain/writePlan.test.ts`, `test/domain/writePlanContextRows.test.ts`,
-`test/view/contextRowWrites.test.ts`.
+`test/domain/rankedPlacement.test.ts`, `test/view/contextRowWrites.test.ts`.
+
+The two rewrites that restate EVERY rank at once are the counterpart to this note rather
+than part of it — one move writes one note, and those two write all of them. They belong
+to [[Ranking at the focused level]], which owns the commands, the population they rewrite
+and the refusal they share.

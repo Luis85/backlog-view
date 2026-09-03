@@ -54,7 +54,7 @@ describe('the write backlog readme command', () => {
 		// good readme of its whole vocabulary.
 		const leafEl = document.body.createDiv();
 		const leaf = new FileView(vault.addFile('other/Other.base'), leafEl);
-		const loading = { viewEl: leafEl.createDiv(), config: { name: 'Backlog' }, settings: defaultSettings(), model: null };
+		const loading = { viewEl: leafEl.createDiv(), config: { name: 'Backlog' }, settings: defaultSettings(), model: null, applySafely: () => Promise.resolve(null) };
 		rememberBacklogView(loading);
 		vault.activeView = leaf;
 
@@ -224,7 +224,7 @@ describe('the live view registry', () => {
 		// A note with two embedded bases: picking either would generate one base's
 		// contract over the other's file, which is a wrong answer that looks right.
 		const vault = openBacklog();
-		const second = { viewEl: leafElOf(vault, 0).createDiv(), config: { name: 'Backlog' }, settings: defaultSettings(), model: null };
+		const second = { viewEl: leafElOf(vault, 0).createDiv(), config: { name: 'Backlog' }, settings: defaultSettings(), model: null, applySafely: () => Promise.resolve(null) };
 		rememberBacklogView(second);
 
 		expect(activeBacklogView(vault.app)).toBeNull();

@@ -35,7 +35,9 @@ a write; that is the same narrowing every ban here carries.
   unchanged and is still the DIRECTORY's — `no-restricted-syntax` bans the calls
   everywhere outside it, not outside a file.
 - `applyWrites` is serialized but not transactional: a mid-batch failure leaves the
-  earlier writes applied (orders self-correct on the next renumbering drop). A date
+  earlier writes applied. Ranks do not repair themselves — nothing renumbers a group any
+  more — so a half-applied move leaves a rank the user fixes by moving the row again, or
+  the whole backlog by running `Respace ranks`. A date
   batch REFUSED against the live note stops there for the same reason and reports what
   landed rather than claiming nothing did — the refusal needs frontmatter only readable
   inside `processFrontMatter`, so there is no pass that could refuse every file up front

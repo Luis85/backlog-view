@@ -30,7 +30,17 @@ import {
 	ownWorkflowReading,
 	stateKeyFor,
 } from '../../domain/board';
-import { canReorder, indent, moveToEdge, moveWithinSiblings, outdent, outdentTarget, visibleNeighbor } from './structure';
+import {
+	canMoveToEdge,
+	canReorder,
+	indent,
+	canIndent,
+	moveToEdge,
+	moveWithinSiblings,
+	outdent,
+	canOutdent,
+	visibleNeighbor,
+} from './structure';
 import { promptCreateItem } from './create';
 import { addShelfLayoutItems, addShelfSearchItems, addShelfSortItems, addShelfTypeItems } from './shelfMenu';
 import { addHorizonItems, canPlaceHorizon, canSchedule, carriesDates, promptSchedule, unschedule } from './plan';
@@ -235,35 +245,52 @@ function addMoveSection(host: BacklogViewHost, menu: Menu, item: BacklogItem): v
 	// at all — a focus root, or an ancestor loaded from outside the filter.
 	const prev = visibleNeighbor(host, item, -1);
 	const next = visibleNeighbor(host, item, 1);
-	// Only *reordering* renumbers the item's own group, so only reordering needs
-	// this. Indent and outdent land the item elsewhere and answer for their own
+	// Only *reordering* ranks the item against these neighbours, so only reordering
+	// needs this. Indent and outdent land the item elsewhere and answer for their own
 	// destination — hiding them here would make the menu offer less than Alt+arrow.
-	const ranked = canReorder(host, item);
+	// Asked per direction AND per command, never as one blanket flag: a rank the global
+	// population would refuse in one direction says nothing about the other, and the edge
+	// moves anchor on the first or last peer rather than on the neighbour one slot away,
+	// so they are a different question again — `Move up` can succeed where `Move to top`
+	// refuses, and an offered entry that does nothing is what this repo refuses first.
+	const rankedUp = canReorder(host, item, -1);
+	const rankedDown = canReorder(host, item, 1);
+	const rankedTop = canMoveToEdge(host, item, 'top');
+	const rankedBottom = canMoveToEdge(host, item, 'bottom');
+	// Indent asks its own question too — its destination is another row's child list, so
+	// nothing the four above answer covers it. `prev` stays beside it only because the
+	// TITLE names that row; the offer is the plan's to make.
+	const indentUnder = canIndent(host, item);
 
-	if (ranked && prev) {
+	if (rankedUp && prev) {
 		menu.addItem((mi) =>
 			mi.setTitle(t('menu.moveUp')).setIcon('arrow-up').onClick(() => moveWithinSiblings(host, item, -1)),
 		);
 	}
-	if (prev) {
+	if (indentUnder && prev) {
 		menu.addItem((mi) =>
 			mi
 				.setTitle(t('menu.indentUnder', { title: prev.title }))
 				.setIcon('indent-increase')
-				.onClick(() => indent(host, item)),
+				// The PATH of the row this title names, so the click re-resolves that note
+				// rather than recomputing a destination — see `indent`'s own note. The only
+				// entry in this menu whose title names a note it writes to; `Move up`,
+				// `Move down`, the two edge moves and `Outdent` all name their destination
+				// by relation, so a refresh can move the row without making the label lie.
+				.onClick(() => indent(host, item, prev.file.path)),
 		);
 	}
-	if (ranked && next) {
+	if (rankedDown && next) {
 		menu.addItem((mi) =>
 			mi.setTitle(t('menu.moveDown')).setIcon('arrow-down').onClick(() => moveWithinSiblings(host, item, 1)),
 		);
 	}
-	if (ranked && prev) {
+	if (rankedTop && prev) {
 		menu.addItem((mi) =>
 			mi.setTitle(t('menu.moveToTop')).setIcon('arrow-up-to-line').onClick(() => moveToEdge(host, item, 'top')),
 		);
 	}
-	if (ranked && next) {
+	if (rankedBottom && next) {
 		menu.addItem((mi) =>
 			mi
 				.setTitle(t('menu.moveToBottom'))
@@ -271,7 +298,7 @@ function addMoveSection(host: BacklogViewHost, menu: Menu, item: BacklogItem): v
 				.onClick(() => moveToEdge(host, item, 'bottom')),
 		);
 	}
-	if (outdentTarget(host, item)) {
+	if (canOutdent(host, item)) {
 		menu.addItem((mi) => mi.setTitle(t('menu.outdent')).setIcon('indent-decrease').onClick(() => outdent(host, item)));
 	}
 }

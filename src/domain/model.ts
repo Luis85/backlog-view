@@ -3,6 +3,7 @@ import { Absence } from './absences';
 import { inferFolderParent } from './folderNotes';
 import { DependencyNode, resolveDependencies } from './dependencies';
 import { createItems, namedTargets, RawItem, RawStore, ResourceNote } from './readItems';
+import { distinctlyRanked, inRankOrder, rankedItems } from './rankOrder';
 import {
 	childLevelIndex,
 	EXTRA_TYPE_RANK,
@@ -142,6 +143,18 @@ export interface BacklogModel {
 	/** All rendered rows in depth-first (visual) order — including context rows. */
 	items: BacklogItem[];
 	/**
+	 * Every loaded item — results and `outsideFilter` context rows alike — in global
+	 * rank order. **The only array ranking arithmetic may read.** Never a projection's
+	 * list: a `Test suite` and an `Epic` share a rank space, so ranking against one
+	 * projection's slice takes a midpoint a hidden root may already hold. Context rows
+	 * are IN it because their orders are read for placement and knowing more occupied
+	 * ranks can only reduce collisions; they stay unwritable through `applySafely`.
+	 *
+	 * A focus level is a FILTER over this array, and filtering a sorted array preserves
+	 * order — which is why `collectFocusRoots` needs no sort of its own.
+	 */
+	ranked: BacklogItem[];
+	/**
 	 * The rendered rows the Bases query actually returned. Anything describing *this
 	 * base* — counts, the level breakdown, how much is hidden — must use this, or
 	 * ancestors loaded only for context inflate the answer.
@@ -200,6 +213,19 @@ export interface BacklogModel {
 	catalog: ProjectionPopulation;
 	/** True when a focus level restricts the rendered tree. */
 	focused: boolean;
+	/**
+	 * True when the focus level's own list is drawn in TREE order rather than in rank
+	 * order — `inRankOrder`'s guard against scrambling an unmigrated vault, reported
+	 * rather than left for a reader to re-derive.
+	 *
+	 * **The only list in this plugin that can fall back**, because `inRankOrder` has one
+	 * caller and it is the `focusRoots` line below; with no focus level nothing calls it
+	 * at all and this is false. Asked of the whole POPULATION instead — every rendered
+	 * list is a subset of it — the answer is sound in one direction only: ranks that
+	 * collide across focus levels while staying distinct within each one make the
+	 * population non-distinct while no list falls back.
+	 */
+	focusInTreeOrder: boolean;
 	/** Distinct state values in the result set: open states first, then done, both alphabetical. */
 	observedStates: string[];
 	/** Distinct horizon values in the result set, in first-seen order — the buckets it mints. */
@@ -272,12 +298,14 @@ export function buildModel(app: App, entries: BasesEntry[], settings: BacklogSet
 	const resources = [...store.resources].sort(
 		(a, b) => compareText(a.title, b.title) || compareText(a.file.path, b.file.path),
 	);
+	const ranked = rankedItems(items);
 	// One pass, here, rather than one `.some`/`.find` per row: see `BacklogModel.resourceLabels`.
 	const resourceLabels: ReadonlyMap<string, string> = new Map(
 		namedTargets(resources).map((target) => [target.item.file.path, target.label]),
 	);
 	const rest = {
 		realRoots: roots,
+		ranked,
 		byPath,
 		// The PLAN's vocabulary — the whole unfocused tree minus the catalog, and minus a
 		// release. All three halves matter: unfocused, so what a menu offers never narrows
@@ -338,7 +366,11 @@ export function buildModel(app: App, entries: BasesEntry[], settings: BacklogSet
 	// root. Under a focus the two compose: focus decides where the tree is re-rooted, and
 	// this decides which of those rows the plan actually draws.
 	const focused = focusIdx >= 0 || focusExtra !== '';
-	const focusRoots = focused ? collectFocusRoots(roots, focusIdx, focusExtra, settings) : roots;
+	// A focus level is a FILTER over the ranked array, never a sort of its own:
+	// filtering a sorted array preserves order, so this costs one pass and no
+	// comparison. `collectFocusRoots` still decides membership (which rungs and which
+	// extra types); `ranked` decides sequence.
+	const focusRoots = focused ? inRankOrder(collectFocusRoots(roots, focusIdx, focusExtra, settings), ranked) : roots;
 	const plan = projectionForest(focusRoots, inPlan, settings, false);
 	// `rest` LAST, and the order is load-bearing: both objects carry the same `observed*`
 	// lists, and the plan's must be the whole-tree-minus-catalog ones in `rest` rather than
@@ -346,7 +378,7 @@ export function buildModel(app: App, entries: BasesEntry[], settings: BacklogSet
 	// focus level narrows — right for the catalog, which is never focused, and wrong for
 	// the plan, where it would make what a Set state or Set horizon menu can reach depend
 	// on which subtree happens to be focused.
-	return { ...plan, ...rest, focused };
+	return { ...plan, ...rest, focused, focusInTreeOrder: focused && !distinctlyRanked(focusRoots) };
 }
 
 /**

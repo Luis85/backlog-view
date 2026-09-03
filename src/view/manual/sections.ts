@@ -28,7 +28,10 @@ const MOVING: ManualSection = {
 			term: 'Between two rows',
 			text:
 				'Places the item as their sibling. If those rows have a different parent, it is ' +
-				'reparented as well as ranked — the fastest way to move and rank in one gesture.',
+				'reparented as well as ranked — the fastest way to move and rank in one gesture. ' +
+				'Between two rows of a FOCUSED view it means rank alone: those rows are one rung ' +
+				'of the tree rather than one parent\'s children, so the drop writes the order and ' +
+				'leaves the parent exactly as it was.',
 		},
 		{ term: 'Onto a row', text: 'Makes the item a child of that row.' },
 		{
@@ -54,8 +57,18 @@ const MOVING: ManualSection = {
 		{
 			term: 'Order',
 			text:
-				'A number ranking siblings, maintained by the view. Missing orders sort last, in ' +
-				'whatever order the Base itself returned them.',
+				'One number ranking every note this base returns, maintained by the view — not a ' +
+				'number scoped to one parent. A drop between two rows takes a value between ' +
+				'theirs, so it writes that one note and leaves its neighbours the numbers they ' +
+				'had. Within a sibling group, a row with no order sorts last, in whatever order ' +
+				'the Base itself returned them. A focused list is all or nothing instead: while ' +
+				'any row in it has no order, or two share one, the whole list keeps the tree\'s ' +
+				'own order rather than sorting the odd row last — so an order set by hand there ' +
+				'would not show. A drag there is refused only where it could not end that: dropping a ' +
+				'row whose own number is the only one shared settles the clash and lands where you ' +
+				'dropped it, while a move that would leave the list in tree order anyway — because a ' +
+				'row it does not touch has no number or shares one — is refused and names the ' +
+				'command that fixes it.',
 		},
 		{
 			term: 'A move does not re-type',
@@ -68,16 +81,25 @@ const MOVING: ManualSection = {
 			term: 'When a drop is unavailable',
 			text:
 				'A row refuses a drop onto itself or into its own descendants. A between-drop ' +
-				'(before or after a row) is also unavailable wherever there is no shared ranking to ' +
-				'insert into: onto the top row of a focused view, onto a row loaded only as an ' +
-				'excluded parent, or into any sibling group that itself contains an excluded row — ' +
-				'renumbering that group would silently skip a write to a note the Base excludes. The ' +
+				'(before or after a row) is also unavailable wherever the hovered row\'s own ' +
+				'neighbours are not all on screen, since ranking against rows the view is not ' +
+				'showing would be a guess: onto a row loaded only as an excluded parent, and onto a ' +
+				'row this projection pulled up to the top because its real parent belongs to the ' +
+				'other one — a test whose work item is on the plan. The ' +
 				'same rule governs Move up, Move down, Move to top, Move to bottom and Outdent from ' +
-				'the menu or Alt+arrow. Dropping into a parent stays available in every one of those ' +
-				'cases, since landing last is what it means anyway — and so does Indent, except on the ' +
-				'top row of a focused view: a focus-root row has no ' +
-				'previous sibling for Indent to nest it under, by the same no-shared-ranking rule ' +
-				'above. One further case is about which screen a row is on rather than about ranking: ' +
+				'the menu or Alt+arrow. A focus level lifts the first of those two, and only where the ' +
+				'excluded parent carries an order of its own: focus rows are ranked against each other ' +
+				'rather than inside a sibling group, so a row with a number on it is a real position to ' +
+				'land beside, and the drag, Alt+arrow and the move menu all take it as one. An excluded ' +
+				'parent with no order is skipped rather than refused — there is nothing to rank ' +
+				'against, so it is neither a row to land beside nor a row to be moved past. Outdent is ' +
+				'refused on a focus row whatever its rank, since it asks about parentage and not about ' +
+				'order. Dropping into a parent stays available in every one of those ' +
+				'cases, since landing last is what it means anyway — and so does Indent, except on a ' +
+				'focus row: dropping between two of those ranks them against each other, which is ' +
+				'what a focus level is for, while nesting one under another is a question about ' +
+				'parentage that the rung above is not on screen to answer. ' +
+				'One further case is about which screen a row is on rather than about ranking: ' +
 				'a Task, or a note with no type, takes the level of whatever it hangs from, so moving ' +
 				'one between the plan and the test catalog would take it off the screen it was moved ' +
 				'on. Every move that could do that is unavailable — dropping it beside a row at the top ' +
@@ -85,6 +107,17 @@ const MOVING: ManualSection = {
 				'link, Clear parent link and Use folder position — while every other type keeps its ' +
 				'own ladder wherever it lands and is refused none of them. Indent is not among them: ' +
 				'it nests under the row above, which is on this screen already.',
+		},
+		{
+			term: 'When there is no number to give',
+			text:
+				'A drop the view accepted can still be refused once it is planned, and says so: ' +
+				'the two rows it landed between hold the same rank, or the gap between them has ' +
+				'been used up, or one of them has no rank at all. The message names the remedy — ' +
+				'Seed ranks from the hierarchy, or Respace ranks, both in the command palette, or ' +
+				"the toolbar's set-up button for the missing ranks. The menu asks that same " +
+				'question before it offers a move, so there the entry is simply absent instead. ' +
+				'Alt+arrow has no entry to withhold, so it names the remedy the way a drop does.',
 		},
 	],
 };
@@ -242,7 +275,7 @@ const WRITES: ManualSection = {
 		{
 			term: 'A change is one batch',
 			text:
-				'A drag that renumbers six siblings is a single change, and Ctrl or Cmd with Z, or ' +
+				'A backfill that ranks sixty notes is a single change, and Ctrl or Cmd with Z, or ' +
 				'the toolbar arrow, takes the whole batch back at once — with the limits below.',
 		},
 		{

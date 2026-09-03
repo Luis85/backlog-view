@@ -192,6 +192,19 @@ export function clickExpandAll(containerEl: HTMLElement): void {
 }
 
 /** Hand the view everything the vault now holds, the way Bases does after a change. */
+/**
+ * Re-run the view against the vault's CURRENT contents.
+ *
+ * **It hands over every entry, so a base that was narrowed with `only` or `except` is not
+ * narrowed any more.** A context row becomes an ordinary result on the refresh, and the
+ * model under test stops being the one the fixture built. That is fine for a test whose
+ * subject is unfiltered, and silently wrong for a context-row one — measured on
+ * 2026-09-03, where a post-write render read `A, C, T, D` through this helper and `D, A, C`
+ * with the filter kept, which are different answers to the question being asked.
+ *
+ * For a filtered fixture call `setResults` directly with the same predicate the fixture
+ * used.
+ */
 export function refresh(view: ProductBacklogView, vault: FakeVault): void {
 	setResults(view, vault.entries());
 }
@@ -300,7 +313,11 @@ export function key(tree: HTMLElement, keyName: string, modifiers: Partial<Keybo
 }
 
 /**
- * Two epics; the second has two features. `empty` returns a vault with nothing in it —
+ * Two epics; the second has two features, ranked 10/20/30/40. **The four ranks are
+ * globally DISTINCT, not sibling-scoped** — `order` is one rank over the whole backlog
+ * now, so two rows sharing a number are a legacy vault that every placement refuses
+ * (`anchoredOrder`'s spent gap). Keep any rank added here distinct from all of them.
+ * `empty` returns a vault with nothing in it —
  * `renderEmptyState`'s own case. `allDone` returns two epics already at a shipped done
  * value, the shape `renderAllDoneState` needs — pair it with `hideCompleted` in the view
  * OPTIONS, since the toggle defaults to showing and nothing would be hidden otherwise.
@@ -315,8 +332,8 @@ export function fixture(opts: { empty?: boolean; allDone?: boolean } = {}): Fake
 	}
 	vault.addFile('Epic A.md', { frontmatter: { type: 'Epic', order: 10 } });
 	vault.addFile('Epic B.md', { frontmatter: { type: 'Epic', order: 20 } });
-	vault.addFile('Feature B1.md', { frontmatter: { type: 'Feature', order: 10 }, parentLink: 'Epic B' });
-	vault.addFile('Feature B2.md', { frontmatter: { type: 'Feature', order: 20 }, parentLink: 'Epic B' });
+	vault.addFile('Feature B1.md', { frontmatter: { type: 'Feature', order: 30 }, parentLink: 'Epic B' });
+	vault.addFile('Feature B2.md', { frontmatter: { type: 'Feature', order: 40 }, parentLink: 'Epic B' });
 	return vault;
 }
 

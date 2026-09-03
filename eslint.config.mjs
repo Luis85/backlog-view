@@ -253,6 +253,36 @@ const VISUAL_DEPTH = {
 };
 
 /**
+ * A `DropTarget.parent` that merely RESTATES `dragged`'s own current parent must set
+ * `parentUnchanged` — the flag `computeParentField` (`writePlan.ts`) needs to tell a
+ * RANK (no relocation intended, so a restated `null` link must never read as an explicit
+ * top-level drop) from a genuine PLACEMENT that happens to equal the current parent
+ * (which must still clear a stale link). This is exactly the shape the bug shipped in:
+ * `parent: dragged.parent` with the flag forgotten silently deletes a note's parent
+ * property on every focused reorder whose link does not resolve.
+ *
+ * Two SPELLINGS, because the two producers name their subject differently: `dragged` in
+ * `domain/dropTargets.ts`, `item` in `view/interactions/structure.ts`. The second was
+ * outside the rule until the keyboard and the menu learned to rank a focus row, at which
+ * point the file this rule's own comment had predicted by name grew the very shape it
+ * describes. Widening it is what puts the check on the forbidden THING rather than on the
+ * places somebody listed.
+ *
+ * It asks for the flag to be STATED, not to be true: a genuine placement that restates the
+ * current parent — `withinSiblingsTarget` and `edgeTarget` outside a focus level — passes
+ * by writing `parentUnchanged: false`, which is the intent said out loud. What the rule
+ * still cannot see is a subject named neither of these two, or a `parent` computed into a
+ * local first; both need the same RANK-versus-PLACEMENT reasoning applied by a person. See
+ * `src/domain/CLAUDE.md`, beside `DropTarget`'s own entry.
+ */
+const DROP_TARGET_RESTATEMENT = {
+	selector:
+		"ObjectExpression:has(> Property[key.name='parent'][value.property.name='parent']:matches([value.object.name='dragged'], [value.object.name='item'])):not(:has(> Property[key.name='parentUnchanged']))",
+	message:
+		'A DropTarget whose parent restates the moved item\'s own parent must also state parentUnchanged, or an unresolved link (parent: null) reads as an explicit top-level drop and the key is deleted.',
+};
+
+/**
  * `board.ts` states its own guarantee in a comment: "Nothing that PLANS a write
  * imports this" — a WIP limit is display math over a count, never a refusal, which is
  * the cheapest guarantee a limit can make (`docs/requirements/WIP limits.md`). This
@@ -473,9 +503,14 @@ const MENU_SWEPT = [
 	'src/view/interactions/undo.ts',
 	'src/view/interactions/stateColors.ts',
 ];
-// Ranking code lives in one domain file and one view file; split so a view-only rule
-// (ALL_TYPES_IMPORT) can apply to the latter without reaching into domain/.
-const RANKING_DOMAIN = ['src/domain/writePlan.ts'];
+// Ranking code lives in three domain files and one view file; split so a view-only rule
+// (ALL_TYPES_IMPORT) can apply to the last without reaching into domain/. The domain half
+// is a LIST rather than one name because `writePlan.ts` was split at its line ceiling: the
+// arithmetic every placement shares went to `rankArithmetic.ts` and the ✨ backfill's
+// whole-tree pass to `rankBackfill.ts`, and RENDERED_ROOTS and VISUAL_DEPTH have to follow
+// the code they guard — the backfill is what walks `realRoots` and what chains a typeless
+// note's level.
+const RANKING_DOMAIN = ['src/domain/writePlan.ts', 'src/domain/rankArithmetic.ts', 'src/domain/rankBackfill.ts'];
 const RANKING_VIEW = ['src/view/interactions/create.ts'];
 const RANKING = [...RANKING_DOMAIN, ...RANKING_VIEW];
 const RENDER = 'src/view/render/**/*.ts';
@@ -726,7 +761,7 @@ const UI_TEXT_LITERAL = {
 // that every string a frame drew carries the fixture catalog's marker.
 const UI_TEXT_PROPERTY = {
 	selector:
-		"Property[key.name=/^(text|label|title|heading|description|placeholder|cta|ctaLabel|fieldName|name|displayName|duplicateWarning|reason)$/]:matches([value.type='Literal'][value.value=/^[A-Z]/], [value.type='TemplateLiteral'][value.quasis.0.value.raw=/^[A-Z]/]), Property[key.name=/^(text|label|title|heading|description|placeholder|cta|ctaLabel|fieldName|name|displayName|duplicateWarning|reason)$/] > ConditionalExpression > :matches(Literal[value=/^[A-Z]/], TemplateLiteral[quasis.0.value.raw=/^[A-Z]/]), Property[key.value='aria-label']:matches([value.type='Literal'][value.value=/^[A-Z]/], [value.type='TemplateLiteral'][value.quasis.0.value.raw=/^[A-Z]/]), Property[key.value='aria-label'] > ConditionalExpression > :matches(Literal[value=/^[A-Z]/], TemplateLiteral[quasis.0.value.raw=/^[A-Z]/])",
+		"Property[key.name=/^(text|label|title|heading|description|placeholder|cta|ctaLabel|fieldName|name|displayName|duplicateWarning|reason|message|note)$/]:matches([value.type='Literal'][value.value=/^[A-Z]/], [value.type='TemplateLiteral'][value.quasis.0.value.raw=/^[A-Z]/]), Property[key.name=/^(text|label|title|heading|description|placeholder|cta|ctaLabel|fieldName|name|displayName|duplicateWarning|reason|message|note)$/] > ConditionalExpression > :matches(Literal[value=/^[A-Z]/], TemplateLiteral[quasis.0.value.raw=/^[A-Z]/]), Property[key.value='aria-label']:matches([value.type='Literal'][value.value=/^[A-Z]/], [value.type='TemplateLiteral'][value.quasis.0.value.raw=/^[A-Z]/]), Property[key.value='aria-label'] > ConditionalExpression > :matches(Literal[value=/^[A-Z]/], TemplateLiteral[quasis.0.value.raw=/^[A-Z]/])",
 	message:
 		'A sentence spelled where it is used cannot be translated. Add a key to src/i18n/en.ts and call t() — and if this is a value the plugin writes, matches or persists rather than text, it belongs in neither place.',
 };
@@ -851,7 +886,7 @@ export default defineConfig([
 		// storage/, ui/, commands/, main.ts.
 		files: ['src/**/*.ts'],
 		ignores: [STORAGE, VIEW, ...RANKING_DOMAIN, ...SWEPT],
-		rules: syntaxRules([...WRITE_BOUNDARY, ...PROJECTION_TREE, ...SVG_CLASS_TOKENS, MENU_ANCHOR, OVERBY, TREE_SCAN]),
+		rules: syntaxRules([...WRITE_BOUNDARY, ...PROJECTION_TREE, ...SVG_CLASS_TOKENS, MENU_ANCHOR, OVERBY, TREE_SCAN, DROP_TARGET_RESTATEMENT]),
 	},
 	{
 		// ui/ and commands/, carved out of the general region for the two text bans alone:
@@ -1157,6 +1192,13 @@ export default defineConfig([
 		// to name them (2026-08-20) and this comment corrected rather than left standing.
 		// `test/i18n/menus.test.ts` still reads each prompt back under a marked catalog:
 		// lint cannot tell whether a key is READ, only that a literal is not spelled.
+		//
+		// DROP_TARGET_RESTATEMENT is here and in the general region above, and between them
+		// they reach both files in `src/` that BUILD a `DropTarget`: `domain/dropTargets.ts`
+		// for the drag, `interactions/structure.ts` for the keyboard and the menu. Named as
+		// the two files rather than added to every view block, because that is the honest
+		// reach — a third producer written elsewhere under view/ is outside it, and the
+		// rule's own comment says what a person still has to reason about.
 		files: MENU_SWEPT,
 		rules: syntaxRules([
 			...SVG_CLASS_TOKENS,
@@ -1169,6 +1211,7 @@ export default defineConfig([
 			ALL_TYPES_IMPORT,
 			CHILD_TYPE_CHOICES_NULL,
 			DELIVERABLE_FIELD_READ,
+			DROP_TARGET_RESTATEMENT,
 			...TEXT_TERNARY,
 			UI_TEXT_LITERAL,
 			UI_TEXT_PROPERTY,

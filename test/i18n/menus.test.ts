@@ -143,15 +143,20 @@ const VISIBLE = { order: ['note.status', 'note.tags'] };
 /** A backlog carrying one of everything the menus list, so the data half is non-empty. */
 function fullVault(): FakeVault {
 	const vault = new FakeVault();
-	vault.addFile('Sam.md', { frontmatter: { type: 'Resource' } });
-	vault.addFile('Sprint 12.md', { frontmatter: { type: 'Iteration' } });
-	vault.addFile('1.0.md', { frontmatter: { type: 'Release' } });
+	// The markers carry ranks too, past the tree: an unranked row sorts LAST in the global
+	// population, so leaving these three blank makes every row's `Move down` and `Move to
+	// bottom` refuse on an unranked neighbour and the audit below reports the keys missing.
+	vault.addFile('Sam.md', { frontmatter: { type: 'Resource', order: 100 } });
+	vault.addFile('Sprint 12.md', { frontmatter: { type: 'Iteration', order: 110 } });
+	vault.addFile('1.0.md', { frontmatter: { type: 'Release', order: 120 } });
 	vault.addFile('Epic A.md', { frontmatter: { type: 'Epic', order: 10 } });
 	vault.addFile('Epic B.md', { frontmatter: { type: 'Epic', order: 20, status: 'Active' } });
+	// 30 and 40, distinct from the two epics: `order` ranks the whole backlog now, and a
+	// shared number is a spent gap that withholds the entire move section from the menu.
 	vault.addFile('Feature B1.md', {
 		frontmatter: {
 			type: 'Feature',
-			order: 10,
+			order: 30,
 			status: 'New',
 			risk: 'High',
 			priority: '2 - Should',
@@ -163,7 +168,7 @@ function fullVault(): FakeVault {
 		},
 		parentLink: 'Epic B',
 	});
-	vault.addFile('Feature B2.md', { frontmatter: { type: 'Feature', order: 20 }, parentLink: 'Epic B' });
+	vault.addFile('Feature B2.md', { frontmatter: { type: 'Feature', order: 40 }, parentLink: 'Epic B' });
 	return vault;
 }
 

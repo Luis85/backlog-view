@@ -4,10 +4,11 @@ import { ALL_TYPES, EXTRA_TYPES, LEVELS, MARKER_TYPES, TEST_LEVELS } from './typ
 import { childTypeChoices, EXTRA_TYPE_RANK, folderForType, LadderPosition, ladderFor } from './itemTypes';
 import { readmeMarker } from './readmeMarker';
 import { stampRows, stampRule, startedStates } from './readmeStamps';
-import { andList, cell, code, list, yamlScalar } from './readmeText';
+import { andList, cell, cellList, code, yamlScalar } from './readmeText';
 import { hasHorizonAxis } from './roadmap';
 import { planningSection } from './readmePlanning';
-import { ORDER_SPACING } from './writePlan';
+import { ORDER_SPACING } from './rankArithmetic';
+import { t } from '../i18n/t';
 
 /**
  * The README this plugin writes into a backlog folder: what the notes are, which
@@ -116,7 +117,7 @@ function parentsOf(typeName: string): string[] {
 
 
 function typeSection(settings: BacklogSettings): string[] {
-	const rows = ALL_TYPES.map((t) => `| ${cell(t)} | ${list(parentsOf(t))} | ${list(childrenOf(t))} |`);
+	const rows = ALL_TYPES.map((t) => `| ${cell(t)} | ${cellList(parentsOf(t))} | ${cellList(childrenOf(t))} |`);
 	return [
 		`## ${TYPES_HEADING}`,
 		'',
@@ -192,7 +193,7 @@ function fieldRows(settings: BacklogSettings): string[] {
 		: 'Every item except a root';
 	const rows = [
 		`| ${cell(settings.parentKey)} | ${parentOn} | A link to the parent note: ${code('"[[Note name]]"')}. Quote it, or YAML reads the brackets as a list. Present but empty means the top level |`,
-		`| ${cell(settings.orderKey)} | Anything you want ranked | A number. The rank among the notes sharing a parent — see below. Without one an item sorts after the ranked ones |`,
+		`| ${cell(settings.orderKey)} | Anything you want ranked | A number. One rank over every note this view returns, not a rank within a parent — see below. Without one an item sorts after the ranked ones |`,
 		`| ${cell(settings.typeKey)} | Anything you want typed | One of the type names above, or one of your own. Without one an item takes the level its position implies |`,
 	];
 	// One property or two is decided by the resolved KEY, never by whether the Deliverable
@@ -269,16 +270,37 @@ function rankingSection(settings: BacklogSettings): string[] {
 	return [
 		'## Ranking',
 		'',
-		`${code(settings.orderKey)} ranks an item among the notes that share its parent — lowest ` +
-			`first. Nothing is global: the same number under two different parents is two ` +
-			`unrelated ranks. The view writes them ${ORDER_SPACING} apart, leaving room to insert ` +
-			'without renumbering, and renumbers a group only when a move needs it.',
+		`${code(settings.orderKey)} is **one** rank over every note this view returns — lowest ` +
+			`first, and not a number scoped to one parent. Two notes holding the same number are ` +
+			`two notes claiming one place, wherever in the tree they sit. The view writes ranks ` +
+			`${ORDER_SPACING} apart, and a move renumbers only the note that moved: it takes a free ` +
+			'number beside its new neighbours, which keep the ones they had. No group is ever ' +
+			'renumbered.',
 		'',
-		'Two siblings may end up sharing a number, and an item may carry none at all. Nothing ' +
-			'breaks: the tie is settled by the order the base itself returned them in — whatever ' +
-			'sort is configured in the Bases toolbar, file name by default — and items without a ' +
-			'number sort last. That means the tie-break is a view setting rather than a property ' +
-			'of these notes, so give siblings distinct numbers when writing by hand.',
+		'An item may carry no number at all, and then it sorts after the ranked ones. Where two ' +
+			'numbers are equal the tie is settled by the order the base itself returned them in — ' +
+			'whatever sort is configured in the Bases toolbar, file name by default — so a tie is ' +
+			'decided by a view setting rather than by these notes. It also leaves a move nowhere ' +
+			'to go, because no number fits between two equal ones, and the view will not make room ' +
+			'by renumbering: where it can find no free number it refuses the move and names the ' +
+			'remedy. **Write distinct numbers across the whole backlog**, not merely among ' +
+			'siblings.',
+		'',
+		'Both of those describe one sibling group. A view focused on a single type answers all ' +
+			'or nothing instead: while any row on it carries no number, or two share one, the ' +
+			'whole list keeps the order the tree draws rather than sorting the odd row last. One ' +
+			'blank is enough to hold a whole focused backlog in tree order.',
+		'',
+		'A move there is refused only where the move itself cannot end that. Dropping a row ' +
+			'whose own number is the only one shared settles it — the row is written, the list ' +
+			'sorts on the numbers, and it lands where you dropped it. What is refused is a move ' +
+			'that would leave the list in tree order anyway, because a row it does not touch has ' +
+			'no number or shares one, and then the view says which command fixes it.',
+		'',
+		`Two commands in the command palette rewrite every rank at once. **${t('command.seedRanks')}** ` +
+			'numbers the notes in the order the tree draws them, which is what a backlog whose ' +
+			`numbers only ever ranked siblings needs once. **${t('command.respaceRanks')}** keeps the ` +
+			'ranking already in place and puts the room back between each pair.',
 	];
 }
 
@@ -391,9 +413,9 @@ function exampleSection(settings: BacklogSettings, states: StateEntry[]): string
 		'## A note, written by hand',
 		'',
 		`A ${code(child)} under a ${code(feature)} called *Checkout redesign*, ranked ` +
-			`${ORDER_SPACING * 2} — after every sibling ranked below that and before every sibling ` +
-			'above it, which is all a number here ever means. Nothing else is needed: the view ' +
-			'fills in what it writes itself.',
+			`${ORDER_SPACING * 2} — after every note ranked below that and before every note ranked ` +
+			'above it, anywhere in this backlog, which is all a number here ever means. Nothing ' +
+			'else is needed: the view fills in what it writes itself.',
 		'',
 		'```markdown',
 		...lines,
@@ -413,9 +435,10 @@ function rulesSection(settings: BacklogSettings): string[] {
 			// `keepsProjection` gates every reparenting target, and `ladderFor` chains from the
 			// parent for a `Task` and a note with no `type` and for nothing else — so every other
 			// name answers from itself and can never change ladder by moving. And the "for a type
-			// reason" qualifier is the other half: `isInvalidParent` and `reorderableGroup` refuse
-			// drops for reasons that have nothing to do with type, so an unqualified "the one move
-			// the view withholds" would be as false as the "nothing is refused" this replaced.
+			// reason" qualifier is the other half: `isInvalidParent` and `computeDropWrites` (a
+			// spent gap, an unranked neighbour) refuse drops for reasons that have nothing to do
+			// with type, so an unqualified "the one move the view withholds" would be as false as
+			// the "nothing is refused" this replaced.
 			` The one move the view withholds for a **type** reason is a move between the two ladders above, and only for the two notes that read ` +
 			`their ladder from where they hang: a ${code(LEVELS[LEVELS.length - 1])}, the rung both ladders share, and a note with ` +
 			`no ${code('type')} at all. Either would change ladder by being moved, and the row would leave the screen it was moved on, so the move is not offered. Every other type keeps its ladder wherever it lands.` +

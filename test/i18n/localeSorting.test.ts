@@ -134,9 +134,13 @@ describe('and no rank, no result position and no planned write follows it', () =
 	it('plans the same rank for a drop wherever the collator would have put the siblings', () => {
 		const planned = () => {
 			const model = modelOf(vaultOfThree());
-			const [dragged, ...siblings] = model.results;
+			const [dragged, ...peers] = model.results;
+			// `peers` is the intent — where the user aimed — and `model.ranked` is the
+			// population the number comes out of, which is the whole of ADR 0034. Both are
+			// built the same way in either locale, so a collator that reached the ranking
+			// would show up as a different order in one of them.
 			return JSON.stringify(
-				computeDropWrites(dragged, { parent: null, siblings, insertIndex: siblings.length }).map((w) => ({
+				computeDropWrites(dragged, { parent: null, peers, insertIndex: peers.length }, model.ranked).map((w) => ({
 					...w,
 					file: w.file.path,
 				})),

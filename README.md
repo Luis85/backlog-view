@@ -35,7 +35,8 @@ unless a section says otherwise.
 - Each item is an ordinary markdown note. The view reads three frontmatter properties:
   - **`parent`** — a link to the parent item (`"[[Customer Portal]]"`). Items without a
     parent are top-level.
-  - **`order`** — a number that ranks an item among its siblings.
+  - **`order`** — a number that ranks an item against everything else the base returns,
+    not only its siblings. Ranking details are below.
   - **`type`** — the ladder `Epic → Feature → PBI → Task`, the **extra types** `Issue`,
     `Bug`, `Idea`, `Deliverable` and `Improvement` that sit beside it rather than on it, or a **marker**
     on neither — `Milestone`, `Iteration` and `Release` — which states a date, a time box
@@ -147,7 +148,7 @@ not show is not on the rows, and that includes the state, horizon, risk and tag 
 | Switch projection | Toolbar toggle — **backlog tree**, **kanban board**, **roadmap**, **Deliverables board**. See [The board](#the-board), [The roadmap](#the-roadmap) and [The Deliverables board](#the-deliverables-board) |
 | Expand / collapse | Click the chevron, or use the toolbar buttons |
 | Open an item | Click the row (Ctrl/Cmd-click for a new tab) |
-| Re-order among siblings | Drag a row and drop it **between** two rows |
+| Re-order | Drag a row and drop it **between** two rows — among its siblings, or against the other top rows of a [focused](#focus-on-one-type) view, which need not share a parent |
 | Re-parent | Drag a row and drop it **onto** the middle of the new parent |
 | Make an item top-level | Right-click → **Outdent** (Alt+Left), or drag it just above or below a row that is already top-level |
 | Create a child item | Hover a row and click **+**, or use the context menu — where the row can hold more than one kind of item, the modal asks which |
@@ -178,9 +179,13 @@ menu too — focusing *Bug* gives you a list of every bug, which is the same kin
 Focusing the level an extra type ranks with (*PBI*, by default) shows both together. While
 focused, that button shows the type, accented, with a `✕` beside it that returns to
 everything in one click (so does picking *All types*). Items keep their real parents —
-re-parenting by dropping *into* a row still works — but the top row of a focused view has
-no shared ranking, so reordering, indent/outdent and the top-level drop strip are disabled
-there.
+re-parenting by dropping *into* a row still works — and the top rows of a focused view can
+be put in the order you want: drag one above or below another, or use **Move up / down / to
+top / to bottom** from its menu. That writes the row's rank and leaves its parent alone, so
+a PBI you move to the top of the PBI backlog stays under the feature it belongs to. What is
+missing there is everything that would change parentage instead: **Indent** and **Outdent**
+are unavailable on those rows, and dropping just above or below one re-ranks the row rather
+than making it top-level.
 
 ### Folder-based backlogs
 
@@ -298,8 +303,10 @@ the list keeps it selectable in its own menu.
 The toolbar's eye button (or the **Show completed items** view option) hides finished
 work: an item disappears once it *and its entire subtree* are done — a done parent with
 open children stays visible, so unfinished work can never hide. Progress bars keep
-counting hidden items, and moving or dropping rows around hidden siblings stays safe
-because ranking always runs over the real sibling lists.
+counting hidden items, and moving or dropping rows around hidden ones stays safe because
+a hidden row keeps its number: the arithmetic runs over every row the base loaded, hidden
+and dimmed rows included, so a placement can neither take a number one of them holds nor
+slip past it unnoticed.
 
 While dragging, hovering the middle of a collapsed row expands it after a moment (the
 chevron lights up while the timer runs) so you can drop deeper into the tree. Dropping an
@@ -327,7 +334,7 @@ Once in the tree (mirroring Azure DevOps backlog shortcuts where sensible):
 | <kbd>←</kbd> | Collapse the item, or jump to its parent |
 | <kbd>→</kbd> | Expand the item, or jump to its first child |
 | <kbd>Enter</kbd> | Open the selected item (Ctrl/Cmd for a new tab) |
-| <kbd>Alt</kbd>+<kbd>↑</kbd> / <kbd>Alt</kbd>+<kbd>↓</kbd> | Move the item up / down among its siblings |
+| <kbd>Alt</kbd>+<kbd>↑</kbd> / <kbd>Alt</kbd>+<kbd>↓</kbd> | Move the item up / down — among its siblings, or among the top rows of a [focused](#focus-on-one-type) view |
 | <kbd>Alt</kbd>+<kbd>←</kbd> | Outdent — make it a sibling of its parent |
 | <kbd>Alt</kbd>+<kbd>→</kbd> | Indent — nest it under the previous sibling |
 | <kbd>Ctrl/Cmd</kbd>+<kbd>Z</kbd> | Undo the last backlog change (again to redo) |
@@ -466,16 +473,17 @@ each PBI still appears under its real Feature and Epic.
 
 Context rows are italic and dimmed, with a `↳` marker. They are **not results**, so:
 
-- they can't be dragged, moved, indented or outdented — the Base never returned their
-  real siblings, so there is no sibling order to rank them within;
+- they can't be dragged, moved, indented or outdented — the Base never returned the rows
+  they really sit among, so where a move put one would be a guess;
 - **nothing ever writes into them.** Their state chip is display-only, and the context
   menu drops **Set type**, **Set state** and the parent-link commands — a note the filter
-  excluded is not yours to edit from a view that doesn't contain it. Re-ranking a sibling
-  group also renumbers all of it when the gaps run out, so a group that contains a context
-  row offers no reordering at all: no before/after drop, no **Move up/down/to top/to
-  bottom**, no **Outdent** — even for an ordinary result row that happens to sit next to
-  one. Dropping *into* a parent, dropping on the tree background and **Indent** keep
-  working, because those append;
+  excluded is not yours to edit from a view that doesn't contain it. The rows *around* one
+  still reorder normally — what is refused is a move of the context row itself (no
+  **Move up/down/to top/to bottom**, no **Outdent** from it), and a before/after drop onto
+  one is refused too — unless it is a *ranked* context row and the drop is a focus-level
+  rank, where its number is a real constraint the view can see and other rows can still be
+  ranked around it — and any placement whose number a context row already holds, which the
+  view declines with a notice rather than writing a duplicate;
 - they don't influence where new notes go: the folder for new items is inferred from the
   Base's own results, never from ancestors that live somewhere else in the vault — and
   **New \<child\>** on a context row creates the note in that results folder rather than
@@ -499,13 +507,13 @@ Context rows are italic and dimmed, with a `↳` marker. They are **not results*
   (Children the filter excluded are still not counted — a rollup describes the visible
   subtree, not the whole backlog.)
 
-The last point generalizes into the one real caveat of working in a filtered base: **any
-parent whose children are partly filtered out has a partial sibling list**, whether it is
-a context row or a match. Dropping *into* such a parent appends after the last *visible*
-child, so the new `order` is computed without knowing the excluded children's values and
-can duplicate one of them. Nothing breaks — items with equal orders fall back to the
-Base's own sort, and the group is renumbered by the next drop that needs the room — but
-if you care about exact ranking, do the reordering in an unfiltered base.
+The last point generalizes into the one real caveat of working in a filtered base: **the
+view only knows the numbers of the notes the base returned**. The rank a move computes is
+free among those, so any note the filter leaves out — anywhere in the vault, not only a
+sibling of the row you moved — can be holding it already. Nothing breaks while that note
+stays filtered out — and if it comes back, the two equal orders fall back to the Base's own
+sort until **Respace ranks** (command palette) spreads them apart again. If you care about
+exact ranking, do the reordering in an unfiltered base.
 
 Turn **Show parents outside the filter** off to go back to a flat list of matches, where
 items whose parent is missing show the unlink icon.
@@ -520,8 +528,8 @@ touches frontmatter) still re-renders every row, because the Base re-runs its qu
 any visible property may have changed; collapsing the levels you're not working on is the
 best lever there.
 
-A **batch** — "Assign missing type and order properties" over a whole backlog, or a drop
-that renumbers a large sibling group — writes one note at a time, and each of those writes
+A **batch** — "Assign missing type and order properties" over a whole backlog, or one of
+the two ranking commands rewriting every rank in it — writes one note at a time, and each of those writes
 would otherwise come back as its own refresh. The view rebuilds once when the batch
 finishes instead, so the tree doesn't churn through hundreds of half-applied states on the
 way. Nothing is frozen while that happens: you can scroll, filter, expand and select
@@ -557,9 +565,26 @@ forgetting, because two backlogs would keep opening each other's rows.
 
 ### Ranking details
 
-Sibling order is a number (`10, 20, 30…`). Dropping between two items assigns the halfway
-value; when the gap gets too small the view transparently renumbers that sibling group.
-Items without an `order` sort after ranked siblings, alphabetically.
+`order` is one number ranking the whole backlog, not a position inside a sibling group.
+Dropping between two items assigns the halfway value, and one note is written — never the
+group. When two numbers have no room left between them the move is refused with a notice
+instead of renumbering anything; **Respace ranks** in the command palette rewrites every
+rank with even spacing again, keeping the order you are looking at — with one exception it
+warns you about first: a list that is *drawn* in tree order, because its ranks are missing
+or repeated, is rewritten into rank order instead, and the confirmation says so before you
+apply it. **Seed ranks from the hierarchy** is its blunter neighbour: it numbers every note
+in tree order, which is what a backlog whose orders were never set this way needs, and what
+discards any order you set by hand at a focus level.
+
+Inside a sibling group, items without an `order` sort after ranked ones. A focused list is
+all-or-nothing instead: one row with no rank of its own leaves the whole list in tree order,
+because a global rank orders nothing until every row has one. The toolbar's ✨ button fills
+in the blanks, giving each row a number that matches where it is drawn. Filling the last
+blank in a focused list is the one time that can still move things: the list was drawn in
+tree order only because a rank was missing, and once none is it sorts on the ranks — so any
+two rows whose existing numbers already disagreed with the tree swap over. The rows ✨ wrote
+stay put; it is the ones it left alone that move. Nothing that only fills blanks can avoid
+this — **Seed ranks from the hierarchy** rewrites every number and can.
 
 ## The board
 
@@ -891,7 +916,7 @@ carry their own options, listed in their sections above.
 | Option | Default | Purpose |
 | --- | --- | --- |
 | Parent property | `parent` | Note property that links to the parent item |
-| Order property | `order` | Numeric sibling rank |
+| Order property | `order` | Numeric rank over every note the Base returns, not a position inside a sibling group |
 | Item type property | `type` | Hierarchy level of the item |
 | Ignore notes outside the hierarchy | on | Only treat notes with a supported `type` or a parent as backlog items |
 | Show parents outside the filter | on | Load the ancestors the Base's filter excluded, so matches keep their place in the tree |
@@ -918,7 +943,7 @@ carry their own options, listed in their sections above.
 
 Notes:
 
-- The `order` property always wins for ranked siblings. Items **without** an `order`
+- The `order` property always wins for ranked items. Items **without** an `order`
   sort last — in the order the Base's **sort** setting produces, so sorting by e.g.
   priority or modified date arranges your unranked items until you rank them.
 - **Ignore notes outside the hierarchy** decides what counts as a backlog item. A note

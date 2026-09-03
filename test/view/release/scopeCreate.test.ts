@@ -5,6 +5,7 @@ import { en } from '../../../src/i18n/en';
 import { makeReleaseView, mountFoldScope, refreshRelease, RELEASE_CONFIG, row, select } from '../../helpers/release';
 import { flush, submitPrompt, useViewHarness } from '../../helpers/view';
 import { FakeVault } from '../../helpers/vault';
+import { WriteLock } from '../../../src/view/writeLock';
 
 /**
  * The scope tree's row menu and the one note it creates (`src/view/release/scopeCreate.ts`).
@@ -44,6 +45,107 @@ describe('creating a child from a release scope row', () => {
 			.map((path) => ({ path, fm: vault.frontmatter.get(path) ?? {} }));
 	}
 
+	/**
+	 * A vault whose two subtrees are ranked the OLD way — one sequence per sibling group —
+	 * so `Ledger`'s children end at 2 exactly as `Sign-in`'s do, and a rank read off the
+	 * parent's own children alone answers the same number for both. `Reconcile` already
+	 * holds that number, which is what makes the collision a fact of this fixture rather
+	 * than a hypothetical.
+	 */
+	function collidingVault(): FakeVault {
+		const vault = new FakeVault();
+		vault.addFile('R.md', { frontmatter: { type: 'Release', version: '1.0.0', order: 10 } });
+		vault.addFile('Sign-in.md', { frontmatter: { type: 'Epic', order: 20, release: '[[R]]' } });
+		vault.addFile('Magic link.md', { frontmatter: { type: 'Task', order: 1, release: '[[R]]' }, parentLink: 'Sign-in' });
+		vault.addFile('Expiry.md', { frontmatter: { type: 'Task', order: 2, release: '[[R]]' }, parentLink: 'Sign-in' });
+		vault.addFile('Ledger.md', { frontmatter: { type: 'Epic', order: 30, release: '[[R]]' } });
+		// The number a sibling-scoped rank would hand the next child of `Sign-in`.
+		vault.addFile('Reconcile.md', { frontmatter: { type: 'Task', order: 1002, release: '[[R]]' }, parentLink: 'Ledger' });
+		return vault;
+	}
+
+	it('creates nothing when the last sibling has no rank to place against', async () => {
+		const vault = new FakeVault();
+		vault.addFile('R.md', { frontmatter: { type: 'Release', version: '1.0.0', order: 10 } });
+		vault.addFile('Sign-in.md', { frontmatter: { type: 'Epic', order: 20, release: '[[R]]' } });
+		// No rank: absence is not a low rank, so there is no position to append after.
+		vault.addFile('Magic link.md', { frontmatter: { type: 'Task', release: '[[R]]' }, parentLink: 'Sign-in' });
+		const { view } = makeReleaseView(vault, RELEASE_CONFIG);
+		view.pick('R.md');
+		const before = new Set(vault.files.keys());
+
+		const menu = openMenu(view, 'Sign-in.md');
+		menu.items.find((item) => item.titleText === 'New Feature')!.click();
+		Notice.messages.length = 0;
+		submitPrompt({ title: 'Passkeys' });
+		await flush();
+
+		// The refusal is the same one the backlog's own creation gives, because it is the
+		// same question — this screen just has no ✨ of its own to answer it with.
+		expect(created(vault, before)).toEqual([]);
+		expect(Notice.messages).toEqual([en['rank.unranked']]);
+	});
+
+	it('never ranks a new member onto a number another subtree already holds', async () => {
+		const vault = collidingVault();
+		const { view } = makeReleaseView(vault, RELEASE_CONFIG);
+		view.pick('R.md');
+		const before = new Set(vault.files.keys());
+
+		const menu = openMenu(view, 'Sign-in.md');
+		menu.items.find((item) => item.titleText === 'New Feature')!.click();
+		submitPrompt({ title: 'Passkeys' });
+		await flush();
+
+		// Either a free rank or no note at all — never `Reconcile`'s 1002, which is what a
+		// rank read off the parent's own children answers here. A duplicate is what drops a
+		// focused view back to tree order and makes every later placement at that site
+		// refuse, and this screen has no ✨ to undo it with.
+		const taken = [...before].map((path) => vault.fm(path)['order']);
+		for (const note of created(vault, before)) expect(taken).not.toContain(note.fm.order);
+	});
+
+	/**
+	 * The rank anchor is found by IDENTITY, so the row captured when the menu opened has to
+	 * be re-resolved against the model that is live at submit. Both tests rebuild the model
+	 * deliberately: jsdom never refreshes on its own, so one that did not would pass
+	 * whatever the code did.
+	 */
+	it('creates a child after the model rebuilt under the open prompt', async () => {
+		const { view, vault } = mountFoldScope({ pick: 'Releases/0.8.md' });
+		const before = new Set(vault.files.keys());
+
+		const menu = openMenu(view, 'Passwordless sign-in.md');
+		menu.items.find((item) => item.titleText === 'New Feature')!.click();
+		// A Bases pass while the reader is typing. Every item in the model is a new object
+		// after it, including the one the menu closed over.
+		refreshRelease(view, vault);
+		submitPrompt({ title: 'Passkeys' });
+		await flush();
+
+		// A fully ranked vault: refusing here would show a backfill notice for a vault that
+		// has nothing to backfill.
+		expect(created(vault, before)).toHaveLength(1);
+	});
+
+	it('creates nothing when the parent row was deleted while the prompt was open', async () => {
+		const { view, vault } = mountFoldScope({ pick: 'Releases/0.8.md' });
+		const before = new Set(vault.files.keys());
+
+		const menu = openMenu(view, 'Passwordless sign-in.md');
+		menu.items.find((item) => item.titleText === 'New Feature')!.click();
+		vault.files.delete('Passwordless sign-in.md');
+		refreshRelease(view, vault);
+		Notice.messages.length = 0;
+		submitPrompt({ title: 'Orphan' });
+		await flush();
+
+		// Not ranked among the roots instead: the write would still name the captured file,
+		// so the note would be parented to something gone and ranked somewhere else.
+		expect(created(vault, before)).toEqual([]);
+		expect(Notice.messages).toEqual([en['rank.parentGone']]);
+	});
+
 	it('offers one New entry per type the row may hold, and nothing that edits the row', () => {
 		const { view } = mountFoldScope({ pick: 'Releases/0.8.md' });
 		// An `Epic` on the plan's ladder: its child rung is `Feature`, plus the extra types
@@ -74,9 +176,11 @@ describe('creating a child from a release scope row', () => {
 		// `wikilinkTo` produces — a path here would be asserting the fixture rather than the
 		// write.
 		expect(notes[0].fm.release).toBe('[[0.8]]');
-		// `Send the magic link` and `Expire the link` are ranked 1 and 2, so the next child
-		// ranks past both rather than colliding with either.
-		expect(notes[0].fm.order).toBe(12);
+		// `Send the magic link` and `Expire the link` are ranked 1 and 2 and the next row in
+		// the ranked POPULATION is `Releases/0.8` at 10, so the new child lands between the
+		// two — past both siblings, and not on top of the release note either. A rank read
+		// off the siblings alone would have answered 1002 and jumped the whole population.
+		expect(notes[0].fm.order).toBe(6);
 
 		// The claim the membership seed exists FOR: the note the gesture made is a member of
 		// the open release, so the next pass draws it under the row it was created from.
@@ -165,7 +269,10 @@ describe('creating a child from a release scope row', () => {
 
 		// Cleared by hand, the fallback is the row's OWN folder rather than the vault root:
 		// the work goes where the work it hangs from lives.
-		vault.addFile('Filed/Owned.md', { frontmatter: { type: 'Epic', release: '[[Releases/0.8]]' } });
+		// Ranked like every other note in the fixture: an unranked PARENT is an anchor the
+		// placement refuses against, so a blank here would test the refusal rather than the
+		// folder this test is about.
+		vault.addFile('Filed/Owned.md', { frontmatter: { type: 'Epic', order: 50, release: '[[Releases/0.8]]' } });
 		refreshRelease(view, vault);
 		view.config.set('typeFolder.feature', '');
 		view.onDataUpdated();
@@ -286,6 +393,83 @@ describe('creating a child from a release scope row', () => {
 			.querySelector<HTMLElement>('.pbl-tree')!
 			.dispatchEvent(new KeyboardEvent('keydown', { key: 'F10', bubbles: true, cancelable: true }));
 		expect(Menu.lastShown).toBeNull();
+	});
+
+	/**
+	 * Task 4: `createMember` built its append peers from `parent.children` unfiltered, so
+	 * a `New <child>` whose destination's last DOMAIN child is an unranked context row
+	 * (a note the base excluded, pulled in only because ITS child is a result) anchored on
+	 * that row rather than on the last real sibling — `rankablePeers`
+	 * (`domain/dropTargets.ts`, own comment) is the fix, applied here too. This is a
+	 * different "context" from the scope tree's own (a non-member ancestor still drawn):
+	 * `Ctx Feature` below is excluded from the base's own results entirely.
+	 */
+	it('anchors on the last ranked child, not a trailing DOMAIN context row excluded from the base', async () => {
+		const vault = new FakeVault();
+		vault.addFile('R.md', { frontmatter: { type: 'Release', version: '1.0.0', order: 1 } });
+		vault.addFile('Epic.md', { frontmatter: { type: 'Epic', order: 10 } });
+		vault.addFile('Feature A.md', { frontmatter: { type: 'Feature', order: 100, release: '[[R]]' }, parentLink: 'Epic' });
+		// Excluded from the base's own results — a domain context row, not merely a
+		// release non-member — and present at all only because its own child is a result.
+		vault.addFile('Ctx Feature.md', { frontmatter: { type: 'Feature' }, parentLink: 'Epic' });
+		vault.addFile('Ctx Task.md', { frontmatter: { type: 'Task', order: 2, release: '[[R]]' }, parentLink: 'Ctx Feature' });
+		vault.addFile('Other Epic.md', { frontmatter: { type: 'Epic', order: 5 } });
+		vault.addFile('Far.md', { frontmatter: { type: 'Feature', order: 95000, release: '[[R]]' }, parentLink: 'Other Epic' });
+		const { view } = makeReleaseView(vault, RELEASE_CONFIG);
+		const only = ['R.md', 'Epic.md', 'Feature A.md', 'Ctx Task.md', 'Other Epic.md', 'Far.md'];
+		(view as unknown as { data: unknown }).data = { data: vault.entries().filter((e) => only.includes(e.file.path)) };
+		view.onDataUpdated();
+		view.pick('R.md');
+		const before = new Set(vault.files.keys());
+
+		const menu = openMenu(view, 'Epic.md');
+		menu.items.find((item) => item.titleText === 'New Feature')!.click();
+		submitPrompt({ title: 'New Child' });
+		await flush();
+
+		const notes = created(vault, before);
+		expect(notes.length).toBe(1);
+		// Anchored on `Feature A` (100) against its own next neighbour in the GLOBAL
+		// population (`Far`, 95000) — a real midpoint, nowhere near `Far`'s own edge
+		// (96000), which is what anchoring on the unranked `Ctx Feature` instead reads as.
+		expect(notes[0].fm.order).toBe(47550);
+	});
+
+	it('creates nothing while a batch holds the plugin-wide lock', async () => {
+		// This screen's creation was the last ranked creation path outside an exclusive
+		// section (ADR 0034 lists the paths that produce a rank). Both halves are inside it,
+		// not just the write: `dropPlacement` reads `view.model`, which the gate deliberately
+		// holds stale until the batch it is deferring ends, so a rank taken beside a running
+		// Seed or Respace is computed against numbers the rewrite has already replaced and
+		// the note lands between the wrong pair. What the assertion can SEE is the refusal —
+		// once the section is taken, the stale-rank state is unreachable from here.
+		const vault = new FakeVault();
+		vault.addFile('R.md', { frontmatter: { type: 'Release', version: '1.0.0', order: 10 } });
+		vault.addFile('Sign-in.md', { frontmatter: { type: 'Epic', order: 20, release: '[[R]]' } });
+		vault.addFile('Magic link.md', { frontmatter: { type: 'Task', order: 30, release: '[[R]]' }, parentLink: 'Sign-in' });
+		const lock = new WriteLock();
+		let release: () => void = () => {};
+		// Stall the OTHER view's batch, so the creation arrives while it is in flight.
+		vault.beforeWrite = (path) => (path === 'R.md' ? new Promise<void>((r) => (release = r)) : undefined);
+		const writer = makeReleaseView(vault, RELEASE_CONFIG, { lock });
+		writer.view.pick('R.md');
+		const { view } = makeReleaseView(vault, RELEASE_CONFIG, { lock });
+		view.pick('R.md');
+		const before = new Set(vault.files.keys());
+		const releaseFile = vault.app.vault.getFileByPath('R.md')!;
+
+		const batch = writer.view.gate.applySafely([{ file: releaseFile, sets: [{ key: 'status', value: 'Released' }] }]);
+		await flush();
+		const menu = openMenu(view, 'Sign-in.md');
+		menu.items.find((item) => item.titleText === 'New Feature')!.click();
+		Notice.messages.length = 0;
+		submitPrompt({ title: 'Passkeys' });
+		await flush();
+
+		expect(created(vault, before)).toEqual([]);
+		expect(Notice.messages).toEqual([en['gate.stillApplying']]);
+		release();
+		await batch;
 	});
 
 	it('unfolds the parent it created under, so the new child is not written out of sight', async () => {

@@ -1,31 +1,120 @@
 import { Notice } from 'obsidian';
 import { list, t } from '../../i18n/t';
-import { reorderableGroup } from '../../domain/dropTargets';
 import { keepsProjection } from '../../domain/itemTypes';
 import { BacklogViewHost } from '../host';
 import { BacklogItem } from '../../domain/model';
-import { DropTarget } from '../../domain/dropTargets';
+import { DropTarget, isInvalidParent, isUnrankedContext, rankablePeers } from '../../domain/dropTargets';
 import { configProblems } from '../../domain/settingsConsistency';
-import { computeInitWrites } from '../../domain/writePlan';
+import { computeInitWrites } from '../../domain/rankBackfill';
+import { dropPlacement } from '../../domain/writePlan';
 
 /**
  * Structural operations shared by the context menu and keyboard shortcuts.
  * All of them route through host.performDrop and reuse the drop-plan logic.
  */
 
-/** The item's sibling list and index within it, or null when it cannot be moved. */
-function siblingContext(host: BacklogViewHost, item: BacklogItem): { fullList: BacklogItem[]; idx: number } | null {
+/**
+ * The item's sibling list and index within it, or null when it cannot be moved.
+ *
+ * `rankOnly` says which of the two kinds of move this context is for, and it is the
+ * answer `withinSiblingsTarget` and `edgeTarget` turn into `DropTarget.parentUnchanged`
+ * — see their own note. It cannot be re-derived from the values downstream: a focus
+ * rank and an explicit top-level placement of the same row produce the same `parent`.
+ */
+function siblingContext(
+	host: BacklogViewHost,
+	item: BacklogItem,
+): { fullList: BacklogItem[]; drawn: BacklogItem[]; idx: number; rankOnly: boolean } | null {
 	const model = host.model;
-	// Focus roots share no ranking; an ancestor from outside the filter has siblings
-	// the query never returned, so ordering it against the loaded ones would be a guess.
-	if (!model || item.focusRoot || item.outsideFilter) return null;
+	// An ancestor from outside the filter has siblings the query never returned, so
+	// ordering it against the loaded ones would be a guess.
+	if (!model || item.outsideFilter) return null;
+	// An ACTIVE focus row ranks among the rendered focus rows — the same destination
+	// `dropTargets.ts`'s `siblingPosition` opened to the drag in Task 5, so Alt+arrow and
+	// the move menu land the rank a drag would. Membership, not the `focusRoot` flag:
+	// `projectionForest` sets that on any promoted root including with `model.focused`
+	// false, and a promoted catalog row's real siblings are not on screen. Every other
+	// promoted root keeps the refusal below.
+	if (model.focused && model.roots.includes(item)) {
+		// A context row with no order is never a ranking peer — `rankablePeers` applies the
+		// same predicate `anchoredOrder` skips it with when it is a candidate ANCHOR, to a
+		// candidate PEER instead. It constrains nothing (there is no number to rank
+		// against), so keeping it in this list only ever produced a command that wrote a
+		// real order and left the draw unchanged: a null order sorts last regardless of
+		// what the writable row's own order becomes. A RANKED context row stays — its order
+		// is a real placement constraint, and dropping it here would jump a swap past a row
+		// the population still has to be ranked against. The drag reads the SAME function,
+		// which is what ended the disagreement between the two.
+		const fullList = rankablePeers(model.roots);
+		// `drawn` is the SCREEN — see `DropTarget.drawn`. Not through `rankablePeers`, since
+		// an unranked context row IS drawn and is what the field exists to see; but through
+		// `isRowHidden`, since a completed row the toggle is hiding is not. `siblingPosition`
+		// filters the drag's copy by the same question, so all three inputs hand the guard
+		// one list. Reading `model.roots` raw made the guard refuse a move whose only
+		// disorder was invisible — see that function's own note for the fixture.
+		const drawn = model.roots.filter((r) => !host.isRowHidden(r));
+		return { fullList, drawn, idx: fullList.indexOf(item), rankOnly: true };
+	}
+	if (item.focusRoot) return null;
 	// The real root group, not the rendered forest — the same rule `siblingPosition`
 	// keeps: an `order` is scoped to the notes sharing a parent, and a `Test suite` and an
 	// `Epic` share the null one, so a move ranked against one projection's slice of it can
 	// land on a number a hidden root already holds. A promoted root returned above.
-	const fullList = item.parent ? item.parent.children : model.realRoots;
+	// `rankablePeers` again — the correction of 2026-08-31 — because this branch used to
+	// read the group unfiltered: an unranked context row sorts last in it, so it became
+	// the anchor for `Move to bottom`/`Move down` past the last writable sibling, wrote a
+	// real order nobody could see land, and spent the undo slot without moving anything
+	// the draw shows. The drag reads the same function over the same population.
+	const group = item.parent ? item.parent.children : model.realRoots;
+	const fullList = rankablePeers(group);
 	const idx = fullList.indexOf(item);
-	return idx === -1 ? null : { fullList, idx };
+	// Same reading of `drawn` as the focus branch above: one definition, not two.
+	const drawn = group.filter((r) => !host.isRowHidden(r));
+	return idx === -1 ? null : { fullList, drawn, idx, rankOnly: false };
+}
+
+/**
+ * The item as THIS model holds it. A context menu captures its row when it opens, and a
+ * Bases refresh in between rebuilds every item as a new object — after which
+ * `model.roots.includes`, `children.indexOf` and `ranked.indexOf` all miss, the placement
+ * refuses `unranked`, and the pick does nothing at all with nothing said.
+ *
+ * Re-resolved by PATH here rather than by teaching `neighbourPair` to match on one: the
+ * staleness is not a single lookup's. The peer list, the no-op comparison and the
+ * planner's own "remove the dragged row from the population" filter all compare objects,
+ * so one lookup made path-aware would leave the rest reading a model nobody is showing.
+ * Called at the four entry points a captured handler reaches; the four PREDICATES beside
+ * them are asked while the menu is being built, when the model is the current one.
+ *
+ * **A miss REFUSES; it never falls back to the captured object.** A path the model no
+ * longer holds is a note this base no longer returns — and the write gate cannot say so
+ * for it, because `outsideFilter` reads the item's own flag and an absent path has no
+ * flag to read. Handing the stale object back made the four commands plan against a
+ * live parent and a dead subject, and the batch landed on a note the base excludes:
+ * the one thing this view never does. `saveIteration` (`interactions/create.ts`) is the
+ * same lookup with the same answer — notice, and return.
+ *
+ * **A row the model still holds but no longer DRAWS refuses too**, and that is the second
+ * question rather than a restatement of the first: the note is in the base, so the write
+ * gate waves it through, and the four commands then rank or reparent a row nobody can see
+ * move. Measured on a leaf completed in another pane while its menu sat open: all six
+ * entries wrote (orders 15 and 1040, an outdent clearing `parent`, an indent under the
+ * sibling above), each spending the undo slot for no visible movement. That is the same
+ * defect `visibleNeighbor` refuses one row further out — it skips a hidden TARGET, and
+ * nothing was asking the same of the SUBJECT. Asked here rather than at the four call
+ * sites for the reason the lookup is: one gate every captured handler routes through.
+ */
+function liveItem(host: BacklogViewHost, item: BacklogItem): BacklogItem | null {
+	const live = host.model?.byPath.get(item.file.path);
+	if (!live) {
+		new Notice(t('rank.itemGone'));
+		return null;
+	}
+	if (host.isRowHidden(live)) {
+		new Notice(t('rank.itemHidden'));
+		return null;
+	}
+	return live;
 }
 
 /**
@@ -43,75 +132,268 @@ export function visibleNeighbor(host: BacklogViewHost, item: BacklogItem, delta:
 }
 
 /**
- * True when the item can be reordered among its own siblings. Reordering renumbers
- * the group if the gaps run out, which must never write to a note the Base excluded
- * — so a group holding a context row offers no move commands at all.
+ * The target `moveWithinSiblings` would land on for this delta, or null when there
+ * is no visible neighbor to swap with. Shared with `canReorder` so offering the
+ * command and performing it can never disagree about the destination.
  */
-export function canReorder(host: BacklogViewHost, item: BacklogItem): boolean {
+function withinSiblingsTarget(host: BacklogViewHost, item: BacklogItem, delta: -1 | 1): DropTarget | null {
 	const ctx = siblingContext(host, item);
-	return ctx !== null && reorderableGroup(ctx.fullList);
+	const neighbor = visibleNeighbor(host, item, delta);
+	if (!ctx || !neighbor) return null;
+	// Land on the far side of the visible neighbor; order math still runs over the
+	// full sibling list, so hidden rows in between are simply skipped past.
+	const peers = ctx.fullList.filter((s) => s !== item);
+	const insertIndex = delta === -1 ? peers.indexOf(neighbor) : peers.indexOf(neighbor) + 1;
+	// `parentUnchanged` comes from the CONTEXT, never from the value. `item.parent` is a
+	// restatement under focus (rank the row, leave its parentage alone) and a real
+	// placement otherwise — which must still clear a stale link — and the two spell the
+	// same `null` for a row whose link does not resolve. `DROP_TARGET_RESTATEMENT` reads
+	// only the `dragged.parent` spelling and so cannot see this one; its own comment says
+	// exactly that, and this is the case it names.
+	return {
+		parent: item.parent,
+		peers,
+		drawn: ctx.drawn.filter((r) => r !== item),
+		insertIndex,
+		parentUnchanged: ctx.rankOnly,
+	};
+}
+
+/**
+ * The target `moveToEdge` would land on, or null when the item is already there. A
+ * SEPARATE target from the adjacent swap's, which is the whole reason this function
+ * exists: `insertIndex` 0 and `peers.length` anchor on the first and last peer, never
+ * on the neighbour one slot away, so the two commands can be answered differently by
+ * the same population. Children ranked 20/30/40 with any other note at 20 is the
+ * reachable case — the swap succeeds and the edge move refuses.
+ */
+function edgeTarget(host: BacklogViewHost, item: BacklogItem, edge: 'top' | 'bottom'): DropTarget | null {
+	const ctx = siblingContext(host, item);
+	// **"Already there" is a question about the SCREEN, and a raw index cannot answer it.**
+	// The completed toggle hides a row without removing it from the sibling list — that is
+	// `Rollups and hiding finished work`'s own rule, and it is what keeps the hidden row a
+	// ranking neighbour. So a subject one slot from the end of `fullList`, with a hidden
+	// row after it, is at the bottom of what the user can SEE: an edge move there ranks it
+	// past a row nobody is looking at, writes frontmatter, spends the undo slot and redraws
+	// the identical screen. `visibleNeighbor` is the same skip-the-hidden walk
+	// `withinSiblingsTarget` already uses, so both commands read one idea of a neighbour.
+	if (!ctx || visibleNeighbor(host, item, edge === 'top' ? -1 : 1) === null) return null;
+	const peers = ctx.fullList.filter((s) => s !== item);
+	// Same `parentUnchanged` reasoning as `withinSiblingsTarget`, and it has to be the
+	// same: the two commands differ in where they land, never in whether a landing is a
+	// rank or a relocation.
+	return {
+		parent: item.parent,
+		peers,
+		drawn: ctx.drawn.filter((r) => r !== item),
+		insertIndex: edge === 'top' ? 0 : peers.length,
+		parentUnchanged: ctx.rankOnly,
+	};
+}
+
+/**
+ * Whether that placement would actually write something. Asked of the SAME plan
+ * `computeDropWrites` would make — a rank is a midpoint in the global population, so a
+ * spent gap or an unranked neighbour refuses silently, and an offered command that does
+ * nothing is what this repo refuses ahead of a withheld one. Each command asks it of
+ * its OWN target: one answer covering both would offer a Move to top that is inert
+ * because the adjacent swap happened to work.
+ */
+function plans(host: BacklogViewHost, item: BacklogItem, target: DropTarget | null): boolean {
+	const model = host.model;
+	if (!model || !target) return false;
+	return !('refusal' in dropPlacement(item, target, model.ranked));
+}
+
+/** True when reordering `item` one slot in the given direction would write something. */
+export function canReorder(host: BacklogViewHost, item: BacklogItem, delta: -1 | 1): boolean {
+	return plans(host, item, withinSiblingsTarget(host, item, delta));
+}
+
+/** True when sending `item` to that end of its own group would write something. */
+export function canMoveToEdge(host: BacklogViewHost, item: BacklogItem, edge: 'top' | 'bottom'): boolean {
+	return plans(host, item, edgeTarget(host, item, edge));
 }
 
 export function moveWithinSiblings(host: BacklogViewHost, item: BacklogItem, delta: -1 | 1): void {
-	const ctx = siblingContext(host, item);
-	const neighbor = visibleNeighbor(host, item, delta);
-	if (!ctx || !neighbor || !reorderableGroup(ctx.fullList)) return;
-	// Land on the far side of the visible neighbor; order math still runs over the
-	// full sibling list, so hidden rows in between are simply skipped past.
-	const siblings = ctx.fullList.filter((s) => s !== item);
-	const insertIndex = delta === -1 ? siblings.indexOf(neighbor) : siblings.indexOf(neighbor) + 1;
-	void host.performDrop(item, { parent: item.parent, siblings, insertIndex });
+	const live = liveItem(host, item);
+	if (!live) return;
+	const target = withinSiblingsTarget(host, live, delta);
+	if (!target) return;
+	void host.performDrop(live, target);
 }
 
 export function moveToEdge(host: BacklogViewHost, item: BacklogItem, edge: 'top' | 'bottom'): void {
-	const ctx = siblingContext(host, item);
-	if (!ctx || !reorderableGroup(ctx.fullList)) return;
-	if (ctx.idx === (edge === 'top' ? 0 : ctx.fullList.length - 1)) return;
-	const siblings = ctx.fullList.filter((s) => s !== item);
-	const insertIndex = edge === 'top' ? 0 : siblings.length;
-	void host.performDrop(item, { parent: item.parent, siblings, insertIndex });
+	const live = liveItem(host, item);
+	if (!live) return;
+	const target = edgeTarget(host, live, edge);
+	if (target) void host.performDrop(live, target);
 }
 
 /**
  * Where outdenting would put the item — right after its parent among the parent's
- * siblings — or null when that is unavailable. Exported so the menu can offer the
- * command on exactly the rows where it works.
+ * siblings — or null when the move is not EXPRESSIBLE at all: no parent, a focus row, a
+ * context row, a grandparent on the other ladder, or a parent with no rank of its own.
+ *
+ * **The last of those is not the arithmetic refusing — it is this function's own
+ * anchor.** The PARENT is the anchor `orderForTarget` (`domain/writePlan.ts`) would place
+ * against, never a peer skipped past on the way to one, so `anchoredOrder`'s skip (right
+ * for an APPEND, whose anchor is the group being appended into and carries no positional
+ * meaning of its own) does not apply here: `compareRank` sorts a null order last, and no
+ * finite number sorts after it, so "right after PARENT" specifically is inexpressible
+ * when parent carries none — not a looser number, a different placement nobody asked for.
+ * `writePlanContextRows.test.ts` pins the append reading at the domain level; this is the
+ * one case where an outdent's own anchor cannot borrow it, so it is refused here instead
+ * of asking `orderForTarget` to special-case an anchor it cannot tell was named this way.
+ *
+ * **Whether the placement would write anything is a separate question, and it is
+ * `canOutdent`'s.** The same split `withinSiblingsTarget` and `canReorder` already keep,
+ * and for the same reason: the menu withholds an entry a plan would refuse, while a
+ * KEYPRESS is not an offer — there is nothing to withhold, so Alt+Left must reach
+ * `performDrop` and let its one reporter name the remedy. Folding the plan into this
+ * function made both paths silent. The unranked-parent case is not that split: it is
+ * decided here, before there is a plan to ask, the same as the other four EXPRESSIBILITY
+ * reasons above it — `outdent` re-derives the same fact to report it on the keypress,
+ * since this function's null return does not say which of the five applied.
  */
-export function outdentTarget(host: BacklogViewHost, item: BacklogItem): DropTarget | null {
+function outdentTarget(host: BacklogViewHost, item: BacklogItem): DropTarget | null {
 	const model = host.model;
 	const parent = item.parent;
-	if (!model || !parent || item.focusRoot || item.outsideFilter) return null;
+	if (!model || !parent || item.focusRoot || item.outsideFilter || isUnrankedContext(parent)) return null;
 	const grandparent = parent.parent;
 	// Root-level outdents rank among the real top level, not the focus rows.
 	const fullList = grandparent ? grandparent.children : model.realRoots;
-	const siblings = fullList.filter((s) => s !== item);
-	// This lands the item at a position among the parent's siblings — and that group
-	// holds the context parent itself whenever the Base excluded it.
-	if (!reorderableGroup(siblings)) return null;
+	const peers = fullList.filter((s) => s !== item);
 	// The grandparent may be on the other ladder — `Epic → Test case → Task` is the
 	// reachable shape, since the case is drawn in the catalog as a promoted root and its
 	// task is an ordinary child. Refused at the TARGET, not at the write: this function is
 	// what the menu asks to decide whether to OFFER the command, and an offered command
 	// that does nothing is what this repo refuses ahead of a withheld one.
 	if (!keepsProjection(item, grandparent)) return null;
-	return { parent: grandparent, siblings, insertIndex: siblings.indexOf(parent) + 1 };
+	return { parent: grandparent, peers, insertIndex: peers.indexOf(parent) + 1 };
 }
 
-/** Make the item a sibling of its parent, placed right after it. */
-export function outdent(host: BacklogViewHost, item: BacklogItem): void {
-	const target = outdentTarget(host, item);
-	if (target) void host.performDrop(item, target);
+/** True when outdenting `item` would write something — what the MENU is gated on. */
+export function canOutdent(host: BacklogViewHost, item: BacklogItem): boolean {
+	return plans(host, item, outdentTarget(host, item));
 }
 
 /**
- * Nest the item under its previous visible sibling, at the end of its children.
- * An append, so a partially loaded destination is fine: last is last either way.
+ * Make the item a sibling of its parent, placed right after it.
+ *
+ * Four of `outdentTarget`'s five null reasons stay silent, the way an edge of a list
+ * does — there was nothing this keypress could have meant. The fifth reports: the
+ * parent IS there and the command names it in spirit even though `Outdent` draws no
+ * label naming it, so silence would look like a broken keypress rather than an
+ * inexpressible one. Re-derived rather than threaded through the null, because
+ * `outdentTarget`'s return does not say which reason fired — the same shape `indent`
+ * reads its own named-destination refusal by, one call further from a plan.
  */
-export function indent(host: BacklogViewHost, item: BacklogItem): void {
-	const newParent = visibleNeighbor(host, item, -1);
-	if (!newParent) return;
-	const siblings = newParent.children.filter((s) => s !== item);
-	void host.performDrop(item, { parent: newParent, siblings, insertIndex: siblings.length });
+export function outdent(host: BacklogViewHost, item: BacklogItem): void {
+	const live = liveItem(host, item);
+	if (!live) return;
+	const target = outdentTarget(host, live);
+	if (target) {
+		void host.performDrop(live, target);
+		return;
+	}
+	if (live.parent && isUnrankedContext(live.parent)) new Notice(t('rank.unrankedParent'));
+}
+
+/**
+ * Where indenting would put the item — last among the previous visible sibling's children
+ * — or null when the move is not EXPRESSIBLE. An append, so a partially loaded destination
+ * is fine: last is last either way.
+ *
+ * Whether the placement would WRITE anything is `canIndent`'s question, for the reason
+ * `outdentTarget` states: an append still has to be RANKED, and the row after the new
+ * parent's last child in the global population can be unranked or a spacing away, so the
+ * placement refuses. The menu withholds the entry on that answer — gated on the previous
+ * sibling alone it offered `Indent under X`, wrote nothing and said nothing, the same
+ * defect `Move to top` and `Move to bottom` were fixed for. Alt+Right does not withhold
+ * anything and reports instead.
+ */
+function indentTarget(
+	host: BacklogViewHost,
+	item: BacklogItem,
+	newParent: BacklogItem | null = visibleNeighbor(host, item, -1),
+): DropTarget | null {
+	// Its own refusal, not one inherited from `siblingContext` — that function answers for
+	// active focus rows now, so `visibleNeighbor` hands back a focus PEER and this would
+	// offer `Indent under X` across the synthetic row. Ranking there is this feature;
+	// reparenting there is a question about parentage that nothing here answers. Stated at
+	// the TARGET rather than in `indent`, because the target is what the menu asks before
+	// offering the entry, and an offered command that does nothing is what this repo
+	// refuses ahead of a withheld one.
+	if (item.focusRoot) return null;
+	if (!newParent) return null;
+	// A destination handed in was resolved by PATH, so the vault may have put it anywhere
+	// since the menu named it — including under the item itself, which the previous
+	// visible sibling could never be. The neighbour `visibleNeighbor` computes passes this
+	// for free; a re-resolved one is the reason it is asked at all.
+	if (isInvalidParent(newParent, item)) return null;
+	// And it may be on the OTHER LADDER — `byPath` holds every loaded item, including one
+	// retyped while the menu sat open, so `Indent under "X"` can reparent a `Task` or a
+	// typeless row out of the plan and into the test catalog, off the screen it was moved
+	// on. The same question the drag and `outdentTarget` ask, and sound by construction
+	// here only while the destination was always the previous VISIBLE sibling — a row on
+	// this screen carries this screen's ladder. The keyboard passes no path and computes
+	// its neighbour at the moment of the press, so only the menu was exposed.
+	if (!keepsProjection(item, newParent)) return null;
+	// `rankablePeers` (`dropTargets.ts`, own comment): the previous sibling's children can
+	// end in an unranked context row.
+	const peers = rankablePeers(newParent.children).filter((s) => s !== item);
+	return { parent: newParent, peers, insertIndex: peers.length };
+}
+
+/** True when indenting `item` under its previous visible sibling would write something. */
+export function canIndent(host: BacklogViewHost, item: BacklogItem): boolean {
+	return plans(host, item, indentTarget(host, item));
+}
+
+/**
+ * Nest the item under `namedParentPath`, or — when no path is named — under its previous
+ * visible sibling, at the end of that row's children.
+ *
+ * **Re-resolving a command's SUBJECT without re-resolving its TARGET makes the label and
+ * the action disagree.** A command whose title names a specific note must re-resolve THAT
+ * note by path and refuse if it is no longer a valid destination; it may never silently
+ * compute a fresh one. `liveItem` re-resolving the subject is what made this a wrong
+ * structural write rather than a harmless refusal: before it, a stale item failed every
+ * lookup and the move did nothing, and afterwards the subject is faithfully re-resolved
+ * and the write lands — against a destination recomputed from whatever the row's previous
+ * visible neighbour happens to be NOW. A Bases refresh between opening the menu and
+ * clicking is all it takes to reparent the note under a row the menu never named.
+ *
+ * The keyboard passes no path, deliberately: Alt+Right draws no label and promises no
+ * note, so the neighbour at the moment of the press IS what the user asked for.
+ */
+export function indent(host: BacklogViewHost, item: BacklogItem, namedParentPath?: string): void {
+	const live = liveItem(host, item);
+	if (!live) return;
+	const named = namedParentPath === undefined ? undefined : host.model?.byPath.get(namedParentPath);
+	// The named destination, not the subject: `liveItem` above already refused a vanished
+	// SUBJECT with the same notice, and a vanished DESTINATION is the sibling case the
+	// docblock promises — "refuse if it is no longer a valid destination" said nothing
+	// about silence.
+	if (namedParentPath !== undefined && !named) {
+		new Notice(t('rank.itemGone'));
+		return;
+	}
+	const target = indentTarget(host, live, named);
+	if (target) {
+		void host.performDrop(live, target);
+		return;
+	}
+	// The named destination RESOLVED but `indentTarget` still refused it — retyped onto
+	// the other ladder, or turned into the subject's own descendant, while the menu sat
+	// open. `rank.itemGone` does not fit either: the note is still in this base, just no
+	// longer a valid PARENT for this subject, and saying it left would be false. Keyed on
+	// the PATH, not on the null target, the same distinction the vanished-path branch
+	// above draws: Alt+Right passes no path and promises no note, so a null target there
+	// is "not expressible" and must stay silent, exactly as `indentTarget`'s own docblock
+	// says.
+	if (namedParentPath !== undefined) new Notice(t('rank.targetInvalid'));
 }
 
 /**
@@ -140,16 +422,17 @@ export async function runInit(host: BacklogViewHost): Promise<void> {
 	const adopted = host.adoptDefaultProperties();
 	const model = host.model;
 	if (!model) return;
-	const writes = computeInitWrites(model, host.settings);
-	// applySafely reports its own notices when blocked or failing — only claim
-	// success for the writes when the whole batch actually went through.
-	const applied = writes.length > 0 && (await host.applySafely(writes)) !== null;
+	const { writes, unplaceable } = computeInitWrites(model, host.settings);
+	// applySafely reports its own notices when blocked or failing, and `written` is how far
+	// the batch actually got: a note that no longer fits stops `applyWrites` where it
+	// stands, so `writes.length` here would claim a backfill that half happened.
+	const outcome = writes.length > 0 ? await host.applySafely(writes) : null;
 	const done: string[] = [];
 	// The property KEYS are joined by `list()` like the fragments below: they are data, so
 	// the names pass through untranslated while the joining follows the catalog's grammar.
 	if (adopted.length > 0)
 		done.push(t('init.adopted', { properties: adopted.map((property) => property.suggested) }));
-	if (applied) done.push(t('init.updatedItems', { count: writes.length }));
+	if (outcome !== null && outcome.written > 0) done.push(t('init.updatedItems', { count: outcome.written }));
 	// Half the loop this action exists to close is outside it: a bound property draws no
 	// column until the base SHOWS it, and `BasesViewConfig` exposes no way to set the
 	// order from here. Naming the menu is the whole fix.
@@ -162,7 +445,11 @@ export async function runInit(host: BacklogViewHost): Promise<void> {
 	const summary = list(done);
 	if (done.length > 0)
 		new Notice(adopted.length > 0 ? t('init.outcomeWithColumns', { summary }) : t('init.outcome', { summary }));
+	// A blank rank no number fits is reported whatever else happened, and it is what
+	// `init.nothingToDo` must not be said over: that sentence claims every property is
+	// present, and this one is not.
+	if (unplaceable > 0) new Notice(t('init.ranksSkipped', { count: unplaceable }));
 	// Nothing bound and nothing to write is the one case with no outcome to report;
 	// a failed batch has already reported itself.
-	else if (writes.length === 0) new Notice(t('init.nothingToDo'));
+	else if (done.length === 0 && writes.length === 0) new Notice(t('init.nothingToDo'));
 }

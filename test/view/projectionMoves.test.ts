@@ -34,16 +34,19 @@ useViewHarness();
  */
 function twoLadders(): FakeVault {
 	const vault = new FakeVault();
+	// Every rank DISTINCT, in the tree's own order: `order` ranks the whole backlog now,
+	// so two rows sharing a number are a spent gap the placement refuses — and a refusal
+	// for arithmetic would withhold the very commands this file asserts are offered.
 	vault.addFile('Epic.md', { frontmatter: { type: 'Epic', order: 10 } });
 	// A suite whose whole subtree is in the catalog: the rows that must keep the command.
 	vault.addFile('Suite.md', { frontmatter: { type: 'Test suite', order: 20 } });
-	vault.addFile('Case.md', { frontmatter: { type: 'Test case', order: 10 }, parentLink: 'Suite' });
-	vault.addFile('Good task.md', { frontmatter: { type: 'Task', order: 10 }, parentLink: 'Case' });
+	vault.addFile('Case.md', { frontmatter: { type: 'Test case', order: 30 }, parentLink: 'Suite' });
+	vault.addFile('Good task.md', { frontmatter: { type: 'Task', order: 40 }, parentLink: 'Case' });
 	// The advisory mis-drag: a case under a work item, drawn in the catalog as a promoted
 	// root. Its children's GRANDPARENT is the Epic, which is where outdent would land them.
-	vault.addFile('Stray case.md', { frontmatter: { type: 'Test case', order: 30 }, parentLink: 'Epic' });
-	vault.addFile('Stray task.md', { frontmatter: { type: 'Task', order: 10 }, parentLink: 'Stray case' });
-	vault.addFile('Stray note.md', { frontmatter: { order: 20 }, parentLink: 'Stray case' });
+	vault.addFile('Stray case.md', { frontmatter: { type: 'Test case', order: 50 }, parentLink: 'Epic' });
+	vault.addFile('Stray task.md', { frontmatter: { type: 'Task', order: 60 }, parentLink: 'Stray case' });
+	vault.addFile('Stray note.md', { frontmatter: { order: 70 }, parentLink: 'Stray case' });
 	return vault;
 }
 

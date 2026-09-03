@@ -142,6 +142,18 @@ understood as *changing where entries are kept*, not as rewriting undo:
   with absence a first-class state.
 - Replay is compare-and-swap: a key goes back only where the note still holds what the
   batch wrote.
+- **The FORWARD path is not**, and the asymmetry is deliberate rather than an omission.
+  A batch writes sequentially, so a note edited by the user, a sync or another plugin
+  after the plan was computed but before the writer reaches that file is overwritten
+  without a comparison. That is not specific to any one command — it is as old as the
+  backfill, which has written hundreds of notes in one batch since long before the two
+  rank commands widened the exposure by rewriting values rather than filling blanks.
+  What makes it survivable is the bullet above it: the inverse is captured from the LIVE
+  frontmatter inside the same `processFrontMatter` call, so it holds what the concurrent
+  edit wrote and undo puts that back. Raised in review on 2026-08-30 against `Seed` and
+  `Respace`; recorded here, where it belongs, rather than fixed in one caller of a shared
+  path. Adding a forward comparison would also contradict what `Seed` confirms it does —
+  a rank that arrives mid-batch is one the user has already agreed to replace.
 - Inverses are handed over incrementally, so a batch that fails partway leaves an
   undoable prefix.
 - Authorization is capture-time, not replay-time.
@@ -188,12 +200,16 @@ above is a change to it, not a replacement for it.
 
 ### Evidence
 
-- One gesture can rewrite many notes: `renumberWrites` produces a write per sibling
-  when order gaps are spent, and the ✨ backfill (`computeInitWrites`) touches
-  every note missing `type` or `order` — over a real backlog, hundreds of files. A third
-  case counted here when this was written — a re-typing cascade down a moved subtree —
-  was removed on 2026-08-11, and the two that remain are why the machinery still looks
-  as it does.
+- One gesture can rewrite many notes: `renumberWrites` produced a write per sibling
+  when order gaps were spent, and the ✨ backfill (`computeInitWrites`) touches
+  every note missing `type` or `order` — over a real backlog, hundreds of files. Two of the
+  three cases counted here when this was written are gone: the re-typing cascade down a
+  moved subtree (2026-08-11), and `renumberWrites` itself with the sibling-scoped rank
+  ([ADR 0034](../adrs/0034-order-is-a-global-rank.md), 2026-08-30) — a drop writes one note
+  now. **This is a re-evidencing and not a retraction**: the backfill remains, and the two
+  commands that arrived with the global rank, `Seed ranks from the hierarchy` and
+  `Respace ranks`, each rewrite the rank of every note the base returns in a single batch.
+  The argument the machinery was built on is stronger than when it was made.
 - None of it could be taken back. `processFrontMatter` writes bypass the editor's undo
   stack, and File Recovery restores one note at a time — reconstructing a thirty-note
   renumber by hand is not a recovery path.

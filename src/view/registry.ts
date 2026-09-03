@@ -1,6 +1,8 @@
 import { App, FileView } from 'obsidian';
 import { BacklogModel } from '../domain/model';
 import { BacklogSettings } from '../domain/settings';
+import { ItemWrite } from '../domain/writePlan';
+import { WriteOutcome } from '../storage/frontmatter';
 
 /**
  * The live Product Backlog views, so a command run from the palette can act on the
@@ -19,6 +21,13 @@ export interface LiveBacklogView {
 	readonly config: { name: string };
 	readonly settings: BacklogSettings;
 	readonly model: BacklogModel | null;
+	/**
+	 * The gated write path, so a palette command passes the same three refusals every
+	 * drop does — serialized against the plugin-wide lock, blocked while the
+	 * configuration contradicts itself, and refused whole if any write names a note the
+	 * base excluded — rather than reaching the vault beside them.
+	 */
+	readonly applySafely: (writes: ItemWrite[]) => Promise<WriteOutcome | null>;
 }
 
 const live = new Set<LiveBacklogView>();

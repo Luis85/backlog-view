@@ -269,6 +269,25 @@ describe('context rows on the roadmap', () => {
 		expect(titles(roadmap.buckets[0].cards)).toEqual(['Epic A', 'Epic B']);
 	});
 
+	it('orders a focused roadmap by rank, and an unfocused one as before', () => {
+		const settings = axisSettings();
+		const vault = new FakeVault();
+		vault.addFile('Epic A.md', { frontmatter: { type: 'Epic', order: 1000 } });
+		vault.addFile('Epic B.md', { frontmatter: { type: 'Epic', order: 2000 } });
+		// A's child ranks AFTER B's child globally — DFS preorder would list it first.
+		vault.addFile('PBI A1.md', { frontmatter: { type: 'PBI', order: 9000 }, parentLink: 'Epic A' });
+		vault.addFile('PBI B1.md', { frontmatter: { type: 'PBI', order: 3000 }, parentLink: 'Epic B' });
+		const entries = vault.entries();
+		const focused = buildModel(vault.app, entries, { ...settings, focusLevel: 'PBI' });
+		const unfocused = buildModel(vault.app, entries, settings);
+
+		// None carry a horizon, so every row lands on the shelf in `roadmapRows` order.
+		const shelfTitles = (m: typeof focused) => titles(roadmapOf(m, settings, 'horizons').shelf.map((c) => c.item));
+		expect(shelfTitles(focused)).toEqual(['PBI B1', 'PBI A1']);
+		// Unfocused rows are `model.results` — DFS tree order, unaffected by ranking.
+		expect(shelfTitles(unfocused)).toEqual(['Epic A', 'PBI A1', 'Epic B', 'PBI B1']);
+	});
+
 	it('is never placed by its own dates on the timeline', () => {
 		const settings = axisSettings();
 		const roadmap = roadmapOf(

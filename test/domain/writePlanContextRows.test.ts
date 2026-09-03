@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { BacklogItem, buildModel } from '../../src/domain/model';
-import { computeDropWrites, computeInitWrites } from '../../src/domain/writePlan';
+import { computeInitWrites } from '../../src/domain/rankBackfill';
+import { computeDropWrites } from '../../src/domain/writePlan';
 import { defaultSettings } from '../../src/domain/settings';
 import { FakeVault } from '../helpers/vault';
 
@@ -15,7 +16,7 @@ describe('computeInitWrites with parents outside the filter', () => {
 
 		// The Epic is present only as context; only the match is missing an order
 		expect(model.roots[0].outsideFilter).toBe(true);
-		expect(computeInitWrites(model, settings).map((w) => w.file.path)).toEqual(['PBI.md']);
+		expect(computeInitWrites(model, settings).writes.map((w) => w.file.path)).toEqual(['PBI.md']);
 	});
 });
 
@@ -27,7 +28,7 @@ describe('computeDropWrites in a group holding an outside-filter row', () => {
 	function mixedGroup() {
 		const vault = new FakeVault();
 		vault.addFile('Epic.md', { frontmatter: { type: 'Epic', order: 10 } });
-		// Feature A has no order, which is what forces the renumbering path
+		// Feature A has no order, which is what makes it an unranked anchor to skip
 		vault.addFile('Feature A.md', { frontmatter: { type: 'Feature' }, parentLink: 'Epic' });
 		vault.addFile('Feature B.md', { frontmatter: { type: 'Feature', order: 20 }, parentLink: 'Epic' });
 		vault.addFile('PBI.md', { frontmatter: { type: 'PBI', order: 10 }, parentLink: 'Feature A' });
@@ -41,36 +42,50 @@ describe('computeDropWrites in a group holding an outside-filter row', () => {
 	}
 
 	it('never writes an order into a note the Base excluded', () => {
-		const { epic, mover } = mixedGroup();
+		const { model, epic, mover } = mixedGroup();
 		// The group really is mixed: result Feature B, then context Feature A (unranked, so last)
 		expect(epic.children.map((c) => c.title)).toEqual(['Feature B', 'Feature A']);
 		expect(epic.children[1].outsideFilter).toBe(true);
 		expect(epic.children[1].order).toBeNull();
 
-		const siblings = epic.children;
-		const writes = computeDropWrites(mover, { parent: epic, siblings, insertIndex: siblings.length });
+		const peers = epic.children;
+		const writes = computeDropWrites(mover, { parent: epic, peers, insertIndex: peers.length }, model.ranked);
 
 		expect(writes.map((w) => w.file.path)).toEqual(['Mover.md']);
-		// Past the highest order it can see, rather than renumbering the group
-		expect(writes[0].order).toBe(30);
+		// The unranked context row (Feature A) is skipped as an anchor, not refused
+		// on — `anchoredOrder` falls back to the highest-ranked row it CAN see
+		// globally, which is Feature B at 20: floor(20) + 1000.
+		expect(writes[0].order).toBe(1020);
 		expect(writes.some((w) => w.file.path === 'Feature A.md')).toBe(false);
 	});
 
-	it('still renumbers a group made only of results', () => {
+	it('ranks around a context row that sits between two visible neighbors, never writing to it', () => {
+		// Epic's children, visually: Result1 (10), Context (20, excluded but ranked
+		// — loaded as Deep's ancestor), Result2 (30). Dropping Mover right after
+		// Context still takes a real midpoint from Context's own order — it is read
+		// as data, just never written to — and produces exactly one write, to Mover.
 		const vault = new FakeVault();
-		vault.addFile('Epic.md', { frontmatter: { type: 'Epic', order: 10 } });
-		vault.addFile('A.md', { frontmatter: { type: 'Feature' }, parentLink: 'Epic' });
-		vault.addFile('B.md', { frontmatter: { type: 'Feature', order: 20 }, parentLink: 'Epic' });
+		vault.addFile('Epic.md', { frontmatter: { type: 'Epic', order: 5 } });
+		vault.addFile('Result1.md', { frontmatter: { type: 'Feature', order: 10 }, parentLink: 'Epic' });
+		vault.addFile('Context.md', { frontmatter: { type: 'Feature', order: 20 }, parentLink: 'Epic' });
+		vault.addFile('Deep.md', { frontmatter: { type: 'PBI', order: 1 }, parentLink: 'Context' });
+		vault.addFile('Result2.md', { frontmatter: { type: 'Feature', order: 30 }, parentLink: 'Epic' });
 		vault.addFile('Mover.md', { frontmatter: { type: 'Feature', order: 99 } });
-		const model = buildModel(vault.app, vault.entries(), settings);
+		const filtered = vault.entries().filter((e) =>
+			['Epic.md', 'Result1.md', 'Deep.md', 'Result2.md', 'Mover.md'].includes(e.file.path),
+		);
+		const model = buildModel(vault.app, filtered, settings);
 		const epic = model.byPath.get('Epic.md') as BacklogItem;
 		const mover = model.byPath.get('Mover.md') as BacklogItem;
+		const context = model.byPath.get('Context.md') as BacklogItem;
+		expect(context.outsideFilter).toBe(true);
+		expect(epic.children.map((c) => c.title)).toEqual(['Result1', 'Context', 'Result2']);
 
-		// Appending after the unranked A forces the renumbering path
-		const writes = computeDropWrites(
-			mover,
-			{ parent: epic, siblings: epic.children, insertIndex: epic.children.length });
-		expect(writes.map((w) => w.file.path).sort()).toEqual(['A.md', 'B.md', 'Mover.md']);
+		const peers = epic.children;
+		// Insert after Context (index 1), before Result2.
+		const writes = computeDropWrites(mover, { parent: epic, peers, insertIndex: 2 }, model.ranked);
+
+		expect(writes).toEqual([{ file: mover.file, parent: epic.file, order: 25 }]);
 	});
 });
 
@@ -102,9 +117,9 @@ describe('a context row below a result', () => {
 		// A reparent is one write however deep the subtree hangs, and the context row
 		// between the two results is not a target of it — which is what makes a filter
 		// that splits a chain safe to drag inside.
-		const { epic, other } = splitChain();
+		const { model, epic, other } = splitChain();
 
-		const writes = computeDropWrites(epic, { parent: other, siblings: [], insertIndex: 0 });
+		const writes = computeDropWrites(epic, { parent: other, peers: [], insertIndex: 0 }, model.ranked);
 
 		expect(writes.map((w) => w.file.path)).toEqual(['Epic.md']);
 		expect(writes[0].typeName).toBeUndefined();
@@ -132,11 +147,11 @@ describe('backfill ranking beside a context sibling', () => {
 		expect(epic.children.map((c) => c.title)).toEqual(['Ranked', 'Context', 'Unranked']);
 		expect(model.byPath.get('Context.md')?.outsideFilter).toBe(true);
 
-		const writes = computeInitWrites(model, settings);
+		const writes = computeInitWrites(model, settings).writes;
 
 		// One spacing past everything visible: filling in a blank must not reorder
-		// the tree. Ignoring the context row's 1000 would rank it 20 and move it up.
-		expect(writes.find((w) => w.file.path === 'Unranked.md')?.order).toBe(1010);
+		// the tree. Ignoring the context row's 1000 would rank it 1000 and move it up.
+		expect(writes.find((w) => w.file.path === 'Unranked.md')?.order).toBe(2000);
 		// ...while still never writing to the context note itself
 		expect(writes.some((w) => w.file.path === 'Context.md')).toBe(false);
 	});

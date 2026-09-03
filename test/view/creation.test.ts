@@ -2,7 +2,8 @@
 import { describe, expect, it, vi } from 'vitest';
 import { FakeVault } from '../helpers/vault';
 import { Modal, Notice } from '../helpers/obsidian-mock';
-import { fixture, flush, makeView, noTypeFolders, rowByTitle, submitButton, submitPrompt, useViewHarness } from '../helpers/view';
+import { fixture, flush, makeView, noTypeFolders, refresh, rowByTitle, submitButton, submitPrompt, useViewHarness } from '../helpers/view';
+import { WriteLock } from '../../src/view/writeLock';
 
 useViewHarness();
 
@@ -45,7 +46,7 @@ describe('item creation', () => {
 		const fm = vault.fm('Backlog/Login flow.md');
 		expect(fm['type']).toBe('Feature');
 		expect(fm['parent']).toBe('[[Epic A]]');
-		expect(fm['order']).toBe(20);
+		expect(fm['order']).toBe(1010);
 		expect(Notice.messages.some((m) => m.startsWith('Created'))).toBe(true);
 	});
 
@@ -176,7 +177,7 @@ describe('creation flows', () => {
 		await flush();
 
 		// After the real epics (order 200), not squeezed between the focus rows
-		expect(vault.fm('Fresh Feature.md')['order']).toBe(210);
+		expect(vault.fm('Fresh Feature.md')['order']).toBe(1200);
 	});
 
 	it('infers the folder from hidden items when a focused view is empty', async () => {
@@ -211,6 +212,184 @@ describe('creation flows', () => {
 		const fm = vault.fm('Backlog/Epic X/Fast checkout.md');
 		expect(fm['type']).toBe('Feature');
 		expect(fm['parent']).toBe('[[Epic X]]');
+	});
+
+	/**
+	 * A rank is one number over the whole population now, so a creation asks
+	 * `orderForTarget` the same question every drop asks — and inherits its refusals.
+	 * A note created at a fallback rank is worse than no note: the number may be taken,
+	 * and it is nowhere near the slot the user asked for.
+	 */
+	describe('when the rank refuses', () => {
+		it('creates nothing when the parent was deleted while the prompt was open', async () => {
+			const vault = new FakeVault();
+			vault.addFile('Backlog/Epic A.md', { frontmatter: { type: 'Epic', order: 1000 } });
+			const { view, containerEl } = makeView(vault, noTypeFolders());
+
+			rowByTitle(containerEl, 'Epic A')
+				.querySelector<HTMLElement>('.pbl-add')
+				?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+			// The prompt is modal and the model rebuilds under it.
+			vault.files.delete('Backlog/Epic A.md');
+			refresh(view, vault);
+			submitPrompt({ title: 'Orphan' });
+			await flush();
+
+			expect(vault.fm('Backlog/Orphan.md')).toEqual({});
+			expect(Notice.messages).toContain('That item’s parent no longer exists, so nothing was created.');
+		});
+
+		it('creates a child after the model rebuilt under the open prompt', async () => {
+			const vault = new FakeVault();
+			vault.addFile('Backlog/Epic A.md', { frontmatter: { type: 'Epic', order: 1000 } });
+			const { view, containerEl } = makeView(vault, noTypeFolders());
+
+			rowByTitle(containerEl, 'Epic A')
+				.querySelector<HTMLElement>('.pbl-add')
+				?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+			// The captured parent is an object from the OLD model; the placement has to
+			// find the live one by PATH or every creation refuses on a healthy vault.
+			refresh(view, vault);
+			submitPrompt({ title: 'Fresh' });
+			await flush();
+
+			expect(vault.fm('Backlog/Fresh.md')['order']).toBe(2000);
+		});
+
+		it('places a child in a legacy vault through the same fallback a drop uses', async () => {
+			const vault = new FakeVault();
+			// Sibling-scoped ranks, which is what every vault holds before Seed ships: Epic A
+			// and its first child both carry 10. A drop reorders this vault fine (the peer
+			// fallback), so a creation that refused would leave a vault that can be dragged
+			// around but not added to.
+			vault.addFile('Backlog/Epic A.md', { frontmatter: { type: 'Epic', order: 10 } });
+			vault.addFile('Backlog/A1.md', { frontmatter: { type: 'Feature', order: 10 }, parentLink: 'Epic A' });
+			vault.addFile('Backlog/A2.md', { frontmatter: { type: 'Feature', order: 20 }, parentLink: 'Epic A' });
+			vault.addFile('Backlog/Epic B.md', { frontmatter: { type: 'Epic', order: 20 } });
+			const { containerEl } = makeView(vault, noTypeFolders());
+
+			rowByTitle(containerEl, 'Epic A')
+				.querySelector<HTMLElement>('.pbl-add')
+				?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+			submitPrompt({ title: 'A3' });
+			await flush();
+
+			const order = vault.fm('Backlog/A3.md')['order'];
+			expect(order).toBe(1020);
+			// The fallback's own rule: a peer-scoped number is only taken when the population
+			// does not already hold it.
+			const others = [...vault.files.keys()]
+				.filter((path) => path !== 'Backlog/A3.md')
+				.map((path) => vault.fm(path)['order']);
+			expect(others).not.toContain(order);
+		});
+
+		it('creates nothing under a parent whose neighbour has no rank yet', async () => {
+			const vault = new FakeVault();
+			// A vault nobody has run the set-up button over: absence is not a low rank, so
+			// there is no position to place a new note relative to.
+			vault.addFile('Backlog/Epic A.md', { frontmatter: { type: 'Epic' } });
+			const { containerEl } = makeView(vault, noTypeFolders());
+
+			rowByTitle(containerEl, 'Epic A')
+				.querySelector<HTMLElement>('.pbl-add')
+				?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+			submitPrompt({ title: 'Nowhere' });
+			await flush();
+
+			expect(vault.fm('Backlog/Nowhere.md')).toEqual({});
+			expect(Notice.messages).toContain(
+				'That item has no rank yet. Use the toolbar’s set-up button to fill in the missing ones.',
+			);
+		});
+
+		it('leaves a collapsed parent collapsed when the placement refuses', async () => {
+			// **Asserted on the collapse STATE, not on the rendered rows.** Nothing re-renders
+			// in this harness, so a row list reads the same either way and would pass against
+			// the defect — the trap `cardMoves.ts`'s identical fix was caught by.
+			const squeezed = new FakeVault();
+			squeezed.addFile('Backlog/Epic A.md', { frontmatter: { type: 'Epic', order: 1 } });
+			squeezed.addFile('Backlog/F1.md', { frontmatter: { type: 'Feature', order: 2 }, parentLink: 'Epic A' });
+			squeezed.addFile('Backlog/Epic B.md', { frontmatter: { type: 'Epic', order: 2.000001 } });
+			const refused = makeView(squeezed, noTypeFolders(), { collapsed: true });
+			expect(refused.view.isCollapsed('Backlog/Epic A.md')).toBe(true);
+
+			rowByTitle(refused.containerEl, 'Epic A')
+				.querySelector<HTMLElement>('.pbl-add')
+				?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+			submitPrompt({ title: 'Squeezed' });
+			await flush();
+
+			expect(refused.view.isCollapsed('Backlog/Epic A.md')).toBe(true);
+
+			// The control, or "never reveal" would pass this too: the same gesture with room
+			// left DOES open the parent, because the new child has to be visible.
+			const roomy = new FakeVault();
+			roomy.addFile('Backlog/Epic A.md', { frontmatter: { type: 'Epic', order: 1 } });
+			roomy.addFile('Backlog/F1.md', { frontmatter: { type: 'Feature', order: 2 }, parentLink: 'Epic A' });
+			roomy.addFile('Backlog/Epic B.md', { frontmatter: { type: 'Epic', order: 1000 } });
+			const accepted = makeView(roomy, noTypeFolders(), { collapsed: true });
+
+			rowByTitle(accepted.containerEl, 'Epic A')
+				.querySelector<HTMLElement>('.pbl-add')
+				?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+			submitPrompt({ title: 'Roomy' });
+			await flush();
+
+			expect(accepted.view.isCollapsed('Backlog/Epic A.md')).toBe(false);
+		});
+
+		it('creates nothing when there is no room left for the rank', async () => {
+			const vault = new FakeVault();
+			vault.addFile('Backlog/Epic A.md', { frontmatter: { type: 'Epic', order: 1 } });
+			vault.addFile('Backlog/F1.md', { frontmatter: { type: 'Feature', order: 2 }, parentLink: 'Epic A' });
+			// The next row in the global population sits a rounding step above F1, so
+			// there is no six-decimal number strictly between them.
+			vault.addFile('Backlog/Epic B.md', { frontmatter: { type: 'Epic', order: 2.000001 } });
+			const { containerEl } = makeView(vault, noTypeFolders());
+
+			rowByTitle(containerEl, 'Epic A')
+				.querySelector<HTMLElement>('.pbl-add')
+				?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+			submitPrompt({ title: 'Squeezed' });
+			await flush();
+
+			expect(vault.fm('Backlog/Squeezed.md')).toEqual({});
+			expect(Notice.messages).toContain(
+				'No room left between those two items. Run "Respace ranks" from the command palette.',
+			);
+		});
+	});
+
+	it('refuses to create while a batch holds the plugin-wide lock', async () => {
+		// Creation is a vault write that is not a frontmatter batch — `runFileWrite`'s own
+		// shape — and it was the one such write taking no lock at all. Both halves are
+		// inside the exclusive section, not just the write: `newItemOrder` reads
+		// `host.model`, which the gate deliberately holds stale until the batch it is
+		// deferring finishes, so a rank taken here would be computed against numbers a
+		// whole-population rewrite has already replaced and the note would land in the
+		// wrong place — the half that survives locking the write alone.
+		const vault = fixture();
+		const lock = new WriteLock();
+		let release: () => void = () => {};
+		// Stall the OTHER view's batch, so the creation arrives while it is in flight.
+		vault.beforeWrite = (path) => (path === 'Epic A.md' ? new Promise<void>((r) => (release = r)) : undefined);
+		const writer = makeView(vault, {}, { lock });
+		const { containerEl } = makeView(vault, noTypeFolders(), { lock });
+		const epic = vault.entries().find((e) => e.file.path === 'Epic A.md')!.file;
+
+		const batch = writer.view.applySafely([{ file: epic, order: 99 }]);
+		await flush();
+		rowByTitle(containerEl, 'Epic B')
+			.querySelector<HTMLElement>('.pbl-add')
+			?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+		submitPrompt({ title: 'Mid-batch' });
+		await flush();
+
+		expect(vault.app.vault.getFileByPath('Mid-batch.md')).toBeNull();
+		expect(Notice.messages).toContain('Still applying the previous change — try again in a moment.');
+		release();
+		await batch;
 	});
 
 	it('surfaces creation failures as a notice', async () => {

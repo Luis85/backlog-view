@@ -286,14 +286,20 @@ export function demoVault(layout: Layout = 'flat', extra = 0): FakeVault {
 	// — which is the whole of what "visually distinct from a milestone" can be looked at for.
 	// Its date is `target-date`, the key `releaseDateProperty` ships pointing at, so this
 	// draws with no option set for it.
-	add('1.2.0', { type: 'Release', version: '1.2.0', 'target-date': '2026-10-14', status: 'Planned' });
+	//
+	// **Both releases carry an `order`, and the last root MUST.** A creation is a placement
+	// now: the toolbar's New button appends after the last root in the ranked population,
+	// and an anchor with no rank refuses rather than inventing a number — so leaving these
+	// two blank made the harness's own New-item dialog create nothing. Their numbers keep
+	// them where they were already drawn, which is last, in this order.
+	add('1.2.0', { type: 'Release', version: '1.2.0', order: 70, 'target-date': '2026-10-14', status: 'Planned' });
 	// A SECOND release, on `Ship 1.0`'s own day — the case the first one cannot show and the
 	// one a review found broken (PR #211): two full-height marks at one x drew two lines a
 	// pixel apart and two opaque 140px labels on top of each other, so whichever pass ran
 	// first lost its name outright. What is drawn now is ONE label naming both and the
 	// release's line stepped aside by the scale's line width, and neither half of that is
 	// visible where every mark stands alone. Dated by `target-date` like its sibling above.
-	add('1.1.0', { type: 'Release', version: '1.1.0', 'target-date': '2026-09-30', status: 'Planned' });
+	add('1.1.0', { type: 'Release', version: '1.1.0', order: 80, 'target-date': '2026-09-30', status: 'Planned' });
 
 	// Four unavailable stretches, which are the resources axis's second SOURCE and are not
 	// work items at all — no parent, no rank, no state. One in a row that already has bars,

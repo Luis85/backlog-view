@@ -3,9 +3,9 @@ import { defaultSettings } from '../../src/domain/settings';
 import { settingsWith } from '../helpers/settings';
 import { BacklogItem } from '../../src/domain/model';
 import { buildModel } from '../../src/domain/model';
+import { computeInitWrites } from '../../src/domain/rankBackfill';
 import {
 	computeDeliverableStateWrites,
-	computeInitWrites,
 	computeAssigneeWrites,
 	computePriorityWrites,
 	computeResourceMoveWrites,
@@ -103,7 +103,7 @@ describe('computeInitWrites — the Deliverable state stub', () => {
 		const configured = settingsWith({ deliverableStateKey: 'deliverableStatus' });
 		const model = buildModel(vault.app, vault.entries(), configured);
 
-		const writes = computeInitWrites(model, configured);
+		const writes = computeInitWrites(model, configured).writes;
 
 		const forD = writes.find((w) => w.file.path === 'D.md');
 		const forP = writes.find((w) => w.file.path === 'P.md');
@@ -125,7 +125,7 @@ describe('computeInitWrites — the test workflow state stub', () => {
 		const configured = settingsWith({ testStateKey: 'testStatus' });
 		const model = buildModel(vault.app, vault.entries(), configured);
 		const stubsFor = (path: string) =>
-			computeInitWrites(model, configured).find((w) => w.file.path === path)?.stubs ?? [];
+			computeInitWrites(model, configured).writes.find((w) => w.file.path === path)?.stubs ?? [];
 		expect(stubsFor('Case.md')).toContain('testState');
 		expect(stubsFor('Test task.md')).toContain('testState');
 		expect(stubsFor('Epic.md')).not.toContain('testState');
@@ -152,7 +152,7 @@ describe('computeInitWrites — the test workflow state stub', () => {
 		});
 		const model = buildModel(vault.app, vault.entries(), settings);
 		const stubsFor = (path: string) =>
-			computeInitWrites(model, settings).find((w) => w.file.path === path)?.stubs ?? [];
+			computeInitWrites(model, settings).writes.find((w) => w.file.path === path)?.stubs ?? [];
 		expect(stubsFor('Epic.md')).toContain('state');
 		expect(stubsFor('Case.md')).not.toContain('state');
 		expect(stubsFor('Typeless.md')).not.toContain('state');
@@ -178,7 +178,7 @@ describe('computeInitWrites — the test workflow state stub', () => {
 		const settings = settingsWith({ stateKey: 'status' });
 		const model = buildModel(vault.app, vault.entries(), settings);
 		const stubsFor = (path: string) =>
-			computeInitWrites(model, settings).find((w) => w.file.path === path)?.stubs ?? [];
+			computeInitWrites(model, settings).writes.find((w) => w.file.path === path)?.stubs ?? [];
 		expect(stubsFor('Epic.md')).toContain('state');
 		expect(stubsFor('Case.md')).toContain('state');
 		expect(stubsFor('Runbook.md')).toContain('state');
@@ -195,7 +195,7 @@ describe('computeInitWrites — the test workflow state stub', () => {
 		vault.addFile('Runbook.md', { frontmatter: { type: 'Deliverable', order: 30 } });
 		const settings = settingsWith({ stateKey: 'status', deliverableStateKey: 'status', testStateKey: 'status' });
 		const model = buildModel(vault.app, vault.entries(), settings);
-		const writeFor = (path: string) => computeInitWrites(model, settings).find((w) => w.file.path === path);
+		const writeFor = (path: string) => computeInitWrites(model, settings).writes.find((w) => w.file.path === path);
 		for (const path of ['Epic.md', 'Case.md', 'Runbook.md']) {
 			expect(writeFor(path)?.stubs).toEqual(expect.arrayContaining(['state', 'deliverableState', 'testState']));
 		}
@@ -235,7 +235,7 @@ describe('computeInitWrites — the iteration goal stub', () => {
 		const settings = settingsWith({ iterationGoalKey: 'goal', stateKey: 'status' });
 		const model = buildModel(vault.app, vault.entries(), settings);
 
-		const writes = computeInitWrites(model, settings);
+		const writes = computeInitWrites(model, settings).writes;
 		for (const write of writes) {
 			expect(stubKeys(settings, write.stubs)).not.toContain('goal');
 		}
@@ -258,7 +258,7 @@ describe('computeInitWrites — the release membership stub', () => {
 		const settings = settingsWith({ releaseKey: 'release', stateKey: 'status' });
 		const model = buildModel(vault.app, vault.entries(), settings);
 
-		const writes = computeInitWrites(model, settings);
+		const writes = computeInitWrites(model, settings).writes;
 		for (const write of writes) {
 			expect(write.stubs ?? []).not.toContain('release');
 			expect(stubKeys(settings, write.stubs)).not.toContain('release');

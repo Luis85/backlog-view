@@ -41,6 +41,10 @@ See [RELEASING.md](RELEASING.md) for how this file is kept in step with a releas
   view.
 - `npm run check` typechecks `test/` as well as `src/` (`npm run typecheck:test`), so a
   test calling a function with the wrong arguments fails the gate instead of passing.
+- Rank the rows of a focused backlog by hand: with a focus level on, a drag, Alt+↑/↓ or the
+  menu's `Move` entries write the dragged row's `order` and nothing else.
+- Two palette commands rewrite every rank at once — `Seed ranks from the hierarchy` in the
+  order the tree draws it, and `Respace ranks` keeping the order already on screen.
 - Every shipped catalog is checked against English — the same keys, the same parameters,
   and the plural categories its own language has — so a half-finished translation fails
   the build instead of rendering half in English.
@@ -60,6 +64,21 @@ See [RELEASING.md](RELEASING.md) for how this file is kept in step with a releas
 - `npm run check` runs both its typechecks incrementally (cached under
   `node_modules/.cache/`), which takes the test typecheck from 11 s to 2–5 s on a
   second local run; CI still runs them cold.
+- **Breaking:** `order` is one rank over everything the base returns rather than a position
+  inside a sibling group, which is what makes a focused backlog orderable at all — its rows
+  come from many parents and can only be ranked against each other if the number means the
+  same thing for all of them. Two consequences before you upgrade: ordering a focused list
+  also orders each item inside its own group, since there is one rank and it is the tree's;
+  and a move with no room left between its two neighbours is refused rather than renumbering
+  the group to make room, so a drop writes one note or none and `Respace ranks` is what
+  reopens the space. An existing vault keeps working untouched — where two neighbouring
+  ranks are equal, which is what the old scheme produced, the placement falls back to the
+  arithmetic that vault was written with — but it draws its focused lists in tree order
+  until you run `Seed ranks from the hierarchy` once, and nothing announces which of the two
+  is answering.
+- The ✨ set-up button gives a blank `order` a rank that keeps the row where it is drawn
+  rather than appending it after its siblings, and reports a rank it could not place as
+  skipped instead of counting it as nothing to do.
 - The sentences that tell you to set a view option now quote that option's own label, so a
   renamed option cannot leave the guidance pointing at a control you cannot find.
 - The roadmap's dated axis names its header cells in your own language — months, the day a
@@ -68,6 +87,10 @@ See [RELEASING.md](RELEASING.md) for how this file is kept in step with a releas
   `29 Jun`); a quarter stays `Q3` everywhere.
 - The release summary's effort figures now read in the unit the view declares rather than
   always saying `pts`, and say nothing about units where none is set.
+- `main.js` ships about 492 KB, up from the 480 KB ceiling the previous release fitted
+  under. Its budget is raised to 512 KB as a decision, not a measurement: this release adds
+  the two rank commands, release readiness, the catalog-completeness checks and a catalog
+  grown from 763 keys to 837. No new dependency reached the bundle.
 
 ### Fixed
 
@@ -79,6 +102,27 @@ See [RELEASING.md](RELEASING.md) for how this file is kept in step with a releas
 - Counts and ratios on screen are now grouped and separated the way your language writes
   numbers, so a count on a card and the same number read aloud no longer disagree at a
   thousand.
+- `Move to bottom`/`Move down` on a tree row past an ancestor pulled in from outside the
+  filter no longer anchors on it: that row carries no rank to give, so the write landed
+  past the whole backlog instead of beside the sibling it looked like it moved next to.
+- Dropping the first child into a childless, tied item on an unseeded vault now ranks one
+  spacing clear of it instead of a shared constant, which collided on the very next such
+  drop anywhere in the vault and refused every one after the first.
+- `Indent under "X"` now reports when `X` has left the base between opening the menu and
+  clicking, instead of doing nothing with no explanation.
+- `Indent under "X"` now also reports when `X` is still in the base but is no longer a
+  valid parent — retyped onto the other ladder, or turned into the subject's own
+  descendant — instead of doing nothing with no explanation.
+- A drop into a parent, an indent, and `New <child>` — from the backlog toolbar, a row's
+  own add button, or a release's scope tree — no longer anchor on a trailing unranked
+  context row among the destination's children (or the real roots): each now ranks
+  against the last REAL sibling instead of silently landing past the whole population.
+- `Outdent` past a parent that is an unranked context row — no rank to place it after —
+  is withheld from the menu and reports on Alt+Left, instead of silently landing the item
+  at the bottom of the whole backlog.
+- `Respace ranks` run again over a backlog it has already spaced now says every rank
+  already holds the number it would write, instead of reporting a rewrite of notes it left
+  untouched and an undo it never armed.
 - Two timeline tests measured against the calendar rather than a fixed day, so they began
   failing a fortnight after they were written.
 - My work: the Next marker stays inside the pane at every width, the state chip shows its

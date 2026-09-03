@@ -1,20 +1,14 @@
 import { TFile } from 'obsidian';
-import { DropTarget } from './dropTargets';
+import { DropTarget, isUnrankedContext } from './dropTargets';
 import { BacklogItem, BacklogModel } from './model';
-import { childLevelIndex, isReleaseType, mayHoldField, PlacementEnd, schemaEnds } from './itemTypes';
+import { isReleaseType, PlacementEnd } from './itemTypes';
 import { statedEnds } from './bars';
 import { CivilDate, readDate, sameValue } from './noteFields';
 import { daysBetween, formatCivil } from './timeline';
-import { hasHorizonAxis } from './roadmap';
-import { stateKeyFor } from './board';
 import { BacklogSettings, isDoneValue, isStartedValue } from './settings';
-import {
-	OPTIONAL_FIELDS,
-	OptionalField,
-	optionalKeyFor,
-	resolvedDeliverableStateKey,
-	resolvedTestStateKey,
-} from './optionalProperties';
+import { OptionalField } from './optionalProperties';
+import { edgeRank, ORDER_SPACING, rankBetween, RankResult } from './rankArithmetic';
+import { distinctlyRanked, drawnInRankOrder } from './rankOrder';
 
 /**
  * What a change to the tree *would* write, worked out without touching anything.
@@ -22,11 +16,6 @@ import {
  * be in one is this module's, which is why every function here is pure and every
  * ordering rule is testable without a vault.
  */
-
-/** Spacing between freshly assigned order values, leaving room to drop items in between. */
-export const ORDER_SPACING = 10;
-/** Below this gap between neighbors, sibling orders get renumbered instead of subdivided. */
-const MIN_GAP = 0.002;
 
 /** A pending frontmatter update for a single file. Fields left undefined are not touched. */
 export interface ItemWrite {
@@ -229,39 +218,20 @@ export interface AxisWrite {
 }
 
 /**
- * Compute the frontmatter writes for dropping `dragged` at the given target position.
- * Uses the gap between neighbor orders when possible; falls back to renumbering
- * the whole sibling group when orders are missing or too tightly packed.
+ * The parent frontmatter update, or undefined when the parent is unchanged.
+ *
+ * `target.parentUnchanged` is asked FIRST and short-circuits everything below it — a
+ * focus rank restates `dragged`'s own current parent rather than deciding one, and when
+ * that parent is `null` (an unresolved link) it is otherwise indistinguishable from an
+ * EXPLICIT top-level placement, which is the one case the stale-link clearing below
+ * exists for. Without this check a focused reorder of a row with an unresolved parent
+ * link would delete the property on every move: `parent === null`, `dragged.parent ===
+ * null` and `dragged.hasParentValue` all read exactly as they do for a genuine drop onto
+ * the root group, and the two cannot be told apart from the values alone.
  */
-export function computeDropWrites(dragged: BacklogItem, target: DropTarget): ItemWrite[] {
-	const { parent, siblings, insertIndex } = target;
-	const parentField = computeParentField(dragged, parent);
-
-	const order = computeInsertOrder(siblings, insertIndex);
-	if (order !== null) {
-		return [{ file: dragged.file, parent: parentField, order }];
-	}
-	// Renumbering rewrites every sibling, and the view never writes to a note the
-	// Base excluded. Placing the item past the highest order we can see keeps the
-	// drop working while touching only the note being moved. Callers refuse the
-	// *positional* drops in such a group, so landing last is what was asked for.
-	if (siblings.some((s) => s.outsideFilter)) {
-		return [{ file: dragged.file, parent: parentField, order: afterHighestKnown(siblings) }];
-	}
-	return renumberWrites(dragged, siblings, insertIndex, parentField);
-}
-
-/** One spacing beyond the highest order in the group, ignoring siblings that have none. */
-function afterHighestKnown(siblings: BacklogItem[]): number {
-	let max = 0;
-	for (const sibling of siblings) {
-		if (sibling.order !== null && sibling.order > max) max = sibling.order;
-	}
-	return Math.floor(max) + ORDER_SPACING;
-}
-
-/** The parent frontmatter update, or undefined when the parent is unchanged. */
-function computeParentField(dragged: BacklogItem, parent: BacklogItem | null): TFile | null | undefined {
+function computeParentField(dragged: BacklogItem, target: DropTarget): TFile | null | undefined {
+	if (target.parentUnchanged) return undefined;
+	const parent = target.parent;
 	const oldParentPath = dragged.parent?.file.path ?? null;
 	const newParentPath = parent?.file.path ?? null;
 	// An item whose parent link points outside the view renders as a root while the
@@ -725,223 +695,298 @@ export function computeScheduleWrites(
 	return planned ? [{ file: item.file, axis }] : [];
 }
 
-/** The order value for the insertion slot, or null when the group needs renumbering. */
-function computeInsertOrder(siblings: BacklogItem[], insertIndex: number): number | null {
-	const prev = insertIndex > 0 ? siblings[insertIndex - 1] : null;
-	const next = insertIndex < siblings.length ? siblings[insertIndex] : null;
-	if (!prev && !next) return ORDER_SPACING;
-	if (prev && next) return orderBetween(prev.order, next.order);
-	if (prev) return prev.order !== null ? Math.floor(prev.order) + ORDER_SPACING : null;
-	return next !== null && next.order !== null ? roundOrder(Math.ceil(next.order) - ORDER_SPACING) : null;
-}
-
-/** Halfway between two ordered neighbors; null when a value is missing or the gap is spent. */
-function orderBetween(prevOrder: number | null, nextOrder: number | null): number | null {
-	if (prevOrder === null || nextOrder === null) return null;
-	if (nextOrder - prevOrder <= MIN_GAP) return null;
-	return roundOrder(prevOrder + (nextOrder - prevOrder) / 2);
-}
-
-/** Renumber the whole sibling group, including the dragged item at its new position. */
-function renumberWrites(
-	dragged: BacklogItem,
-	siblings: BacklogItem[],
-	insertIndex: number,
-	parentField: TFile | null | undefined,
-): ItemWrite[] {
-	const sequence = [...siblings];
-	sequence.splice(insertIndex, 0, dragged);
-	const writes: ItemWrite[] = [];
-	sequence.forEach((item, i) => {
-		const slot = (i + 1) * ORDER_SPACING;
-		if (item === dragged) {
-			writes.push({ file: item.file, parent: parentField, order: slot });
-		} else if (item.order !== slot) {
-			writes.push({ file: item.file, order: slot });
-		}
-	});
-	return writes;
-}
-
 /**
- * The configured optional keys this note does not carry. Creating the key empty is
- * the whole of what a backfill can honestly do for these: the property becomes
- * visible and editable in Obsidian's own property editor, while the item keeps the
- * state, the horizon and the dates it had — none — so pressing the button moves
- * nothing on the board or the roadmap, the same promise it already makes about the
- * tree. Writing a state or a placement instead would invent a plan, which on a
- * roadmap is indistinguishable from a decision.
- */
-
-/** Each workflow-state field's own resolved key — `state`'s never falls back to be one. */
-const WORKFLOW_STATE_KEY: Partial<Record<OptionalField, (settings: BacklogSettings) => string>> = {
-	state: (settings) => settings.stateKey,
-	deliverableState: resolvedDeliverableStateKey,
-	testState: resolvedTestStateKey,
-};
-
-/**
- * True when `field` is a date END this item's TYPE does not have — the third carve-out
- * `missingKeyStubs` makes on one rule: do not create a property that means nothing on the
- * note it lands on. Extracted rather than written inline beside the other two, because the
- * loop it guards is at its cognitive budget and a compound condition inside it breached
- * that budget rather than review.
+ * The rank for a placement, stated ONCE for every placement there is.
  *
- * One type reaches it: a `Milestone`, which is a point and was being handed the START key
- * ✨ created for it — the one the generated README tells the reader this view will never
- * place a milestone by. Its target is still stubbed, because that one it can fill.
+ * A placement decides an anchor row and a side; the number comes from the anchor's
+ * neighbours in the globally rank-sorted population — never from the peer group, and
+ * never from forest traversal. After one cross-parent move DFS preorder is no longer
+ * global order, so "the next row in the forest" can hold a LOWER rank than the last
+ * peer, and a midpoint of an inverted pair is not a near miss.
  *
- * Reached through `schemaEnds`, which is where "which date properties this type's note
- * carries" is stated, so the backfill cannot drift from the writer and the controls.
- *
- * `schemaEnds` and NOT `placementEnds`: an `Iteration` is drawn at one date or two
- * depending on a display option, and carries both either way. Asking the placement
- * question here made ✨ withhold the start key an iteration's own editor writes.
+ * `ranked` must not contain the item being placed, or it becomes its own neighbour.
  */
-function missingEnd(field: OptionalField, item: BacklogItem): boolean {
-	if (field !== 'start' && field !== 'target') return false;
-	return !schemaEnds(item.typeName).includes(field);
+export function anchoredOrder(
+	ranked: BacklogItem[],
+	anchor: BacklogItem | null,
+	side: 'before' | 'after',
+): RankResult {
+	// **An unranked CONTEXT row is skipped, not refused.** It can never be given a
+	// rank — `computeInitWrites` skips `outsideFilter` rows and `spreadAround` filters
+	// them, both correctly, because the view may not write to a note the Base excluded
+	// — so refusing beside one is a permanent block behind advice that cannot work:
+	// `rank.unranked` tells the user to run the backfill, and the backfill is one of
+	// the two things that will not touch it. Constraining nothing, it is ignored here.
+	//
+	// An unranked WRITABLE row still refuses. The backfill CAN rank that one, so the
+	// advice is actionable and the refusal is a prompt rather than a dead end. The two
+	// look identical at the `order === null` test and must not be treated alike.
+	const usable = ranked.filter((item) => !(item.outsideFilter && item.order === null));
+	// The anchor itself can be one: a context parent is a legal destination for
+	// `New <child>`. There is no positional information in a rankless row, so the
+	// child goes to the end rather than nowhere.
+	if (isUnrankedContext(anchor)) return anchoredOrder(usable, null, 'after');
+	// **An empty population with an anchor is not an empty population.** The peer-scoped
+	// fallback's own population IS the peer list (`dropPlacement`), so a childless drop
+	// target reaches here with `usable` empty and the destination row itself as anchor —
+	// a row this population never held to begin with. Discarding it answered a constant
+	// unrelated to the drop site, and because it was a constant, `rankTaken` found it
+	// occupied on the very next such drop anywhere in the vault: the fallback worked once
+	// per vault and refused `tied` from then on. Only the anchorless case is the first
+	// rank in an empty backlog; an anchor still has something to be one spacing clear of,
+	// via the one arithmetic `edgeRank` already is — and an anchor with no order of its
+	// own has nothing to get clear of, which is the same `unranked` refusal the global
+	// path answers for a null-order neighbour just below.
+	if (usable.length === 0) {
+		if (anchor === null) return { order: ORDER_SPACING };
+		if (anchor.order === null) return { refusal: 'unranked' };
+		return edgeRank(anchor.order, side);
+	}
+	const pair = neighbourPair(usable, anchor, side);
+	if (pair === null) return { refusal: 'unranked' };
+	const { prev, next } = pair;
+	// **A neighbour that EXISTS without a rank is a refusal, not an open end.** `rankBetween`
+	// reads null as "nothing that side", and the two are different facts about the vault:
+	// one is the edge of the population, the other is a row whose rank nobody has written.
+	if ((prev !== null && prev.order === null) || (next !== null && next.order === null)) {
+		return { refusal: 'unranked' };
+	}
+	return rankBetween(prev?.order ?? null, next?.order ?? null);
 }
 
 /**
- * True for a field this backfill NEVER stubs, whatever note it is looking at — as against
- * the three carve-outs below, each of which asks something about the item.
+ * The anchor's neighbours in `ranked` for the given side, or null when the anchor
+ * is not in the population at all.
+ */
+function neighbourPair(
+	ranked: BacklogItem[],
+	anchor: BacklogItem | null,
+	side: 'before' | 'after',
+): { prev: BacklogItem | null; next: BacklogItem | null } | null {
+	if (anchor === null) {
+		// No anchor means an edge of the whole population.
+		return side === 'after' ? { prev: ranked[ranked.length - 1], next: null } : { prev: null, next: ranked[0] };
+	}
+	const idx = ranked.indexOf(anchor);
+	if (idx === -1) return null;
+	return side === 'before'
+		? { prev: ranked[idx - 1] ?? null, next: anchor }
+		: { prev: anchor, next: ranked[idx + 1] ?? null };
+}
+
+/**
+ * The anchor a target implies: the last peer, or the destination row itself when
+ * there is none. An empty peer group is the commonest placement there is — the first
+ * child of a parent, a drop inside a leaf — which is why the anchor is stated over the
+ * DESTINATION rather than over the peers.
  *
- * Three returns rather than one condition, because the three reasons are unrelated and
- * two rules that agree today are still two rules. Extracted out of `missingKeyStubs`'s
- * loop, mirroring `missingEnd`: three refusals, each with its own distinct reason,
- * gathered into one predicate rather than written inline three separate times.
+ * **Not exported, and that is the rule ADR 0034 states rather than a tidy-up**: every
+ * placement goes through `dropPlacement`, because a caller reaching this function
+ * directly skips the dragged-row filter and the peer fallback — which is the shipped bug
+ * the ADR records (`newItemOrder` made a legacy vault one a user could drag around and
+ * not add to). An export only the test used re-opened that door; the test asks
+ * `dropPlacement` with a null `dragged`, which is this function plus a fallback no
+ * fixture there is tied enough to reach.
  */
-function neverStubbed(field: OptionalField): boolean {
-	// An empty state or an empty date is a slot on this note the user is invited to fill;
-	// an empty prerequisite list is a claim about a RELATIONSHIP that does not exist, made
-	// on every note at once. It is also exactly the state `Linking two items` requires a
-	// removal never to leave behind, so backfilling one would have ✨ create what a remove
-	// must clean up.
-	if (field === 'dependsOn') return true;
-	// A goal belongs to one type. `✨` stubs an empty key on every note that lacks one,
-	// which is honest for a state or a date and dishonest here: a `goal` on every PBI,
-	// Feature and Task in the vault is a property that means nothing on the note it lands
-	// on.
-	if (field === 'iterationGoal') return true;
-	// An empty release is not an empty slot. `membershipTarget` (`domain/releases.ts`)
-	// reads a present-but-blank value as an UNRESOLVED membership rather than as "names
-	// none", so stubbing one here would have ✨ report every work item in the vault as a
-	// broken membership on the release index — the screen this property exists to populate.
-	if (field === 'release') return true;
-	return false;
-}
-
-function missingKeyStubs(item: BacklogItem, settings: BacklogSettings): OptionalField[] {
-	const stubs: OptionalField[] = [];
-	// The vocabulary NARROWED to what this note's type may hold, before any question about
-	// gaps: a key the type refuses is not a gap in it. Stated here rather than as a fourth
-	// early return below because it is not a rule about a field — it asks `mayHoldField`
-	// (`domain/itemTypes.ts`), which is where the rule lives for every door a planning key
-	// reaches a note through. Without it, ✨ writes the backlog roadmap's own horizon and
-	// both date keys onto a `Release`, the type this branch spends its diff declaring
-	// unplaceable — empty, which is pollution rather than placement, and still not "not
-	// written". The writer drops them too (`withHoldableStubs`, `storage/frontmatter.ts`),
-	// because a retype between this plan and that callback is a window nothing here sees.
-	const holdable = OPTIONAL_FIELDS.filter((field) => mayHoldField(item.typeName, field, settings));
-	for (const field of holdable) {
-		// A workflow-state field is stubbed only when its own resolved key IS the key
-		// `stateKeyFor` says THIS item's workflow reads — asked by KEY EQUALITY, not by
-		// re-deriving the item's category, so a secondary key left unset (falling back to
-		// `settings.stateKey`, the shipped default) still gets `state` stubbed rather than
-		// skipped. Two fields legitimately CAN resolve to one key — `configProblems` exempts
-		// exactly these three labels from its collision report — and both then pass; that is
-		// harmless rather than narrowed further, because two mechanisms downstream turn the
-		// duplicate names into one property created once. `applyInto`
-		// (`src/storage/frontmatter.ts`) creates a key only while the live note lacks it, and
-		// `touchedKeys` (`src/storage/writeKeys.ts`) dedupes the key list the inverse is
-		// captured from, so the undo cannot read the second copy as a restore conflict.
-		// `stubKeys` does NEITHER — it names one raw key per field, duplicates included.
-		const ownKey = WORKFLOW_STATE_KEY[field];
-		if (ownKey && ownKey(settings) !== stateKeyFor(settings, item)) continue;
-		// A named horizon property with no values is an UNCONFIGURED bucket axis — the
-		// axis the roadmap declines to draw and the menu declines to set. Creating its
-		// key here would be the one write left on an axis nothing else acknowledges,
-		// which is the incoherence `hasHorizonAxis` exists to prevent. The other fields
-		// need no such test: a key of '' is exactly what unconfigured means for them.
-		if (field === 'horizon' && !hasHorizonAxis(settings)) continue;
-		if (neverStubbed(field)) continue;
-		// Joined to the two general refusals rather than given a guard of its own — a rule
-		// specific to one field belongs in `neverStubbed` instead. Every clause here is a
-		// reason not to stub, and `missingEnd` carries its own.
-		if (missingEnd(field, item) || optionalKeyFor(settings, field) === '' || item.ownKeys[field]) continue;
-		stubs.push(field);
-	}
-	return stubs;
+function orderForTarget(ranked: BacklogItem[], target: DropTarget): RankResult {
+	const { peers, insertIndex, parent } = target;
+	if (peers.length === 0) return anchoredOrder(ranked, parent, 'after');
+	if (insertIndex === 0) return anchoredOrder(ranked, peers[0], 'before');
+	return anchoredOrder(ranked, peers[insertIndex - 1], 'after');
 }
 
 /**
- * The gaps in one item's properties, or null when it has none. `nextOrder` is asked
- * only when the rank is the gap, so an item that needs no order does not consume a
- * slot in its sibling group.
+ * The frontmatter writes for dropping `dragged` at the given target.
+ *
+ * Always ONE note: the rank is a midpoint in the global population, so no group is
+ * ever renumbered. An empty result means the placement refused — a spent gap or an
+ * unranked neighbour — and the caller says which.
  */
-function initWriteFor(item: BacklogItem, settings: BacklogSettings, nextOrder: () => number): ItemWrite | null {
-	const write: ItemWrite = { file: item.file };
-	let needed = false;
-	if (item.order === null) {
-		write.order = nextOrder();
-		needed = true;
-	}
-	// An unresolved parent link means the item's real level is unknowable — don't
-	// write a type derived from its provisional top-level position.
-	const levelUnknown = item.parent === null && item.hasParentValue;
-	if (item.typeName === null && !levelUnknown) {
-		// The item's OWN ladder, which for a typeless note is the one it chains from its
-		// parent. This is the half of the implied type that cannot be undone by looking
-		// away: left on `LEVELS`, a typeless child of a `Test suite` would be badged a
-		// `Feature` and then have `Feature` WRITTEN to it, moving the note out of the
-		// catalog and into the plan — permanently, and without anyone asking.
-		write.typeName = item.ladder[childLevelIndex(item.parent, item.ladder)];
-		needed = true;
-	}
-	const stubs = missingKeyStubs(item, settings);
-	if (stubs.length > 0) {
-		write.stubs = stubs;
-		needed = true;
-	}
-	return needed ? write : null;
+export function computeDropWrites(dragged: BacklogItem, target: DropTarget, ranked: BacklogItem[]): ItemWrite[] {
+	const placed = dropPlacement(dragged, target, ranked);
+	if ('refusal' in placed) return [];
+	return [{ file: dragged.file, parent: computeParentField(dragged, target), order: placed.order }];
 }
 
 /**
- * Fill in missing order, type and optional properties across the whole hierarchy
- * without touching values that already exist. Walks the real tree, so a focused view
- * still backfills hidden ancestors and branches outside the focus level.
+ * The placement a MOVE OR A CREATION would take — the planner's own answer, exported so
+ * the caller that names a remedy asks the SAME question rather than a similar one.
+ *
+ * The dragged row is removed from the population before its neighbours are found, or
+ * it becomes its own neighbour. That filter must not be written twice: a caller that
+ * diagnosed against the unfiltered array could see a number where the planner refused
+ * — a drop that does nothing and shows no remedy — which is why the diagnosis goes
+ * through here instead of calling `orderForTarget` beside it.
+ *
+ * **`dragged` is null for a creation**, which is the whole reason it is nullable: the
+ * note does not exist yet, so there is no row to take out of the population and none to
+ * exclude from the collision check. Everything else a placement is — the global answer,
+ * the tie fallback, the check that the fallback's number is free — is the same question
+ * for a note being born as for one being moved, and it must be, or a legacy vault can be
+ * dragged around and not added to. That asymmetry shipped once: `newItemOrder` called
+ * `orderForTarget` directly and got no fallback, so on a sibling-scoped vault a reorder
+ * worked and a `New <child>` beside it refused.
+ *
+ * The name still says `drop` because a drop is the placement everything else is measured
+ * against, and the register (ADR 0034) names it.
  */
-export function computeInitWrites(model: BacklogModel, settings: BacklogSettings): ItemWrite[] {
-	const writes: ItemWrite[] = [];
-	const visit = (siblings: BacklogItem[]) => {
-		// Deliberately reads context siblings' orders too. They are *rendered*, so a
-		// rank that ignored them would place a backfilled item above a row the user
-		// can see — a backfill that fills in blanks must not reorder the tree. Not
-		// writing to them is the rule; not looking at them would break this. The drop
-		// and creation paths (afterHighestKnown, endOfSiblingsOrder) do the same.
-		let maxOrder = 0;
-		for (const item of siblings) {
-			if (item.order !== null && item.order > maxOrder) maxOrder = item.order;
-		}
-		for (const item of siblings) {
-			// Ancestors pulled in from outside the filter are context, not results —
-			// the backfill must not write properties into notes the base excluded.
-			if (item.outsideFilter) {
-				visit(item.children);
-				continue;
-			}
-			const write = initWriteFor(item, settings, () => (maxOrder = Math.floor(maxOrder) + ORDER_SPACING));
-			if (write) writes.push(write);
-			visit(item.children);
-		}
-	};
-	visit(model.realRoots);
-	return writes;
+export function dropPlacement(dragged: BacklogItem | null, target: DropTarget, ranked: BacklogItem[]): RankResult {
+	const global = orderForTarget(
+		ranked.filter((item) => item !== dragged),
+		target,
+	);
+	// **An unmigrated vault falls back to ranking among the peers alone**, which is
+	// exactly the sibling-scoped arithmetic this change replaces. Measured, not
+	// supposed: with legacy ranks (Epic A 10, A1 10, A2 20) moving A2 before A1 sees
+	// Epic A and A1 as its global neighbours and refuses — so every existing vault would
+	// lose ordinary tree reordering, the plugin's core gesture, with no migration
+	// available until the Seed command ships several tasks later.
+	//
+	// **Gated on the TIE, which is a fact about the drop site — never on the refusal, and
+	// never on a question asked of the whole population.** Both of the wider gates were
+	// built here and both were wrong, in ways worth keeping written down:
+	//
+	// - Gated on "the global placement refused", the fallback answers over a `gapSpent`
+	//   that is CORRECT on a seeded vault, substituting a number from the peer bounds
+	//   alone — which is exactly where any non-peer row between those bounds already
+	//   sits. Being between the peer bounds is what makes that collision possible, not
+	//   what prevents it.
+	// - Gated on "the population is not distinctly ranked", one unrelated row defeats it
+	//   from either direction: a single freshly created note with no `order` yet, or one
+	//   legacy tie in some other corner of the vault, re-opens the fallback for a subtree
+	//   that is perfectly seeded. Every whole-population predicate has that shape of hole,
+	//   which is why narrowing it was abandoned rather than repaired.
+	//
+	// A tie has neither problem. Two neighbours holding the SAME number is what the
+	// sibling-scoped scheme produces and what nothing else does, and it is read at the
+	// two rows the placement actually landed between. A spent gap stays a spent gap and
+	// keeps its own remedy; a missing rank stays `unranked` and keeps the backfill.
+	//
+	// Self-limiting: once every row around the drop holds a distinct rank there is no tie
+	// to switch on, and the refusal this used to swallow is reported instead.
+	if (!('refusal' in global) || global.refusal !== 'tied') return invisibleRank(global, dragged, target);
+	const peerScoped = orderForTarget(
+		target.peers.filter((item) => item !== dragged),
+		target,
+	);
+	// **The ANSWER is checked, not only the entry.** Every gate above is about whether the
+	// sibling-scoped arithmetic is the right KIND for this vault, and none of them can say
+	// whether the number it produces is free: both shapes it can return — a midpoint
+	// between two peers, an edge rank one spacing past the outermost one — are functions of
+	// the PEER values alone, while the rows sitting between or beside those peers are by
+	// definition not peers. Two ways it collides, both measured: a non-peer already ranked
+	// between the peer bounds is exactly where a peer midpoint lands, and on a legacy vault
+	// every group is anchored on the same small numbers, so a drop in one group and a drop
+	// in another compute the same edge rank.
+	//
+	// Refused rather than nudged onto a free value. Refusing keeps the arithmetic the one
+	// line ADR 0008 already specifies, it costs nothing on the case this fallback exists
+	// for — the first drop in each group answers a number nobody holds — and the remedy the
+	// `tied` refusal names is Seed, which is precisely what a vault dense enough to
+	// collide here needs — the backfill only fills blanks, and respacing a range holding two
+	// equal numbers cannot separate them.
+	if ('refusal' in peerScoped || !rankTaken(ranked, dragged, peerScoped.order)) return invisibleRank(peerScoped, dragged, target);
+	return invisibleRank(global, dragged, target);
 }
 
-
-/** Orders are fractional ranks; four decimals is well past the gap that triggers renumbering. */
-function roundOrder(value: number): number {
-	return Math.round(value * 10000) / 10000;
+/**
+ * A focus rank that no eye could see, turned into a refusal that says so.
+ *
+ * `inRankOrder` draws a focused list in TREE order whenever its rows are not all
+ * distinctly ranked, so where that fallback will still hold AFTER the write, no number
+ * written here can move anything: the rank would be correct, saved, and invisible, and a
+ * gesture whose entire result is invisible reads as one that failed.
+ *
+ * **Asked of the PEERS, which is the list without the row being written, and that is the
+ * whole of the rule.** Asked of the list INCLUDING the dragged row it refuses the
+ * unmigrated vault the peer fallback exists to serve, and this was written that way
+ * first: two focus rows tied at 5000 are not distinctly ranked, so the wider test refuses
+ * — but writing one of them BREAKS the tie, the list becomes distinct, the fallback lifts
+ * and the move is visible. That is the fallback working, not a defect. What cannot be
+ * fixed by this write is a rank missing from some OTHER row, or a tie between two rows
+ * this gesture does not touch; both leave the fallback holding whatever number lands
+ * here. `test/view/focusedUnrankedContext.test.ts`'s three-input case is the fixture that
+ * caught the wider version.
+ *
+ * **Asked of the ANSWER, never ahead of the arithmetic**, and that ordering is the whole
+ * design. Every refusal the placement can already give — a spent gap, a tie, a neighbour
+ * with no rank — names ONE remedy and names it precisely; this one has to name both,
+ * because either fault produces the fallback. Asked first it would swallow those precise
+ * sentences and send half their readers to the wrong command. It fires only where the
+ * placement would otherwise SUCCEED, which is exactly the case nothing else catches.
+ *
+ * **`parentUnchanged` is what says this is a focus rank** — the flag exists for that
+ * distinction (`src/domain/CLAUDE.md`), so no model has to be threaded in — and
+ * `target.peers` plus the dragged row IS the list `inRankOrder` asks about, which is what
+ * makes the two questions one question. Scoped there and no wider: an ordinary sibling
+ * reorder is drawn by `compareSiblings`, which the fallback does not touch, so a tree
+ * drag beside an unranked sibling still moves its row and is not refused here.
+ */
+function invisibleRank(placed: RankResult, dragged: BacklogItem | null, target: DropTarget): RankResult {
+	if ('refusal' in placed) return placed;
+	if (target.parentUnchanged !== true || dragged === null) return placed;
+	// **Only where the write would LIFT the fallback.** With the writable rows already
+	// distinct the list is drawn in rank order, not tree order, and the drag is an ordinary
+	// visible move — nothing about it can rearrange anybody. Asked unconditionally the guard
+	// refuses one of those: writable `A(10)`, `D(20)` with a context `C(10)` beside them is
+	// correctly drawn (the tie breaks on `entryIndex`), yet peers A and C tie and the strict
+	// test says no. That is a feature loss, and it is the failure the control test beside
+	// this rule exists to catch — it simply did not cover a tie against a context row.
+	// `distinctlyRanked` over the whole list is exactly `inRankOrder`'s own fallback
+	// condition, so the two cannot drift apart.
+	if (distinctlyRanked([...target.peers, dragged])) return placed;
+	// **The peers must already stand in their own rank order, not merely hold distinct
+	// ranks.** Distinctness alone says the fallback WILL lift; it does not say the list comes
+	// back in the sequence the screen is showing. Drawn `A(30), B(10), C(10)`, dropping C at
+	// the top passes a distinctness test on peers A and B, writes C a rank between them, and
+	// redraws `B, C, A`: C is not where it was dropped and untouched B has moved. That is a
+	// worse outcome than the invisible write this guard was built for, so the guard asks the
+	// stronger question — see `drawnInRankOrder`.
+	// **Both questions, and neither implies the other.** `distinctlyRanked` asks whether the
+	// peers left behind can hold an order at all — two WRITABLE rows sharing a rank keep the
+	// fallback open however this row is written, so the number would be invisible.
+	// `drawnInRankOrder` asks whether lifting it preserves the screen. `compareRank` tolerates
+	// a tie that `entryIndex` settles, which is right for the second question and wrong for
+	// the first: drawn `A(10), B(10), C(20)`, the peers A and B pass the comparator on entry
+	// index, C is written, A and B stay tied, the list stays in tree order and C stays last.
+	// That is the invisible write this whole guard exists to refuse, arriving through the
+	// door the comparator opened.
+	// The second question is asked of the SCREEN (`target.drawn`), not of the ranking
+	// population: `rankablePeers` strips an unranked context row out of `peers`, and that
+	// row is drawn wherever the tree puts it while sorting LAST the moment the fallback
+	// lifts. Drawn `C(null), A(5000), B(5000)`, dropping B above A broke the writable tie
+	// and returned `B, A, C` — B past the slot it was dropped into and the untouched context
+	// row at the bottom, through a check that could not see it. `compareRank` places a null
+	// last on its own, so one drawn last still passes and only a misplaced one refuses.
+	return distinctlyRanked(target.peers) && drawnInRankOrder(target.drawn ?? target.peers)
+		? placed
+		: { refusal: 'unseededList' };
 }
+
+/**
+ * Whether some OTHER row already holds this rank.
+ *
+ * One exclusion, and it is load-bearing: the dragged row itself, or a drop landing where
+ * the item already is would refuse for a collision with nobody. A creation passes null —
+ * a note that does not exist holds no rank, so there is nothing to exclude.
+ *
+ * **A context row DOES occupy its rank**, and that is not the same question the read side
+ * answers. `distinctlyRanked` skips `outsideFilter` rows because one can never be GIVEN a
+ * rank — a fact about the backfill's reach. Occupancy is a fact about the NUMBER: it is
+ * taken regardless of who is allowed to write it. Being stricter here than the read side's
+ * definition is right, because the two are answering different questions.
+ *
+ * Both answers are a dead end, so the question is which. Accepting WRITES the collision:
+ * every later placement at that site refuses `tied` forever, and the duplicate is latent —
+ * if the excluded note's filter membership flips (a `hide done` filter switched off, the
+ * note edited back into the results) two writable rows hold the number and the focused view
+ * drops to tree order with nothing said. Refusing merely declines one gesture, which the
+ * user recovers from by dropping elsewhere. Stated no wider than measured: a
+ * writable/context tie does NOT break focused ordering today, since `inRankOrder` reads
+ * distinctness off the writable rows alone — the harm accepting causes is the permanent
+ * local refusal plus that latent duplicate, not an immediate drop to tree order.
+ */
+function rankTaken(ranked: BacklogItem[], dragged: BacklogItem | null, order: number): boolean {
+	return ranked.some((item) => item !== dragged && item.order === order);
+}
+

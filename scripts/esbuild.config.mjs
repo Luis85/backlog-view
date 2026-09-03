@@ -32,7 +32,7 @@ Copyright Atlassian Pty Ltd, licensed under the Apache License, Version 2.0
  * all cannot see.
  */
 const BUDGET = {
-	"main.js": 480 * 1024,
+	"main.js": 512 * 1024,
 	"dist/styles.css": 96 * 1024,
 };
 

@@ -1,0 +1,301 @@
+---
+type: PBI
+parent: "[[Reordering and reparenting]]"
+order: 50
+status: Done
+started: ""
+finished: ""
+closed: 2026-08-30
+horizon: ""
+start: ""
+due: ""
+risk: ""
+assignee: ""
+priority: ""
+iteration: ""
+---
+
+# Ranking at the focused level
+
+**As** someone planning at one altitude, **I want** to drag the rows of a focused backlog
+into the order I want them in, **so that** the Features backlog or the PBI backlog is a
+priority list I made rather than an accident of which parent each item happens to hang
+from.
+
+## Use case
+
+| | |
+| --- | --- |
+| **Actor** | Someone working in a focused backlog ([[Focus level]]) |
+| **Trigger** | Dragging a focus row above or below another, Alt+↑/↓, or **Move up / down / to top / to bottom** from a focus row's menu |
+| **Preconditions** | A focus level is active, and both rows are rows of it |
+| **Guarantee** | **One note is written and it is the dragged one: its `order` and nothing else.** No parent changes, no other note is renumbered, and where no rank fits between the neighbours nothing is written at all and the view says why. |
+
+**Main flow**
+
+1. The user drags a focus row between two others.
+2. The rank is the midpoint between the neighbours of that position in `model.ranked` —
+   the one ordering every loaded item shares, so two rows from different parents can be
+   compared at all.
+3. One `order` is written, on the dragged note. The parent key is not touched.
+4. The focused list redraws in the new order.
+
+**Extensions**
+
+- **1a — the same move by keyboard or menu.** Alt+↑/↓ and the four **Move** entries plan
+  the identical write through the identical target: `siblingContext` answers `rankOnly`
+  for an active focus row, `withinSiblingsTarget` and `edgeTarget` build the target from
+  it, and `performDrop` applies it. One move, three inputs — a fourth input calls that
+  method rather than planning a write beside it.
+  **Checked by** `test/view/focusRanking.test.ts` — "lands the same rank from the drag, Alt+arrow and the menu"
+- **1b — the row is a promoted root that is not an active focus row.** Refused. A
+  projection promotes a root (a catalog `Test suite`, say) without any focus level being
+  on, and its real siblings are off screen — so the rendered row above it is not something
+  it can be ranked against. Membership in `model.roots` under `model.focused` is the test,
+  never the `focusRoot` flag, which both cases carry.
+  **Checked by** `test/view/focusRanking.test.ts` — "refuses to rank a promoted root that is not an active focus row"
+- **1c — the user tries to indent or outdent across the focus row.** Still refused, as
+  [[Focus level]] has always said. Ranking those rows is this use case; reparenting them
+  is a question about parentage that nothing here answers, and the synthetic row is not a
+  parent. `indentTarget` and `outdentTarget` each refuse a `focusRoot` row at the target,
+  so the menu withholds the entry rather than offering one that does nothing.
+  **Checked by** `test/view/focusRanking.test.ts` — "still refuses indent and outdent across the focus row"
+- **1d — a `drag` INSIDE another focus row is not refused.** Dropping one focus row onto
+  the middle of another still reparents it, because `insidePosition` asks nothing about
+  focus. That is the one place the three inputs disagree, and it is recorded rather than
+  settled: [[A focus row is reparented by drag and not by menu]].
+- **2a — an unranked context row sits among the focus rows.** Skipped as a neighbour, by
+  all three inputs and at both ends: it is neither a row to land beside nor a row to be
+  ranked PAST. It
+  can never be given a rank — no write path may touch a note the base excluded — so a
+  refusal beside one would be permanent, behind advice that cannot work. A *ranked*
+  context row stays: its number is a real constraint, and a swap past it would put the
+  moved row above something on screen.
+  **Checked by** `test/view/focusedUnrankedContext.test.ts` — "does not offer Move down past a context row with nothing to rank from"
+  **A refusal is exactly what one of these lists gets, and this entry denied it
+  until 2026-09-03.** Skipping the row as a NEIGHBOUR stands — that is `anchoredOrder`'s
+  rule and it is unchanged. What the sentence above got wrong is the inference that no
+  refusal may ever follow from such a row. A null sorts LAST the moment the fallback lifts,
+  so an unranked context row drawn anywhere but last MOVES when a write ends the fallback:
+  drawn `Ctx(null), A(5000), B(5000)`, dropping B above A wrote 2525 and returned
+  `B, A, Ctx`, the dragged row past its slot and the untouched context row at the bottom.
+  No rank does better while the fallback holds, because that row's sorted position is fixed
+  and nothing can give it one — so the move is refused, and `rank.unseededList` names the
+  remedy it always named. **The remedy WORKS, and the cost of it is what belongs here.**
+  Measured on that same list: Seed writes the writable rows apart, the fallback lifts, and
+  the null-ordered context row leaves the TOP of the focused list for the bottom — drawn
+  `Ctx, A, B` before and `A, B, Ctx` after, with Seed never touching that note. The drop
+  then lands where it was aimed, and writes. The rank it writes is not quoted here on
+  purpose: it is whatever Seed happened to leave the two neighbours at, so a figure would
+  be a fact about one run of one command rather than about this extension. So the refusal is
+  transient, and the price of lifting it is a row moving on screen that the user did not
+  ask to move. The capability this extension's own test appeared to prove was not present
+  in that shape: the assertion stopped at the write and never looked at the screen the
+  write produced.
+  **Checked by** `test/view/focusedUnrankedContext.test.ts` — "has the drag, Alt+ArrowUp and the move menu all REFUSE, identically", and `test/view/focusRanking.test.ts` — "refuses where lifting the fallback would drop that row to the bottom", with "allows it where that row is already drawn last, since the sort agrees" as the control that keeps this from being a blanket refusal of every list holding a context row
+- **2b — the two neighbours have no room between them.** Nothing is written and a notice
+  names the remedy: **Respace ranks** for a spent gap, the toolbar's set-up button for a
+  neighbour with no rank at all, **Seed ranks from the hierarchy** for two neighbours
+  holding the same number. The affordance and the refusal ask the same question — the
+  drag path reads `dropPlacement`'s own answer rather than a similar one computed beside
+  it — so a drop that looks legal and does nothing is a defect and not a state.
+  **Checked by** `test/view/focusRanking.test.ts` — "names Respace when the gap between the two neighbours is spent"
+- **2c — the view options are the reason nothing can be written.** The configuration is
+  reported instead. Every remedy above is a write, and the write gate refuses all of them
+  while `configProblems` is non-empty, so naming one would send the user in a circle.
+  **Checked by** `test/view/focusRanking.test.ts` — "reports the CONFIGURATION instead, because every remedy above is blocked by it"
+  The two palette commands (2e) keep the same rule and did not at first: a wedged or empty
+  plan answers before the write gate is ever reached, so `Respace` on a misconfigured view
+  told the user to run it on an unfiltered base — a real remedy for a different problem,
+  and one that cannot work while the options collide. `rankCommand` asks `configProblems`
+  before it plans.
+  **Checked by** `test/commands/rank.test.ts` — "names the configuration instead, when that is what blocks every remedy"
+- **2d — the ranks of the focused rows are not all distinct.** The list draws in TREE
+  order instead, which is what an unmigrated vault looks like: a sibling-scoped `order`
+  gives every first child its parent's number, and sorting on ties would scramble the
+  screen for no reason. The placement arithmetic makes the matching concession — a tie
+  between the two neighbours falls back to ranking among the destination's peers alone
+  (ADR 0008's own arithmetic) so an existing vault does not lose reordering before it is
+  seeded. Neither the switch nor the fallback says anything to the user:
+  [[The unseeded fallback is silent]].
+  **Checked by** `test/domain/modelRanking.test.ts` — "falls back to tree order when the focused rows' ranks are not globally distinct"
+  **Where that fallback would STILL hold after the write, the focus rank is refused**
+  (added 2026-09-02, from PR review): the number would be correct, saved and invisible,
+  and a gesture whose whole result is invisible reads as one that failed.
+  **Asked of the PEERS — the list without the row being written — and the distinction is
+  the rule, not a detail.** A tie between the dragged row and another is no reason to
+  refuse: writing one of them BREAKS the tie, the list becomes distinct, the fallback
+  lifts and the move shows. That is the fallback doing its job for an unmigrated vault.
+  What this write cannot fix is a rank missing from some other row, or a tie between two
+  rows the gesture does not touch — those hold the fallback open around whatever lands.
+  Asked of the whole list instead, it refuses exactly the unmigrated case the peer
+  fallback exists for, which is how it was written first and what the three-input test in
+  `test/view/focusedUnrankedContext.test.ts` caught.
+  It is asked of the ANSWER and never ahead of the arithmetic, so every refusal above
+  keeps its own precise remedy and this one fires only where the placement would
+  otherwise succeed; the sentence names both remedies, since either fault opens the
+  fallback. It does not touch an ordinary sibling reorder, which `compareSiblings` draws
+  and the fallback never reaches.
+  **Checked by** `test/view/focusRanking.test.ts` — "refuses a rank that could not show, rather than writing one nobody can see"
+  **Distinctness of the peers was not enough, and the second half of the rule is sharper
+  than the first** (added 2026-09-03, from PR review). Distinct peers say the fallback WILL
+  lift; they do not say the list comes back in the order the screen is showing. Drawn
+  `A(30), B(10), C(10)`, a dragged C has peers A and B holding distinct ranks, so the first
+  version allowed the drop — it wrote C a 20 and the list returned `B, C, A`. Two faults at
+  once, both worse than the invisible write this guard was built for: C is not at the top
+  where it was dropped, and B, which nobody touched, moved above A. The condition is
+  therefore that the peers ALREADY STAND in their own rank order (`drawnInRankOrder`,
+  strictly ascending along the drawn list, which implies distinctness and asks the stronger
+  question), so lifting the fallback leaves every untouched row where it is.
+  **Checked by** `test/view/focusRanking.test.ts` — "refuses, rather than landing the row elsewhere and moving an untouched one", with "still allows the drop where the peers already stand in their rank order" beside it as the control, since a guard that refused every focus drop would satisfy the first on its own
+  **And it reads EVERY peer, context rows included — the one place it must not copy
+  `distinctlyRanked`** (added 2026-09-03, the third round on this guard). That predicate
+  skips an `outsideFilter` row because it asks whether the list can ever be ordered, and a
+  row no pass can migrate would veto that forever; this one asks what the SORT will do, and
+  `ranked.filter` moves a context row like any other. Copying the skip therefore looked
+  consistent and was wrong: drawn writable `A(20)`, context `C(10)`, writable `D(20)`, the
+  writable peers of a dragged D are just `A` and trivially in order, so the drop was allowed
+  — it wrote 15 and the list came back `C, D, A`, D below where it was dropped and the
+  context row lifted to the top. An UNRANKED context row cannot reach the predicate at all:
+  `rankablePeers` drops it first, the same skip `anchoredOrder` makes.
+  **Checked by** `test/view/focusRanking.test.ts` — "refuses where the context row would be sorted above the row just dropped", with "still allows the drop when the list is not in fallback at all" as the control: with the writable rows already distinct there is no fallback, the drag moves something visible, and a guard that spoke there would be removing the feature rather than repairing it
+  **And it runs ONLY where the fallback is holding** (added 2026-09-03, the fourth round —
+  this one an OVER-refusal introduced by the third). Reading every peer made the guard
+  refuse a legitimate move: writable `A(10)` and `D(20)` are distinct, so the list is drawn
+  in rank order and the drag rearranges nobody, but a context `C(10)` ties with A, the peers
+  fail the strictly-ascending test, and the drop was refused with a notice. The bypass is
+  `distinctlyRanked` over the whole list — `inRankOrder`'s own fallback condition, so the
+  read side and the guard cannot drift apart. The control that was supposed to catch this
+  did not, because it covered a context row DIFFERING from its writable neighbour and never
+  one that ties: a control is only as wide as the case it varies.
+  **Checked by** `test/view/focusRanking.test.ts` — "allows the drop where a context row TIES with a writable one and the list is ordered"
+  **The peers are asked BOTH questions, and neither implies the other** (2026-09-03, rounds
+  five and six together). Five replaced a strict `<` on the order with `compareRank` itself,
+  because a tie the sort settles on `entryIndex` sits exactly where it is drawn and is no
+  reason to refuse — drawn `A(10)`, context `C(10)`, `D(10)`, a drop of D above A comes back
+  `D, A, C`, the slot asked for. Six is the cost of that: `compareRank` tolerates a tie
+  between two WRITABLE peers as well, and those keep the fallback open however the dragged
+  row is written. Drawn `A(10), B(10), C(20)`, dropping C above A wrote it a 6.5 and the
+  list came back unchanged — the invisible write of the first round, through the door the
+  comparator opened. So `distinctlyRanked` asks whether the rows left behind can hold an
+  order at all, and `drawnInRankOrder` asks whether lifting it preserves the screen. The
+  bypass above is a third question: it reads the list INCLUDING the dragged row, before the
+  move.
+  **This was refused once before it was taken.** The review that raised round five proposed
+  the separate distinctness step in the same breath, and the reply declined it on the ground
+  that the bypass already covered it. It does not — the bypass reads the pre-move list, and
+  after the write the dragged row holds a fresh rank, so what decides the fallback is
+  whether the OTHER writable rows are distinct among themselves. A reviewer's second clause
+  is not decoration.
+  **Checked by** `test/view/focusRanking.test.ts` — "refuses, because the write cannot lift a fallback two other rows hold open"
+  **`drawn` is the SCREEN, and the completed toggle is part of what that means** (2026-09-03,
+  round ten). Round nine gave the guard a second list because `rankablePeers` strips a row
+  the sort still moves; it built that list from `model.roots` raw, so it also counted rows
+  the eye is hiding. Focused `A(10)` and `B(10)` under two Epics with a completed `H(5)`
+  under a third draw as `A, B`, and dropping `B` above `A` writes and renders `B, A` — but
+  `drawnInRankOrder([A, H])` read the invisible row's lower rank as disorder and refused,
+  with nothing on screen for the reader to reconcile the refusal against. Both producers
+  filter now, by the question each has to hand: the drag's copy by `dropTargetFor`'s own
+  `drawn` predicate, threaded into `siblingPosition`, and `siblingContext`'s by
+  `host.isRowHidden`. The two edits are one change — either alone leaves that input refusing
+  while the others move the row, which is the disagreement the one-move-three-inputs rule
+  exists to prevent. Not filtered by `rankablePeers`, though: an unranked context row IS
+  drawn, and seeing it is what the field was added for.
+  **Checked by** `test/view/focusRanking.test.ts` — "lands the drop, and the same rank, from the drag, Alt+arrow and the menu", in the "a focus drop whose only disorder is a row the toggle hides" group, which drives all three inputs because each filter is load-bearing on its own assertion
+- **2e — the vault's ranks were never spread for this.** Two palette commands rewrite
+  them all: **Seed ranks from the hierarchy** (`seed-ranks`) numbers every note in the
+  order the tree draws it, and **Respace ranks** (`respace-ranks`) keeps the rank order and
+  puts room between each pair again. Each confirms with the count it would
+  write, recomputes the batch when the answer arrives, and writes through the active
+  view's own gate as one undoable batch. Respace's confirmation says "the order they are in
+  now", and that is only the order on SCREEN while every rank is present and distinct — a
+  list without that is drawn in tree order (2d above), so where the population it is about
+  to rewrite is not distinctly ranked the dialog adds a second sentence saying the rank
+  order will replace what is drawn. Narrowing the promise rather than refusing: refusing
+  sends the user to Seed, which discards hand-set focus ranks. Two commands rather than one that guesses: they
+  look alike and mean very different things to a backlog somebody has ordered by hand.
+  **Checked by** `test/commands/rank.test.ts` — "ranks the model as it is on confirm, not as
+  it was when the dialog opened", and the narrowed promise by "warns that respacing will
+  redraw a population that is not distinctly ranked" beside "respaces without changing the
+  order already on screen", which is the same claim from the other side.
+- **2f — the notes a rewrite would rank are wedged against ones the base excluded.**
+  Nothing is written and the notice names them. Both commands leave every excluded rank
+  exactly where it is and fit the writable rows into the gaps between them, so a run of
+  rows squeezed against a number no write path may move has nowhere to go. The advice is
+  to run the command on an unfiltered base, which is the one thing that changes the answer.
+  **Checked by** `test/domain/rankCommands.test.ts` — "answers with the wedged rows rather than an empty plan"
+  **One case reported wedged for a different reason, was accepted, and is now fixed** —
+  and the sequence is the point rather than the outcome. Where two excluded ranks span more
+  than the float range can subtract — `-1e308` and `1e308` — `ceiling - floor` is `Infinity`,
+  every value the spread computes is non-finite, and the plan refuses. The interval has
+  enormous room and the arithmetic cannot see it, so the notice was right that nothing was
+  written and wrong about why. It fails CLOSED, which is the property that matters, and it is
+  unreachable without two hand-edited context ranks at opposite extremes.
+  A PR review on 2026-08-31 refused the overflow-safe form — interpolating from weighted
+  endpoints instead of subtracting the bounds — for a stated reason: `(ceiling - floor) / (n + 1)`
+  and the weighted form are not bit-identical, so swapping the formula would perturb every
+  ordinary spread to repair one that essentially never happens.
+  **A GUARD voids that reason, and the same entry already carried the precedent.** The
+  `Infinity` this overflow used to WRITE was fixed in `roundOrder`; `midpoint`'s own
+  subtraction was fixed on 2026-09-02 by reaching the safe form ONLY where `next - prev` is
+  already non-finite, so the ordinary midpoint keeps computing exactly what it always did.
+  `placeRun` takes the identical shape as of 2026-09-02, raised a second time in review:
+  under the guard an ordinary spread never reaches the weighted form, so nothing about it
+  moves, and the enormous interval is spread instead of refused. What was refused was the
+  wholesale swap; a guarded fallback was a different proposal and is a better one.
+  **Checked by** `test/domain/rankedPlacement.test.ts` — "places a midpoint in a gap whose width overflows to Infinity", "spreads a run across a gap whose width overflows to Infinity" and "leaves an ordinary spread on the value the subtraction always gave" — the last of which passes with or without the guard on purpose, since a fix that quietly moved the ordinary values would be worse than the defect
+- **3a — the model was rebuilt between opening the menu and clicking it.** The row the
+  menu named is re-resolved by path against the live model, and the peers and the
+  population are read off that model too. A `DropTarget` finds its anchor by identity, so
+  a captured row scores `-1` after a Bases pass and a fully ranked vault would refuse
+  `unranked` — a notice sending the reader to a backfill with nothing to fill.
+  **Checked by** `test/view/focusRanking.test.ts` — "ranks the row the menu names after the model was rebuilt under it"
+- **3b — the note's parent link does not resolve.** Left exactly as it is. A focus rank
+  restates the dragged row's own parent rather than deciding one (`parentUnchanged`), and
+  only an explicit placement may clear a stale link. The two reach the writer looking
+  identical, which is why the flag is carried rather than re-derived.
+  **Checked by** `test/view/focusRanking.test.ts` — "leaves an unresolved parent link alone when the keyboard ranks a focus row"
+
+## Acceptance criteria
+
+- A focus-level move writes one note — the dragged one's `order` — and never a `parent`.
+- The drag, Alt+arrow and the menu land the same rank on the same row.
+- Indent and outdent stay refused across the synthetic focus row.
+- A move that cannot be ranked writes nothing and names a remedy that is reachable: a
+  command in the palette, the toolbar's set-up button, or the view options.
+- Seeding and respacing are separate commands, each confirming with its count and each
+  recomputing its batch at the moment the answer arrives.
+- A note the base excluded is never written by either command, and a plan that cannot
+  place a row around one changes nothing and says which rows.
+- **A focus-level rank is also a rank among the item's own siblings.** There is one
+  `order`, so ordering the PBI backlog reorders each PBI inside its own Feature as well.
+  That is the price of a single rank and it is not a defect (ADR 0034).
+
+## Where it lives
+
+`src/domain/rankOrder.ts` (`rankedItems` and the comparator, `inRankOrder`,
+`distinctlyRanked`, `focusKey`) ·
+`src/domain/writePlan.ts` (`anchoredOrder`, `orderForTarget`, `dropPlacement`,
+`computeDropWrites`) ·
+`src/domain/rankArithmetic.ts` (`ORDER_SPACING`, `rankBetween` over `midpoint` and
+`edgeRank`, `roundOrder`'s six-decimal grid, `placeRun`, and `RankResult`/`refusalKey` —
+the one answer to what a rank may be, shared by the one-row placement, the two rewrites
+and the backfill) ·
+`src/domain/rankSpread.ts` (`computeSeedWrites`, `computeRespaceWrites`, and the one
+spread they share) ·
+`src/commands/rank.ts` (the `seed-ranks` and `respace-ranks` palette commands) ·
+`src/domain/dropTargets.ts` (`siblingPosition`'s focus branch, and `DropTarget.peers` as
+intent rather than arithmetic) ·
+`src/view/interactions/structure.ts` (`siblingContext`'s `rankOnly`, `withinSiblingsTarget`,
+`edgeTarget`, and `plans`, the preflight every structural command is offered through) ·
+`src/view/cardMoves.ts` (`performDrop`, which reports the refusal the planner returned).
+Tests: `test/domain/rankedPlacement.test.ts`, `test/domain/modelRanking.test.ts`,
+`test/domain/rankCommands.test.ts`, `test/commands/rank.test.ts`,
+`test/view/focusRanking.test.ts`, `test/view/focusedUnrankedContext.test.ts`,
+`test/view/backfillFocusOrder.test.ts`.
+
+What `order` now MEANS — one rank over everything the Base returns, rather than a number
+scoped to a sibling group — is [ADR 0034](../adrs/0034-order-is-a-global-rank.md), which
+also records the two limitations this use case inherits: the rank space is the Base's
+population and not the vault, and the peer fallback that keeps an unseeded vault working
+is silent about which of the two regimes answered.

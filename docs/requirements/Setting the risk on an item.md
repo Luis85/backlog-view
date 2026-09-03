@@ -113,7 +113,7 @@ the one statement of "which property does this write target live in" that the pi
 collision report, the adoption and the backfill all read. Adding that row is what makes
 steps 1 and 3 work with no code of their own: `adoptableProperties` binds the suggestion,
 `configProblems` reports its collisions, `readOwnKeys` in `src/domain/model.ts` tracks
-whether the note carries the key, and `missingKeyStubs` in `src/domain/writePlan.ts`
+whether the note carries the key, and `missingKeyStubs` in `src/domain/rankBackfill.ts`
 stubs it. `hasRiskLevels` beside them is the pair from steps 1 and 2 asked once, so what
 the menu offers and what the options declare cannot drift.
 

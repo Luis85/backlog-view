@@ -29,7 +29,7 @@ describe('write robustness', () => {
 
 		release();
 		await flush();
-		expect(vault.fm('Epic A.md')['order']).toBe(30);
+		expect(vault.fm('Epic A.md')['order']).toBe(25);
 	});
 
 	it('reports write failures without leaving the gate stuck', async () => {

@@ -1179,6 +1179,164 @@ export const en = {
 	'config.fixAll': 'Fix the view options first: {problems}.',
 
 	/**
+	 * Why a placement produced no number, one sentence per member of `RankRefusal` —
+	 * `refusalKey` in `domain/rankArithmetic.ts` is the only thing that picks between them,
+	 * and it is a `switch` so a fourth refusal cannot quietly land on a third's advice.
+	 *
+	 * Each names a DIFFERENT remedy, which is the whole reason they are four keys:
+	 * a spent gap needs respacing, a missing rank needs the backfill, and a deleted
+	 * parent needs nothing at all.
+	 *
+	 * `rank.tied` names Seed rather than either of those. A tie is the sibling-scoped
+	 * scheme showing through, and neither remedy above reaches it — the backfill only fills
+	 * blanks, and respacing a range holding two equal numbers cannot separate them. Seed
+	 * rewrites every rank from the hierarchy, which does.
+	 *
+	 * **What none of these three sentences can tell the user, stated here rather than left
+	 * to be discovered.** The row holding the colliding or missing number may be one the
+	 * base EXCLUDED, and no write path may ever move it — so at that site the remedy named
+	 * changes nothing. It is not distinguishable from the refusal: `RankRefusal` carries a
+	 * reason and never a row, and giving it one would put a model object inside a sentence.
+	 * What makes the advice honest anyway is that each command it names reports its own
+	 * dead end — Seed and Respace both answer `rank.wedged`, which says the notes are
+	 * squeezed against ones this base cannot write and names the unfiltered base. So the
+	 * user is sent one step further rather than in a circle. `rank.unranked` needs none of
+	 * that: `anchoredOrder` skips an unranked context row instead of refusing beside one,
+	 * so the blank that sentence is said over is always one the backfill can fill.
+	 */
+	'rank.gapSpent': 'No room left between those two items. Run "Respace ranks" from the command palette.',
+	'rank.unranked': 'That item has no rank yet. Use the toolbar’s set-up button to fill in the missing ones.',
+	'rank.tied':
+		'Two items there have the same rank, so nothing fits between them. Run "Seed ranks from the hierarchy" from the command palette to renumber the whole backlog.',
+	/**
+	 * The focused list is drawn in TREE order, so no rank written here could move
+	 * anything on screen — `inRankOrder` falls back whenever the focus rows are not all
+	 * distinctly ranked, and a hand-ranked order simply would not show. Refused rather
+	 * than written silently: the write would be correct and invisible, which reads as a
+	 * gesture that failed.
+	 *
+	 * Both remedies are named because either fault produces the fallback — a row with no
+	 * rank at all, which the set-up button fills, or two rows sharing one, which only a
+	 * whole-population rewrite separates. Naming just one would send half the readers to
+	 * a command that cannot help them.
+	 */
+	'rank.unseededList':
+		'This list is drawn in tree order, because some of its rows have no rank or share one — so ordering it by hand would not show. Use the toolbar’s set-up button to fill in missing ranks, or run "Seed ranks from the hierarchy" from the command palette.',
+	'rank.parentGone': 'That item’s parent no longer exists, so nothing was created.',
+	/**
+	 * The SUBJECT of a structural command left the base while the menu (or the row's
+	 * selection) sat there — `liveItem` in `view/interactions/structure.ts`. Beside
+	 * `rank.parentGone` because both name a note the command was ABOUT rather than a
+	 * refused number, and worded off `absence.resourceMissing`, which is the same fact
+	 * said of a resource: gone from the base, so nothing was written.
+	 */
+	'rank.itemGone': 'That item is no longer in this base, so nothing was moved.',
+	/**
+	 * The subject is still in the base — it is simply not DRAWN any more: completed while
+	 * the menu sat open, or left the projection this screen shows. `rank.itemGone` says it
+	 * left the base, which is false here, so it gets its own sentence for the reason
+	 * `rank.targetInvalid` does. No remedy is named because there are three ways to be
+	 * undrawn (the projection, the completed toggle, an emptied context scaffold) and the
+	 * sentence cannot tell which applied.
+	 */
+	'rank.itemHidden': 'That item is no longer drawn, so nothing was moved.',
+
+	/**
+	 * The named destination on `indent` RESOLVED — it is still in this base — but
+	 * `indentTarget` refused it anyway: retyped onto the other ladder, or become the
+	 * subject's own descendant, while the menu sat open. `rank.itemGone` says the note
+	 * left the base, which is false here, so it gets its own sentence rather than
+	 * borrowing that one.
+	 */
+	'rank.targetInvalid': 'That is no longer a valid destination, so nothing was moved.',
+
+	/**
+	 * `outdentTarget` (`view/interactions/structure.ts`) refuses when the item's own
+	 * parent — the row `Outdent` places it right after — is an unranked context row:
+	 * `compareRank` sorts a null order last, so no finite number sorts after it and the
+	 * placement this command names cannot be expressed. Not `rank.targetInvalid`: that
+	 * sentence says "no longer", a race between two reads of the same row, and this is
+	 * neither a race nor a race between reads — the shape is true of the tree as it
+	 * stands, every time it is asked, named by nothing that moved. Not `rank.unranked`
+	 * either, and deliberately: that sentence sends the reader to the backfill, and the
+	 * backfill (`computeInitWrites`) is one of the two places that will never write this
+	 * row a rank, because the base excludes it — the exact dead end `anchoredOrder`'s own
+	 * comment in `domain/writePlan.ts` refuses to create. So this states the fact and
+	 * names no remedy, the way `rank.itemGone` does for the sibling case.
+	 */
+	'rank.unrankedParent': 'Its parent has no rank of its own, so nothing can be placed next to it.',
+
+	/**
+	 * What the two rank commands say. Each confirmation states the whole of what the
+	 * command does to a note the user cannot see the effect of — a filtered base ranks only
+	 * what it returns, so a note it excludes can end up above or below where it was — and
+	 * Seed's adds the one thing that makes it different from Respace: it is correct exactly
+	 * once, and a second run discards every order set by hand at a focus level.
+	 *
+	 * `rank.wedged` is the refusal both share, and it is the reason the sentences above may
+	 * name a command at all: where writable rows are squeezed against a rank this base
+	 * cannot write, the plan changes nothing and says which notes and what to do instead.
+	 * `{titles}` are note titles — vault content, joined as grammar and never translated.
+	 * One squeezed row is reachable (a single writable note between two ranks a hair
+	 * apart), so it takes plural forms and a `count` like its four siblings. Only the
+	 * plural form spells `{count}`: "This item" reads better than "1 item", and a
+	 * placeholder in any one form is a parameter the key accepts.
+	 *
+	 * The last two are what the command says when it does NOT get as far as writing.
+	 * `rank.nothing` is the empty plan: `applySafely` answers null on an empty batch, so
+	 * without a sentence of its own a base with nothing to rank offers "Rank 0 notes", is
+	 * confirmed, and reports nothing at all. `rank.viewGone` is both stale-view aborts in
+	 * one — the view closed, or another base became active under the open dialog — because
+	 * what the reader has to know is the same in both: the answer arrived somewhere else,
+	 * and nothing was written.
+	 */
+	'rank.seedConfirm': {
+		one: 'Rank {count} note in the order it appears in the tree. This replaces every existing rank, including any order set by hand at a focus level. On a filtered base only the notes this base returns are ranked, so they may move relative to notes it excludes.',
+		other:
+			'Rank {count} notes in the order they appear in the tree. This replaces every existing rank, including any order set by hand at a focus level. On a filtered base only the notes this base returns are ranked, so they may move relative to notes it excludes.',
+	},
+	'rank.respaceConfirm': {
+		one: 'Rewrite the rank of {count} note with even spacing, keeping the order it is in now. On a filtered base only the notes this base returns are respaced, so they may move relative to notes it excludes.',
+		other:
+			'Rewrite the ranks of {count} notes with even spacing, keeping the order they are in now. On a filtered base only the notes this base returns are respaced, so they may move relative to notes it excludes.',
+	},
+	/**
+	 * The second paragraph of Respace's confirmation, and only where it is true. "Keeping
+	 * the order they are in now" is a promise about the DRAWN order, and a list whose rows
+	 * are not distinctly ranked is drawn in tree order rather than in rank order — so
+	 * respacing replaces what the user is looking at. A whole sentence of its own rather
+	 * than a clause spliced into the one above: a locale that leads with the caveat has no
+	 * way into a middle assembled at the call site.
+	 */
+	'rank.respaceReorders':
+		'Some lists are drawn in tree order at the moment, because ranks are missing or repeated. Respacing writes the rank order into every note, so what you see may change.',
+	'rank.done': { one: 'Ranked {count} note', other: 'Ranked {count} notes' },
+	'rank.wedged': {
+		one: 'This item sits between two notes this base cannot write, with no room left between them: {titles}. Nothing was changed. Run this on an unfiltered base.',
+		other:
+			'{count} items sit between two notes this base cannot write, with no room left between them: {titles}. Nothing was changed. Run this on an unfiltered base.',
+	},
+	'rank.nothing': 'There is nothing in this base to rank.',
+	/**
+	 * Its own sentence rather than `rank.done` with a count, because respace is correct any
+	 * number of times and the second run is the ordinary case: every note it opens already
+	 * holds the number planned for it. "Ranked N notes" there claims a rewrite nothing
+	 * received, and offers an undo that was never armed.
+	 */
+	'rank.unchanged': 'Every rank already holds the number this would write. Nothing was changed.',
+	'rank.viewGone': 'The backlog view this was started from is no longer showing, so nothing was ranked.',
+	/**
+	 * The dialog was answered, but what the command would DO stopped matching what the
+	 * dialog said — a population that was distinctly ranked when it opened is not now, so
+	 * `rank.respaceReorders` would have had to be shown and was not. Its own sentence
+	 * rather than `rank.viewGone`'s: the view is still there and the command is still
+	 * available, and what the reader has to know is that running it again will say
+	 * something different.
+	 */
+	'rank.caveatChanged':
+		'The backlog changed while this dialog was open, and this command no longer does what the dialog said. Nothing was ranked — run it again to read the new warning.',
+
+	/**
 	 * The write gate's four refusals. The two `console.error` prefixes beside them stay
 	 * English and are not here: a developer console is not a user surface, the same line
 	 * `commands/scaffold.ts` and `commands/readme.ts` already draw.
@@ -1282,6 +1440,14 @@ export const en = {
 	 */
 	'command.createBacklog': 'Create backlog',
 	'command.writeReadme': 'Write backlog readme',
+	/**
+	 * The two whole-population rank rewrites. Named far apart on purpose: they look alike
+	 * in a palette and must never be confused — Seed writes the HIERARCHY into numbers and
+	 * discards any order set by hand at a focus level, Respace keeps the order already on
+	 * screen. The confirmation says which, because the palette entry cannot.
+	 */
+	'command.seedRanks': 'Seed ranks from the hierarchy',
+	'command.respaceRanks': 'Respace ranks',
 
 	'dependency.dependsOn': 'Depends on…',
 	/** A prerequisite whose text names no note this base can see. */
@@ -1429,6 +1595,21 @@ export const en = {
 	'init.outcomeWithColumns':
 		'Product Backlog: {summary}. Add them in the properties menu to show them as columns.',
 	'init.nothingToDo': 'All items already have the properties this view writes.',
+	/**
+	 * A rank the backfill could not fill, said as its OWN sentence rather than as a
+	 * fragment of the summary above: the summary lists what was done, and this is what was
+	 * not. It also replaces `init.nothingToDo`, which is a false statement whenever this
+	 * number is above zero.
+	 *
+	 * It names Seed and not the ✨ the user just pressed. The backfill keeps a blank where
+	 * it is DRAWN, so where nothing fits between the rows around it no repeat press can
+	 * ever fill it; Seed rewrites every rank from the hierarchy and is bounded by nothing.
+	 */
+	'init.ranksSkipped': {
+		one: '{count} item was left without a rank, because no number fits where it is drawn. Run "Seed ranks from the hierarchy" from the command palette to renumber the whole backlog.',
+		other:
+			'{count} items were left without a rank, because no number fits where they are drawn. Run "Seed ranks from the hierarchy" from the command palette to renumber the whole backlog.',
+	},
 
 	/** `{parts}` is joined by `list()` — grammar, so it follows the catalog's locale. */
 	'undo.outcome': 'Undo: {parts}.',

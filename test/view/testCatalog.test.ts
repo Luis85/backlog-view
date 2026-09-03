@@ -413,9 +413,12 @@ describe('the catalog is tree-shaped, and the plan keeps its place', () => {
 		// row's visible NEIGHBOURS — a lone child has none, so a fixture without a sibling
 		// would pass an assertion about the section by proving nothing about it.
 		const vault = new FakeVault();
+		// Three DISTINCT ranks: `order` is one rank over the whole backlog, so a suite and
+		// its first case both at 10 is a spent gap and the section would be withheld for
+		// arithmetic rather than for the projection reason this test is about.
 		vault.addFile('Suite.md', { frontmatter: { type: 'Test suite', order: 10 } });
-		vault.addFile('First.md', { frontmatter: { type: 'Test case', order: 10 }, parentLink: 'Suite' });
-		vault.addFile('Second.md', { frontmatter: { type: 'Test case', order: 20 }, parentLink: 'Suite' });
+		vault.addFile('First.md', { frontmatter: { type: 'Test case', order: 20 }, parentLink: 'Suite' });
+		vault.addFile('Second.md', { frontmatter: { type: 'Test case', order: 30 }, parentLink: 'Suite' });
 		const { containerEl } = makeView(vault);
 		catalog(containerEl);
 		rowByTitle(containerEl, 'Second').dispatchEvent(new MouseEvent('contextmenu', { bubbles: true }));

@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { describe, expect, it } from 'vitest';
 import { FakeVault } from '../helpers/vault';
+import { Notice } from '../helpers/obsidian-mock';
 import { fixture, flush, key, makeView, rowByTitle, titlesOf, treeOf, useViewHarness } from '../helpers/view';
 
 useViewHarness();
@@ -82,7 +83,9 @@ describe('opening and keyboard', () => {
 		key(tree, 'ArrowDown', { altKey: true });
 		await flush();
 
-		expect(vault.fm('Epic A.md')['order']).toBe(30);
+		// The midpoint of Epic B (20) and the next row in the global population,
+		// Feature B1 (30) — one write, never a renumbered group.
+		expect(vault.fm('Epic A.md')['order']).toBe(25);
 	});
 
 	it('jumps to the first and last visible item with Home and End', () => {
@@ -257,7 +260,7 @@ describe('keyboard structure shortcuts', () => {
 		key(tree, 'ArrowDown'); // Epic B
 		key(tree, 'ArrowUp', { altKey: true });
 		await flush();
-		expect(vault.fm('Epic B.md')['order']).toBe(0);
+		expect(vault.fm('Epic B.md')['order']).toBe(-990);
 
 		key(tree, 'ArrowRight', { altKey: true }); // indent under Epic A (previous sibling)
 		await flush();
@@ -265,6 +268,61 @@ describe('keyboard structure shortcuts', () => {
 		// The subtree it carried is not written at all — an indent moves one note.
 		expect(vault.fm('Feature B1.md')['type']).toBe('Feature');
 		expect(vault.writeLog.some((w) => w.path === 'Feature B1.md')).toBe(false);
+	});
+
+	/**
+	 * The keyboard reaches indent through the same target the menu is gated on, so neither
+	 * can act on a nesting the other withholds — and it SAYS SO, which is the half that
+	 * was missing. The menu withholding an entry is an offer declined; a keypress is not
+	 * an offer, so there is nothing to withhold and silence tells the user nothing at all.
+	 * Alt+Up/Down already named a remedy through `performDrop`'s one reporter, and these
+	 * two returned before reaching it. Same reporter, never a second sentence beside it.
+	 */
+	it('writes nothing on Alt+ArrowRight when the nesting would refuse, and names the remedy', async () => {
+		const vault = new FakeVault();
+		vault.addFile('Epic.md', { frontmatter: { type: 'Epic', order: 10 } });
+		vault.addFile('C1.md', { frontmatter: { type: 'Feature', order: 20 }, parentLink: 'Epic' });
+		vault.addFile('C2.md', { frontmatter: { type: 'Feature', order: 30 }, parentLink: 'Epic' });
+		vault.addFile('C4.md', { frontmatter: { type: 'Feature' }, parentLink: 'Epic' });
+		const { containerEl } = makeView(vault);
+		const tree = treeOf(containerEl);
+
+		key(tree, 'ArrowDown'); // Epic
+		key(tree, 'ArrowDown'); // C1
+		key(tree, 'ArrowDown'); // C2
+		key(tree, 'ArrowRight', { altKey: true });
+		await flush();
+
+		expect(vault.writeLog).toHaveLength(0);
+		expect(vault.fm('C2.md')['parent']).toBe('[[Epic]]');
+		expect(Notice.messages).toEqual([
+			'That item has no rank yet. Use the toolbar’s set-up button to fill in the missing ones.',
+		]);
+	});
+
+	it('writes nothing on Alt+ArrowLeft when the outdent would refuse, and names the remedy', async () => {
+		// The mirror. An outdent lands right after `C1` among `Epic`'s children, and the
+		// next rank in the whole population is one six-decimal step away, so there is no
+		// number to give it.
+		const vault = new FakeVault();
+		vault.addFile('Epic.md', { frontmatter: { type: 'Epic', order: 10 } });
+		vault.addFile('C1.md', { frontmatter: { type: 'Feature', order: 10.000001 }, parentLink: 'Epic' });
+		vault.addFile('Other.md', { frontmatter: { type: 'Epic', order: 10.000002 } });
+		vault.addFile('C2.md', { frontmatter: { type: 'Feature', order: 30 }, parentLink: 'C1' });
+		const { containerEl } = makeView(vault);
+		const tree = treeOf(containerEl);
+
+		key(tree, 'ArrowDown'); // Epic
+		key(tree, 'ArrowDown'); // C1
+		key(tree, 'ArrowDown'); // C2
+		key(tree, 'ArrowLeft', { altKey: true });
+		await flush();
+
+		expect(vault.writeLog).toHaveLength(0);
+		expect(vault.fm('C2.md')['parent']).toBe('[[C1]]');
+		expect(Notice.messages).toEqual([
+			'No room left between those two items. Run "Respace ranks" from the command palette.',
+		]);
 	});
 
 	it('outdents to the top level with Alt+ArrowLeft', async () => {
@@ -281,6 +339,39 @@ describe('keyboard structure shortcuts', () => {
 		const fm = vault.fm('Feature B1.md');
 		expect('parent' in fm).toBe(false);
 		expect(fm['order']).toBe(30);
+	});
+
+	/**
+	 * Task 4: `indentTarget` built its append peers from `newParent.children` unfiltered,
+	 * so indenting under a parent whose LAST child is an unranked context row anchored on
+	 * that row rather than on the parent's own last real child — `rankablePeers`
+	 * (`domain/dropTargets.ts`, own comment) is the fix, applied here too.
+	 */
+	it('indents under a parent whose last child is an unranked context row, anchored on the ranked one', async () => {
+		const vault = new FakeVault();
+		vault.addFile('Other.md', { frontmatter: { type: 'Epic', order: 5 } });
+		vault.addFile('Far.md', { frontmatter: { type: 'Feature', order: 90000 }, parentLink: 'Other' });
+		vault.addFile('Parent.md', { frontmatter: { type: 'Epic', order: 10 } });
+		vault.addFile('Real Child.md', { frontmatter: { type: 'Feature', order: 100 }, parentLink: 'Parent' });
+		// A context row (no order of its own) that only appears because one of ITS
+		// children is a result — the same shape every other context-row fixture in this
+		// repository uses.
+		vault.addFile('Ctx Child.md', { frontmatter: { type: 'Feature' }, parentLink: 'Parent' });
+		vault.addFile('Ctx Grandchild.md', { frontmatter: { type: 'Task', order: 2 }, parentLink: 'Ctx Child' });
+		vault.addFile('Mover.md', { frontmatter: { type: 'Epic', order: 20 } });
+		const only = ['Other.md', 'Far.md', 'Parent.md', 'Real Child.md', 'Ctx Grandchild.md', 'Mover.md'];
+		const { containerEl } = makeView(vault, {}, { only });
+		const tree = treeOf(containerEl);
+
+		rowByTitle(containerEl, 'Mover').dispatchEvent(new MouseEvent('click', { bubbles: true }));
+		key(tree, 'ArrowRight', { altKey: true }); // indent under Parent, its previous root sibling
+		await flush();
+
+		expect(vault.fm('Mover.md')['parent']).toBe('[[Parent]]');
+		// Anchored on `Real Child` (100) against its own next neighbour in the GLOBAL
+		// population (`Far`, 90000) — a real midpoint, and nowhere near `Far`'s own edge
+		// (91000), which is what anchoring on the unranked `Ctx Child` instead reads as.
+		expect(vault.fm('Mover.md')['order']).toBe(45050);
 	});
 });
 

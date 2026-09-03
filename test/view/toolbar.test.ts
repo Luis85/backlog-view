@@ -39,6 +39,44 @@ describe('toolbar backfill', () => {
 		expect(Notice.messages.some((m) => m.includes('properties menu'))).toBe(false);
 	});
 
+	it('reports the notes it actually wrote when one stops the batch partway', async () => {
+		const vault = new FakeVault();
+		vault.addFile('Epic.md', { frontmatter: { type: 'Epic', order: 10 } });
+		vault.addFile('First.md', { frontmatter: { order: 20 }, parentLink: 'Epic' });
+		vault.addFile('Second.md', { frontmatter: { order: 30 }, parentLink: 'Epic' });
+		const { containerEl } = makeView(vault, noOptionalProperties());
+		// Retyped by another window as the batch reaches it: `applyWrites` stops where it
+		// stands, so the planned length is a number nothing wrote.
+		vault.onNextProcess('Second.md', (fm) => {
+			fm['type'] = 'Resource';
+		});
+
+		initButton(containerEl)?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+		await flush();
+
+		expect(Notice.messages.some((m) => m.includes('updated 1 item'))).toBe(true);
+		expect(Notice.messages.some((m) => m.includes('updated 2 items'))).toBe(false);
+	});
+
+	it('claims no items at all when the first note stops the batch', async () => {
+		const vault = new FakeVault();
+		vault.addFile('Epic.md', { frontmatter: { type: 'Epic', order: 10 } });
+		vault.addFile('First.md', { frontmatter: { order: 20 }, parentLink: 'Epic' });
+		vault.addFile('Second.md', { frontmatter: { order: 30 }, parentLink: 'Epic' });
+		const { containerEl } = makeView(vault, noOptionalProperties());
+		vault.onNextProcess('First.md', (fm) => {
+			fm['type'] = 'Resource';
+		});
+
+		initButton(containerEl)?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+		await flush();
+
+		// The writer's refusal is the only thing said: "updated 0 items" would be a second
+		// sentence about the same nothing, and `init.nothingToDo` would be untrue.
+		expect(Notice.messages.some((m) => m.includes('updated'))).toBe(false);
+		expect(Notice.messages.some((m) => m.includes('already have the properties'))).toBe(false);
+	});
+
 	it('binds the properties nobody has named, and creates them empty on every item', async () => {
 		const vault = new FakeVault();
 		vault.addFile('Epic.md', { frontmatter: { type: 'Epic', order: 10 } });

@@ -1,137 +1,144 @@
 // @vitest-environment jsdom
 import { describe, expect, it } from 'vitest';
-import { FakeVault, setResults } from '../helpers/vault';
+import { ProductBacklogView } from '../../src/view/backlogView';
+import { FakeVault, FakeViewConfig, setResults } from '../helpers/vault';
 import { FuzzySuggestModal, Menu, Modal } from '../helpers/obsidian-mock';
-import { drag, flush, itemAt, key, makeView, noTypeFolders, rowByTitle, rows, submitPrompt, treeOf, useViewHarness } from '../helpers/view';
+import { respaceRanksCommand, seedRanksCommand } from '../../src/commands/rank';
+import {
+	clickExpandAll,
+	drag,
+	flush,
+	itemAt,
+	key,
+	makeView,
+	noTypeFolders,
+	rowByTitle,
+	rows,
+	treeOf,
+	useViewHarness,
+} from '../helpers/view';
 import { computeAssigneeWrites } from '../../src/domain/writePlan';
 
 useViewHarness();
 
 describe('moves in a group that holds an outside-filter row', () => {
-	/** Epic E over Feature A (context, because its PBI matched) and Feature B (a result). */
-	function mixedView() {
+	/**
+	 * Epic over Feature A (context, because its PBI matched) and Feature B (a result),
+	 * with PBI under Feature A. **The four ranks are the parameter**, because the two
+	 * vaults this file needs differ in nothing else, and the difference is exactly which
+	 * placement path runs: distinct ranks drive the GLOBAL one, and sibling-scoped ties
+	 * drive `dropPlacement`'s peer fallback over the same context rows. `order` ranks the
+	 * whole backlog, and `anchoredOrder` reads an excluded row's number as a neighbour
+	 * even though it may never write one, so the context rows carry ranks in both.
+	 */
+	function contextView(orders: [number, number, number, number]) {
 		const vault = new FakeVault();
-		vault.addFile('Epic.md', { frontmatter: { type: 'Epic', order: 10 } });
-		vault.addFile('Feature A.md', { frontmatter: { type: 'Feature', order: 10 }, parentLink: 'Epic' });
-		vault.addFile('Feature B.md', { frontmatter: { type: 'Feature', order: 20 }, parentLink: 'Epic' });
-		vault.addFile('PBI.md', { frontmatter: { type: 'PBI', order: 10 }, parentLink: 'Feature A' });
-		// Inference is what this test is about, so the type folders that would answer
-		// first are turned off.
-		const { view, containerEl } = makeView(vault, noTypeFolders(), { only: ['Feature B.md', 'PBI.md'] });
+		vault.addFile('Epic.md', { frontmatter: { type: 'Epic', order: orders[0] } });
+		vault.addFile('Feature A.md', { frontmatter: { type: 'Feature', order: orders[1] }, parentLink: 'Epic' });
+		vault.addFile('Feature B.md', { frontmatter: { type: 'Feature', order: orders[2] }, parentLink: 'Epic' });
+		vault.addFile('PBI.md', { frontmatter: { type: 'PBI', order: orders[3] }, parentLink: 'Feature A' });
+		// Inference is what the folder tests below are about, so the type folders that
+		// would answer first are turned off.
+		// Named base, so the view mounts inside a real leaf: the palette commands below
+		// reach it through the registry and the workspace rather than through an element
+		// a test already holds, and that leaf is what the workspace has to call active.
+		const { view, containerEl } = makeView(
+			vault,
+			noTypeFolders(),
+			{ base: 'Backlog.base', only: ['Feature B.md', 'PBI.md'] },
+		);
+		vault.activeView = vault.leaves[vault.leaves.length - 1].view;
 		return { view, containerEl, vault };
 	}
 
-	it('offers no move commands on a result whose siblings include a context row', () => {
+	/** Seeded: every rank distinct, so the global placement answers. */
+	const mixedView = () => contextView([10, 20, 30, 40]);
+	/** Sibling-scoped: Epic, Feature A and PBI tie at 10, which opens the peer fallback. */
+	const tiedView = () => contextView([10, 10, 20, 10]);
+
+	/**
+	 * The two whole-population rewrites, driven as write entry points like every other
+	 * gesture in this file. They are the widest write this plugin has — every note's rank at
+	 * once — so "never a write target" is the rule most worth asking of them, and the plan
+	 * has to leave the excluded rows out rather than relying on `applySafely` to refuse:
+	 * that refusal is whole-batch, so one context row in the plan writes NOTHING at all.
+	 */
+	it.each([
+		['seed', seedRanksCommand],
+		['respace', respaceRanksCommand],
+	])('the %s command ranks the results and writes to no context row', async (_name, command) => {
+		const { vault } = mixedView();
+
+		expect(command(vault.app, false)).toBe(true);
+		Modal.lastOpened?.contentEl.querySelector<HTMLElement>('.mod-cta')?.click();
+		await flush();
+
+		expect(vault.writeLog.map((w) => w.path).sort()).toEqual(['Feature B.md', 'PBI.md']);
+	});
+
+	it('offers the move commands in such a group: nothing is withheld for the context row', () => {
 		const { containerEl } = mixedView();
 
 		rowByTitle(containerEl, 'Feature B').dispatchEvent(new MouseEvent('contextmenu', { bubbles: true }));
 		const titles = Menu.lastShown?.items.map((i) => i.titleText) ?? [];
-		expect(titles).not.toContain('Move up');
-		expect(titles).not.toContain('Move down');
-		expect(titles).not.toContain('Move to top');
+		// `reorderableGroup` used to withhold every one of these, because a renumber would
+		// have rewritten the whole group and so touched the excluded note. A rank is a
+		// midpoint now — one write, to the moved note — so the refusal is deleted and the
+		// commands come back. The rule this file exists for did not move with it: what the
+		// tests below check is not that these are absent but that TAKING them writes to
+		// `Feature B.md` and to nothing else.
+		expect(titles).toContain('Move up');
+		expect(titles).toContain('Move to top');
 	});
 
-	it('offers no outdent when it would rank against a context parent', () => {
-		const { containerEl } = mixedView();
+	it('offers outdent past a context parent, and writes only the outdented note', async () => {
+		const { containerEl, vault } = mixedView();
 
 		rowByTitle(containerEl, 'PBI').dispatchEvent(new MouseEvent('contextmenu', { bubbles: true }));
-		const titles = Menu.lastShown?.items.map((i) => i.titleText) ?? [];
-		// Its parent Feature A is context, so outdenting would renumber that group
-		expect(titles).not.toContain('Outdent');
+		expect(Menu.lastShown?.item('Outdent')).toBeDefined();
+		Menu.lastShown?.item('Outdent')?.click();
+		await flush();
+
+		// PBI leaves Feature A (a context row) for Epic (another one), ranked right after
+		// Feature A among Epic's children. BOTH of the notes that frame the move are ones
+		// the Base excluded, and neither is in the write log: their orders are READ, which
+		// the context-row rule has always allowed, and the batch names one file.
+		expect(vault.writeLog.map((w) => w.path)).toEqual(['PBI.md']);
+		expect(vault.fm('PBI.md').parent).toBe('[[Epic]]');
 	});
 
-	it('writes nothing when Alt+arrow targets such a group', async () => {
+	it('keeps the rule on the peer fallback too: a tie beside a context row writes one note', async () => {
+		const { view, containerEl, vault } = tiedView();
+		const tree = treeOf(containerEl);
+		view.selectItem(view.model?.byPath.get('Feature B.md') as never);
+
+		// The global neighbours of Feature A are Epic (10) and Feature A (10) — a tie, so
+		// the sibling-scoped fallback answers, ranking among the peers alone. Its ONLY
+		// peer is Feature A, a note the Base excluded: its order is read to produce -990
+		// and it is not written, which is the same rule the global path keeps above. This
+		// is the branch a fully distinct fixture can never reach.
+		key(tree, 'ArrowUp', { altKey: true });
+		await flush();
+		expect(vault.writeLog.map((w) => w.path)).toEqual(['Feature B.md']);
+		expect(vault.fm('Feature B.md')['order']).toBe(-990);
+		expect(vault.fm('Feature A.md')['order']).toBe(10);
+		expect(vault.fm('Epic.md')['order']).toBe(10);
+	});
+
+	it('writes only the dragged note when Alt+arrow ranks it beside a context row', async () => {
 		const { view, containerEl, vault } = mixedView();
 		const tree = treeOf(containerEl);
 		view.selectItem(itemAt(view, 'Feature B.md'));
 
+		// Feature B moves above Feature A, which is a context row. Both rows that frame the
+		// new rank are excluded ones — Epic (10) below and Feature A (20) above — and the
+		// midpoint of them, 15, is read from notes that are never written. That is the
+		// distinction the whole file turns on: an excluded row constrains a rank and never
+		// receives one.
 		key(tree, 'ArrowUp', { altKey: true });
-		key(tree, 'ArrowLeft', { altKey: true });
 		await flush();
-		expect(vault.writeLog).toEqual([]);
-	});
-});
-
-describe('new-item folder inference with context rows', () => {
-	it('ignores ancestors that live outside the filtered folder', () => {
-		const vault = new FakeVault();
-		// A deep chain of ancestors elsewhere would outvote the two real results
-		vault.addFile('Elsewhere/Epic.md', { frontmatter: { type: 'Epic' } });
-		vault.addFile('Elsewhere/Feature.md', { frontmatter: { type: 'Feature' }, parentLink: 'Epic' });
-		vault.addFile('Elsewhere/Sub.md', { frontmatter: { type: 'PBI' }, parentLink: 'Feature' });
-		vault.addFile('Backlog/A.md', { frontmatter: { type: 'Task' }, parentLink: 'Sub' });
-		vault.addFile('Backlog/B.md', { frontmatter: { type: 'Task' }, parentLink: 'Sub' });
-		// Inference is what this test is about, so the type folders that would answer
-		// first are turned off.
-		const { containerEl } = makeView(
-			vault,
-			noTypeFolders(),
-			{ collapsed: true, only: ['Backlog/A.md', 'Backlog/B.md'] },
-		);
-
-		containerEl.querySelector<HTMLElement>('.pbl-new-btn')?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
-
-		// Three context ancestors in Elsewhere/ must not outvote two results in Backlog/
-		const detail = Modal.lastOpened?.contentEl.querySelector('.pbl-modal-detail')?.textContent ?? '';
-		expect(detail).toContain('folder "Backlog"');
-		expect(detail).not.toContain('Elsewhere');
-	});
-});
-
-describe('creating a child under a context parent', () => {
-	/** Folder mode, a base scoped to Backlog/, and a parent living outside it. */
-	function outsideParentView() {
-		const vault = new FakeVault();
-		vault.addFile('Projects/Epic/Epic.md', { frontmatter: { type: 'Epic' } });
-		vault.addFile('Backlog/PBI.md', { frontmatter: { type: 'PBI' }, parentLink: 'Epic' });
-		// Type folders off: the rule under test is where a child of a CONTEXT parent
-		// lands, which only comes up when the folder is being inferred at all.
-		const { view, containerEl } = makeView(
-			vault,
-			noTypeFolders({ inferFolderHierarchy: true }),
-			{ only: ['Backlog/PBI.md'] },
-		);
-		return { view, containerEl, vault };
-	}
-
-	it('keeps the new note in the results folder, not beside the excluded parent', () => {
-		const { containerEl } = outsideParentView();
-
-		rowByTitle(containerEl, 'Epic')
-			.querySelector<HTMLElement>('.pbl-add')
-			?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
-
-		const detail = Modal.lastOpened?.contentEl.querySelector('.pbl-modal-detail')?.textContent ?? '';
-		expect(detail).toContain('Under "Epic"');
-		expect(detail).toContain('folder "Backlog"');
-		expect(detail).not.toContain('Projects');
-	});
-
-	it('still writes the parent link, so the hierarchy survives the different folder', async () => {
-		const { containerEl, vault } = outsideParentView();
-
-		rowByTitle(containerEl, 'Epic')
-			.querySelector<HTMLElement>('.pbl-add')
-			?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
-		submitPrompt({ title: 'New work' });
-		await flush();
-
-		expect(vault.fm('Backlog/New work.md')['parent']).toBe('[[Epic]]');
-	});
-
-	it('still puts children beside a parent that is a real result', async () => {
-		const vault = new FakeVault();
-		vault.addFile('Backlog/Epic/Epic.md', { frontmatter: { type: 'Epic' } });
-		// Type folders off: the rule under test is where a child of a CONTEXT parent
-		// lands, which only comes up when the folder is being inferred at all.
-		const { containerEl } = makeView(vault, noTypeFolders({ inferFolderHierarchy: true }), { collapsed: true });
-
-		rowByTitle(containerEl, 'Epic')
-			.querySelector<HTMLElement>('.pbl-add')
-			?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
-
-		const detail = Modal.lastOpened?.contentEl.querySelector('.pbl-modal-detail')?.textContent ?? '';
-		expect(detail).toContain('folder "Backlog/Epic"');
+		expect(vault.writeLog.map((w) => w.path)).toEqual(['Feature B.md']);
+		expect(vault.fm('Feature B.md')['order']).toBe(15);
 	});
 });
 
@@ -464,6 +471,60 @@ describe('write safety with context rows, across every entry point', () => {
 
 		expect(applied).toBeNull();
 		expect(vault.writeLog).toEqual([]);
+	});
+
+	/**
+	 * Task 5's own gap: nothing above focuses the view, so the sweep above never drives
+	 * the new focus-rank branch at all. `collectFocusRoots` promotes on level match
+	 * alone (`src/domain/model.ts`), not on filter membership, so a context row sitting
+	 * exactly at the focus level becomes a `model.roots` member — `focusRoot: true` —
+	 * while staying `outsideFilter`. The rule holds anyway, structurally: `row.draggable
+	 * = !item.outsideFilter` (`render/rows.ts`, re-checked at drag time in
+	 * `interactions/dragDrop.ts`) keeps it off the `dragged` side. It is NOT kept off the
+	 * `item` side any more — a ranked context row is a legal drop ANCHOR at the focus
+	 * level, as it has always been for Alt+arrow — and it does not need to be: an anchor is
+	 * a number to rank against, and the write lands on the row that moved.
+	 */
+	function focusedStressView() {
+		const vault = new FakeVault();
+		vault.addFile('Epic.md', { frontmatter: { type: 'Epic', order: 10 } });
+		vault.addFile('PBI Ctx.md', { frontmatter: { type: 'PBI', order: 20 }, parentLink: 'Epic' });
+		vault.addFile('Task Ctx.md', { frontmatter: { type: 'Task', order: 10 }, parentLink: 'PBI Ctx' });
+		vault.addFile('PBI A.md', { frontmatter: { type: 'PBI', order: 30 }, parentLink: 'Epic' });
+		vault.addFile('PBI B.md', { frontmatter: { type: 'PBI', order: 40 }, parentLink: 'Epic' });
+		const containerEl = document.body.createDiv();
+		const view = new ProductBacklogView({} as never, containerEl);
+		const anyView = view as unknown as Record<string, unknown>;
+		anyView.app = vault.app;
+		anyView.config = new FakeViewConfig({});
+		anyView.data = { data: vault.entries().filter((e) => !['Epic.md', 'PBI Ctx.md'].includes(e.file.path)) };
+		view.onDataUpdated();
+		view.setFocusLevel('PBI');
+		clickExpandAll(containerEl);
+		return { view, containerEl, vault };
+	}
+
+	it('never writes to a context row promoted into the focus rank, whatever is dragged around it', async () => {
+		const { view, containerEl, vault } = focusedStressView();
+		const ctx = view.model?.byPath.get('PBI Ctx.md');
+		// Not vacuous: the state the comment above describes really is what this fixture
+		// produces, not merely what it was written to produce.
+		expect(ctx?.outsideFilter).toBe(true);
+		expect(ctx?.focusRoot).toBe(true);
+
+		const allRows = rows(containerEl);
+		for (const from of allRows) {
+			for (const to of allRows) {
+				if (from === to) continue;
+				for (const zone of ['before', 'after', 'inside'] as const) {
+					drag(from, to, zone);
+					await flush();
+				}
+			}
+		}
+		expect(vault.writeLog.some((w) => w.path === 'PBI Ctx.md')).toBe(false);
+		// Not vacuous the other way: real rank writes did happen among the other rows.
+		expect(vault.writeLog.length).toBeGreaterThan(0);
 	});
 });
 

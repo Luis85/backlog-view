@@ -5,7 +5,9 @@ import { manualLink } from '../../ui/manualDialog';
 import { manualSections } from '../manual/sections';
 import { BacklogItem, BacklogModel } from '../../domain/model';
 import { focusTarget, folderForType, isIterationType } from '../../domain/itemTypes';
-import { AxisWrite, computeIterationNoteWrites, ORDER_SPACING } from '../../domain/writePlan';
+import { rankablePeers } from '../../domain/dropTargets';
+import { ORDER_SPACING, RankResult, refusalKey } from '../../domain/rankArithmetic';
+import { AxisWrite, computeIterationNoteWrites, dropPlacement } from '../../domain/writePlan';
 import { createBacklogItem } from '../../storage/createNote';
 import { iterationNoteName, nextIterationDates, nextIterationName, previousIteration } from '../../domain/iterations';
 import { ITERATION_TYPE, LEVELS } from '../../domain/typeVocabulary';
@@ -180,35 +182,91 @@ async function createFromPrompt(host: BacklogViewHost, request: CreateRequest): 
 			console.error('Product Backlog: could not save folder to the view options', e);
 		}
 	}
-	// The new child has to be visible under its parent, collapsed or not.
-	const parentItem = request.parentItem;
-	if (parentItem) host.setCollapsed(parentItem.file.path, false);
+	// **The rank and the write are ONE exclusive section**, not two — `runFileWrite`'s own
+	// rule, which creation was outside of until 2026-09-02. Locking the write alone leaves
+	// the half that actually misplaces the note: `newItemOrder` reads `host.model`, which
+	// the gate holds stale for as long as the batch it is deferring runs, so a rank taken
+	// beside a running Seed or Respace is computed against numbers already replaced. The
+	// gate refuses (loudly) when a batch is in flight, so a refused creation still speaks.
+	await host.runFileWrite(async () => {
+		// **Placed before anything is revealed.** A refused creation that had already opened
+		// the parent would leave the tree looking as though something had been added to it.
+		// `cardMoves.ts`'s `performDrop` had the identical defect and the identical fix: accept
+		// first, reveal second — a shape to look for wherever a gesture prepares the screen for
+		// an outcome it has not yet earned.
+		const parentItem = request.parentItem;
+		const placed = newItemOrder(host, parentItem);
+		if ('refusal' in placed) {
+			new Notice(t(refusalKey(placed.refusal)));
+			return;
+		}
+		// The new child has to be visible under its parent, collapsed or not.
+		if (parentItem) host.setCollapsed(parentItem.file.path, false);
 
-	try {
-		const file = await createBacklogItem(host.app, host.settings, {
-			folder: request.folder,
-			title: request.title,
-			typeName: request.levelName,
-			parent: parentItem?.file ?? null,
-			// Parentless items rank among the real top level, not the focus rows.
-			order: endOfSiblingsOrder(parentItem ? parentItem.children : host.model?.realRoots ?? []),
-			horizon: request.horizon,
-			...iterationOf(host),
-		});
-		new Notice(t('create.created', { name: file.basename }));
-	} catch (e) {
-		console.error('Product Backlog: failed to create item', e);
-		new Notice(t('create.failed'));
-	}
+		// Caught INSIDE the section, like the release notes writer: `runExclusively` would
+		// otherwise report this as the generic apply failure and lose the creation's own
+		// sentence.
+		try {
+			const file = await createBacklogItem(host.app, host.settings, {
+				folder: request.folder,
+				title: request.title,
+				typeName: request.levelName,
+				parent: parentItem?.file ?? null,
+				order: placed.order,
+				horizon: request.horizon,
+				...iterationOf(host),
+			});
+			new Notice(t('create.created', { name: file.basename }));
+		} catch (e) {
+			console.error('Product Backlog: failed to create item', e);
+			new Notice(t('create.failed'));
+		}
+	});
 }
 
-/** An order value placing a new item after every ranked sibling. */
-function endOfSiblingsOrder(siblings: BacklogItem[]): number {
-	let maxOrder = 0;
-	for (const s of siblings) {
-		if (s.order !== null && s.order > maxOrder) maxOrder = s.order;
+/**
+ * The rank for a new note: appended among its parent's children, which under a global
+ * rank means between the last of them and whatever follows in the ranked POPULATION —
+ * not a spacing past the last child, which could land past a whole neighbouring subtree.
+ *
+ * Asked of `dropPlacement` and not of `orderForTarget` beside it, with a null `dragged`
+ * because the note does not exist yet. That is the SAME question a drop asks, which is
+ * the point: `dropPlacement` carries the unmigrated-vault fallback, and calling one step
+ * below it left a legacy vault that could be dragged around but not added to — a reorder
+ * placed through the peer fallback while a `New <child>` on the same rows refused.
+ *
+ * Returns the REFUSAL rather than a rank nobody chose. An empty vault needs no fallback —
+ * an empty population already answers `ORDER_SPACING` — so a refusal here is always a
+ * real one: a spent gap, a tie the fallback could not free, or a neighbour with no rank.
+ * Creating the note at a default rank anyway would put it at a number another note may
+ * already hold and nowhere near the slot the user asked for, which is worse than not
+ * creating it.
+ */
+function newItemOrder(host: BacklogViewHost, parentItem: BacklogItem | null): RankResult {
+	const model = host.model;
+	if (!model) return { order: ORDER_SPACING };
+	// `rankablePeers` (`domain/dropTargets.ts`, own comment) on both branches below: the
+	// real roots or the parent's children can end in an unranked context row.
+	// Parentless items rank among the real top level, not the focus rows.
+	if (!parentItem) {
+		const roots = rankablePeers(model.realRoots);
+		return dropPlacement(null, { parent: null, peers: roots, insertIndex: roots.length }, model.ranked);
 	}
-	return Math.floor(maxOrder) + ORDER_SPACING;
+	// **Re-resolved by PATH.** The title prompt is modal and the model rebuilds under it —
+	// on any vault change, and on the refresh that ends every write batch. A `parentItem`
+	// captured before that rebuild is an object from the OLD model, and the placement finds
+	// its anchor by identity (`ranked.indexOf`), so a stale object scores -1 and the
+	// creation is refused as `unranked` on a vault where every note is ranked correctly.
+	// The path is the thing that survives a rebuild.
+	const parent = model.byPath.get(parentItem.file.path);
+	// **A parent that no longer resolves is NOT a root request.** Collapsing the two with
+	// `?? null` would rank the note among the roots while `createFromPrompt` still writes
+	// the captured `parentItem.file` as its parent link — a note parented to a missing file
+	// and ranked somewhere else entirely. The prompt is modal, so the parent really can be
+	// deleted while it is open.
+	if (!parent) return { refusal: 'parentGone' };
+	const peers = rankablePeers(parent.children);
+	return dropPlacement(null, { parent, peers, insertIndex: peers.length }, model.ranked);
 }
 
 function normalizeFolder(path: string | undefined): string {
@@ -397,24 +455,36 @@ function openIterationPrompt(
  */
 async function createIteration(host: BacklogViewHost, result: IterationResult): Promise<void> {
 	const axis = axisFrom(host, result);
-	try {
-		const file = await createBacklogItem(host.app, host.settings, {
-			folder: folderForType(ITERATION_TYPE, host.settings) || host.settings.homeFolder,
-			title: iterationNoteName(result.name, result.goal),
-			typeName: ITERATION_TYPE,
-			parent: null,
-			order: endOfSiblingsOrder(host.model?.realRoots ?? []),
-			axis: { ...(axis.start ? { start: axis.start } : {}), ...(axis.target ? { target: axis.target } : {}) },
-			...(host.settings.iterationGoalKey && result.goal ? { iterationGoal: result.goal } : {}),
-		});
-		// **Not opened**, like every other creation this plugin makes. It was opened for
-		// one round on the argument that an iteration draws nowhere and would otherwise be
-		// a note to go and find; the user's answer is that making a sprint is a planning
-		// act and taking the reader off the board they are planning ON is the cost that
-		// argument did not count. The scope picker names it either way.
-		new Notice(t('create.iterationCreated', { name: file.basename }));
-	} catch (e) {
-		console.error('Product Backlog: failed to create iteration', e);
-		new Notice(t('create.iterationFailed'));
-	}
+	// Under the gate for `createFromPrompt`'s reason, which is this function's too: the
+	// rank below is read off a model a running batch is holding stale, and this prompt is
+	// modal for as long as one takes.
+	await host.runFileWrite(async () => {
+		// An iteration is a root, so it takes the same placement the toolbar's parentless
+		// creation does — and the same refusal rather than a rank nobody chose.
+		const placed = newItemOrder(host, null);
+		if ('refusal' in placed) {
+			new Notice(t(refusalKey(placed.refusal)));
+			return;
+		}
+		try {
+			const file = await createBacklogItem(host.app, host.settings, {
+				folder: folderForType(ITERATION_TYPE, host.settings) || host.settings.homeFolder,
+				title: iterationNoteName(result.name, result.goal),
+				typeName: ITERATION_TYPE,
+				parent: null,
+				order: placed.order,
+				axis: { ...(axis.start ? { start: axis.start } : {}), ...(axis.target ? { target: axis.target } : {}) },
+				...(host.settings.iterationGoalKey && result.goal ? { iterationGoal: result.goal } : {}),
+			});
+			// **Not opened**, like every other creation this plugin makes. It was opened for
+			// one round on the argument that an iteration draws nowhere and would otherwise be
+			// a note to go and find; the user's answer is that making a sprint is a planning
+			// act and taking the reader off the board they are planning ON is the cost that
+			// argument did not count. The scope picker names it either way.
+			new Notice(t('create.iterationCreated', { name: file.basename }));
+		} catch (e) {
+			console.error('Product Backlog: failed to create iteration', e);
+			new Notice(t('create.iterationFailed'));
+		}
+	});
 }

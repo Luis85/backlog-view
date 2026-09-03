@@ -143,22 +143,35 @@ language is one file and one row. What must never enter the catalog is anything 
 writes, matches or persists — type names, state values, option keys, tags, file names. The
 test when it is not obvious: **ask what breaks if two people with different Obsidian
 languages open the same vault.** "One sees different words" is text; "one writes notes the
-other's view cannot read" is data. 797 keys are in it, counted two ways on the MERGED tree
-on 2026-09-02 and agreeing — an AST walk over the `as const`
-object's own properties, and a match-counting
+other's view cannot read" is data. 837 keys are in it, counted two ways on the MERGED tree
+on 2026-09-03 and agreeing — `Object.keys` over the catalog itself, and a match-counting
 `grep -Po` over the key lines. Two rather than the three the 2026-08-26 count used: the
-`Object.keys` over the BUNDLED catalog was not re-run, and this sentence says two because
-two is what was done. `grep -c` would count LINES, which is one of
+AST walk over the `as const` object's own properties was not re-run, and this sentence
+says two because two is what was done. `grep -c` would count LINES, which is one of
 the three wrong numbers this epic has produced from an instrument that looked right, and
 some of these keys carry their value on the FOLLOWING line, which is exactly what such an
 instrument gets wrong. The two DISAGREEING would itself be a finding rather than a nuisance:
 a walk that reports its DISTINCT properties beside its total drops a duplicate key the text
 still shows, so the pair answers "how many" and "are any of them the same key twice" in one
-pass — 797 total and 797 distinct on 2026-09-02. **A count is dated the moment
-it is written, and this paragraph has now been a merge conflict five times in one day** —
-550, 542, 553, 577, 556, 588, 591, 559, 597, 630, 643, 655 and 686 were each true of the branch
-that wrote them and of nothing else, and 797 is what the merged tree measures rather than what
-any side's arithmetic predicted. Re-measure on the merged tree rather than picking a side.
+pass — 837 total and 837 distinct on 2026-09-03. **A count is dated the moment
+it is written, and this paragraph has now been a merge conflict seven times in one day** —
+550, 542, 553, 577, 556, 588, 591, 559, 597, 630, 643, 655, 686, 761, 763, 797, 816 and 817 were each
+true of the branch that wrote them and of nothing else, and 837 is what the merged tree measures
+rather than what any side's arithmetic predicted. Re-measure on the merged tree rather than
+picking a side.
+**686 is the worked example of why**: it was measured on a merged tree too, and 0.10.0
+shipping the release view, the estimation view and the resource roster took it to 761 without
+anybody editing this sentence. A branch that adds one key and finds the number 75 out has not
+found a miscount — it has found that the number was never the branch's to keep current.
+**797 and 816 are the second worked example, and a sharper one**: they were the two sides of
+the 2026-09-02 merge, each measured correctly on its own tree, and neither was the answer — that
+merged tree held 817, which is not 797, not 816, and not 797 plus that branch's own additions.
+Two correct counts do not merge into a third correct count.
+**817 is the third, and it is the one that needs no conflict at all**: the 2026-09-03 merge that
+took it to 837 did not touch this paragraph, because `src/i18n/en.ts` merged CLEANLY — both sides
+added keys in different places, so git had nothing to ask about and the sentence went stale in
+silence. A conflict here is the LUCKY case. The number is only ever as good as the last time
+somebody ran the two instruments, which is why the date beside it is part of the claim.
 `ui/`, `commands/`, `view/interactions/`, `view/estimation/`, the whole of `view/render/`,
 `view/writeGate.ts`, `view/cardMoves.ts`, `main.ts`, `domain/viewOptions.ts`, the whole of
 `storage/` and — since 2026-08-22 — `domain/estimationOptions.ts`, `domain/board.ts`,
@@ -361,10 +374,19 @@ One rule covers the whole context-row feature, and every past bug in it was a pl
 that forgot the rule rather than a new rule: **an `outsideFilter` row is never a write
 target, never a ranking peer, and never a source of anything derived from the Base's
 results** (counts, level breakdown, state and tag vocabulary, creation folder). It renders, it
-parents, and that is all. "Never a ranking peer" means never written to and never
-renumbered — its `order` is still *read* (`afterHighestKnown`, `endOfSiblingsOrder`,
-the backfill's max-order scan), because the row is on screen and a rank that ignored
-it would place an item above something the user can see. Ask that question of any new
+parents, and that is all. "Never a ranking peer" means never written to — its `order`
+is still *read* (`anchoredOrder`'s neighbour walk, `rankTaken`'s
+occupancy check, the backfill's own floor and ceiling), because the row is on screen and a
+rank that ignored it would place an item above something the user can see. An UNRANKED one
+is `anchoredOrder`'s exception, and **only its**: one placement has somewhere else to go, so
+it skips the row rather than refusing beside it — a refusal there would send the user to a
+backfill that may never write it. The BACKFILL answers the opposite way, and that is not a
+contradiction but a different question: it is the pass that would have to hand the row a
+number later, and it never can, so a blank it would rank PAST an unranked context row is
+left blank instead (`allocateRanks`, poisoning that row's focus key and sibling group
+exactly as a refusal does). One gesture may step over a row nothing can rank; a pass
+filling every blank may not, or the row it stepped over is the one that moves.
+Ask that question of any new
 code touching the tree; the "write safety with context rows, across every entry point"
 test in `test/view/contextRowWrites.test.ts` drives every interaction against a fixture
 with context rows above, beside and between results, so a new write path fails it
@@ -410,7 +432,11 @@ refused whole if any write targets an `outsideFilter` item — and a replay skip
 one reason read twice: its authorization came at capture time, and it restores RAW
 captured keys rather than planning against these settings, so a collision that would
 corrupt a note through the planner is unreachable from one. Serialization is the refusal
-all three share. All three live in
+all three share. **Every view answers that second question the same way, and absence is
+part of the answer**: a path the model does not hold is unwritable, because absent and
+"present and included" are different facts and only the second one authorizes a write. The
+backlog view read absence as permission until 2026-08-31 and a stale menu subject was
+written to through the hole. All three live in
 `view/writeGate.ts` — the view owns a `WriteGate`, delegates the host's three write
 methods to it, and publishes its progress; the gate itself touches no DOM. Everything applied was
 planned by `domain/writePlan.ts`, which touches nothing, and applied by
