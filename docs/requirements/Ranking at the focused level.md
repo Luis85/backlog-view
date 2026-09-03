@@ -149,6 +149,25 @@ from.
   did not, because it covered a context row DIFFERING from its writable neighbour and never
   one that ties: a control is only as wide as the case it varies.
   **Checked by** `test/view/focusRanking.test.ts` — "allows the drop where a context row TIES with a writable one and the list is ordered"
+  **The peers are asked BOTH questions, and neither implies the other** (2026-09-03, rounds
+  five and six together). Five replaced a strict `<` on the order with `compareRank` itself,
+  because a tie the sort settles on `entryIndex` sits exactly where it is drawn and is no
+  reason to refuse — drawn `A(10)`, context `C(10)`, `D(10)`, a drop of D above A comes back
+  `D, A, C`, the slot asked for. Six is the cost of that: `compareRank` tolerates a tie
+  between two WRITABLE peers as well, and those keep the fallback open however the dragged
+  row is written. Drawn `A(10), B(10), C(20)`, dropping C above A wrote it a 6.5 and the
+  list came back unchanged — the invisible write of the first round, through the door the
+  comparator opened. So `distinctlyRanked` asks whether the rows left behind can hold an
+  order at all, and `drawnInRankOrder` asks whether lifting it preserves the screen. The
+  bypass above is a third question: it reads the list INCLUDING the dragged row, before the
+  move.
+  **This was refused once before it was taken.** The review that raised round five proposed
+  the separate distinctness step in the same breath, and the reply declined it on the ground
+  that the bypass already covered it. It does not — the bypass reads the pre-move list, and
+  after the write the dragged row holds a fresh rank, so what decides the fallback is
+  whether the OTHER writable rows are distinct among themselves. A reviewer's second clause
+  is not decoration.
+  **Checked by** `test/view/focusRanking.test.ts` — "refuses, because the write cannot lift a fallback two other rows hold open"
 - **2e — the vault's ranks were never spread for this.** Two palette commands rewrite
   them all: **Seed ranks from the hierarchy** (`seed-ranks`) numbers every note in the
   order the tree draws it, and **Respace ranks** (`respace-ranks`) keeps the rank order and

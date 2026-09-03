@@ -597,3 +597,36 @@ describe('a focus drop past a ranked context row', () => {
 		expect(vault.writeLog.map((w) => w.path)).toEqual(['D.md']);
 	});
 });
+
+/**
+ * Round six, and the round-one defect coming back through a door round five opened.
+ *
+ * `compareRank` tolerates a tie that `entryIndex` settles — right for "will the screen
+ * hold still", wrong for "can these rows hold an order at all". Two WRITABLE peers sharing
+ * a rank keep the fallback open no matter what the dragged row is written, so the number is
+ * invisible: drawn `A(10), B(10), C(20)`, dropping C above A wrote it a 6.5 and the list
+ * came back `A, B, C`, unchanged, with the undo slot spent.
+ *
+ * The guard therefore asks BOTH predicates of the peers, and neither implies the other.
+ * The bypass one level up is a different question again — it reads the list INCLUDING the
+ * dragged row, before the move; this reads the rows left behind, which is what decides
+ * whether the fallback is still open after it.
+ */
+describe('a focus drop whose remaining peers still tie', () => {
+	it('refuses, because the write cannot lift a fallback two other rows hold open', async () => {
+		const vault = new FakeVault();
+		vault.addFile('Epic A.md', { frontmatter: { type: 'Epic', order: 1 } });
+		vault.addFile('Epic B.md', { frontmatter: { type: 'Epic', order: 2 } });
+		vault.addFile('Epic C.md', { frontmatter: { type: 'Epic', order: 3 } });
+		vault.addFile('A.md', { frontmatter: { type: 'PBI', order: 10 }, parentLink: 'Epic A' });
+		vault.addFile('B.md', { frontmatter: { type: 'PBI', order: 10 }, parentLink: 'Epic B' });
+		vault.addFile('C.md', { frontmatter: { type: 'PBI', order: 20 }, parentLink: 'Epic C' });
+		const { containerEl } = makeView(vault, {}, { focus: 'PBI' });
+		expect(titlesOf(containerEl)).toEqual(['A', 'B', 'C']);
+
+		drag(rowByTitle(containerEl, 'C'), rowByTitle(containerEl, 'A'), 'before');
+		await flush();
+
+		expect(vault.writeLog).toEqual([]);
+	});
+});
