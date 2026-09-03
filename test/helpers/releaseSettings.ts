@@ -34,6 +34,11 @@ export function releaseSettingsWith(overrides: Partial<ReleaseSettings> = {}): R
 		// Five more added 2026-09-02 with the readiness criteria — same by-hand rule, and
 		// each unconfigured: absence is a value here too.
 		estimateKey: '',
+		// The capacity figure, added with `Capacity against commitment`'s Task 1 — same
+		// by-hand rule as the others above: unconfigured, since absence is a value here too.
+		capacityKey: '',
+		// Its unit, added with Task 3 — same rule, same reason: unconfigured by default.
+		capacityUnit: '',
 		dependsOnKey: '',
 		riskKey: '',
 		criticalRiskValues: [],

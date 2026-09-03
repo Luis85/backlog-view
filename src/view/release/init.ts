@@ -95,6 +95,14 @@ export const RELEASE_SUGGESTED_KEYS: AdoptionCandidate[] = [
 	{ option: 'releasedDateProperty', suggested: 'released' },
 	{ option: 'descriptionProperty', suggested: 'description' },
 	{ option: 'estimateProperty', suggested: 'effort' },
+	// `capacityUnit` is bound too, in {@link RELEASE_SUGGESTED_VALUES} beside the other text
+	// options — not here, because it names no property. This key alone used to bind without
+	// it, on the argument that there is no honest literal for a unit a team has not stated: a
+	// guessed one labels somebody else's numbers until they notice and change it. The product
+	// owner weighed that against a press that cannot finish enabling the feature it exists to
+	// turn on, and decided a press that always finishes wins — so it defaults to `points`, the
+	// option's own placeholder, same as every other bound-but-guessable text box here.
+	{ option: 'capacityProperty', suggested: 'capacity' },
 	{ option: 'dependsOnProperty', suggested: 'dependsOn' },
 	{ option: 'riskProperty', suggested: 'risk' },
 ];
@@ -106,12 +114,13 @@ export interface ValueCandidate {
 }
 
 /**
- * The three the closing actions need and {@link RELEASE_SUGGESTED_KEYS} cannot carry: a
- * folder, a value list and a dropdown over that list. They reach none of
- * `adoptCandidates`' machinery because they name no property — there is no key for
- * `taken` to guard and no collision to report. What they share with the property candidates
- * above is the ONE rule that applies to them, applied in {@link runReleaseInit}: an option
- * the reader has touched is never overwritten, and cleared is not untouched.
+ * The four the closing actions and the capacity comparison need and {@link
+ * RELEASE_SUGGESTED_KEYS} cannot carry: a folder, a value list, a dropdown over that list
+ * and a unit string. They reach none of `adoptCandidates`' machinery because they name no
+ * property — there is no key for `taken` to guard and no collision to report. What they
+ * share with the property candidates above is the ONE rule that applies to them, applied
+ * in {@link runReleaseInit}: an option the reader has touched is never overwritten, and
+ * cleared is not untouched.
  *
  * **`releaseNotesFolder` binds `docs/release-notes`**, which is the string
  * `releaseOptions.ts` also spells as that option's placeholder. Two literals, and nothing
@@ -147,6 +156,14 @@ export interface ValueCandidate {
  * reports it and the reader repairs the box; a seed cannot. Padding IS repaired, and not
  * here — `resolveReleaseSettings` trims the transition, so what this reads is already the
  * value `closeOffer` will compare.
+ *
+ * **`capacityUnit` binds `points`, the option's own placeholder in `getReleaseViewOptions`.**
+ * It has no reader value to prefer the way the transition prefers the vocabulary — there is
+ * nothing else in the config that states a unit — so it takes the plain-constant shape
+ * `releaseNotesFolder` does, and the one rule every candidate in this list already carries
+ * ({@link wouldBindValue}) is what keeps it from overwriting a unit the reader typed: that
+ * guard reads `config.get` before computing anything, so a touched box — set OR cleared —
+ * is left alone regardless of which candidate it belongs to.
  */
 export const RELEASE_SUGGESTED_VALUES: ValueCandidate[] = [
 	{ option: 'releaseNotesFolder', value: () => 'docs/release-notes' },
@@ -160,6 +177,7 @@ export const RELEASE_SUGGESTED_VALUES: ValueCandidate[] = [
 			resolveReleaseSettings(config).releasedTransition || DEFAULT_RELEASED_VALUES.join(', '),
 	},
 	{ option: 'releasedTransitionValue', value: (config) => releasedValuesOf(config)[0] ?? '' },
+	{ option: 'capacityUnit', value: () => 'points' },
 ];
 
 /**

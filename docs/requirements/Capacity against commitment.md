@@ -2,7 +2,7 @@
 type: Feature
 parent: "[[Release Management]]"
 order: 40
-status: Open
+status: Done
 created: 2026-08-16
 source: product requirements document, 2026-08-16
 started: ""
@@ -55,7 +55,10 @@ deliberately declares zero capacity is a real statement — nothing is planned f
 dividing by it produces the infinity or the `NaN` that would be shown as a percentage. So
 utilization is reported only where capacity is positive; at zero the view shows the
 commitment and the difference, which are exactly the numbers that matter there, and says the
-percentage needs a capacity. A negative capacity is refused where it is entered, since no
-unit this feature names can be less than none.
+percentage needs a capacity. A negative capacity is **reported as unreadable on read**,
+exactly as a non-numeric one is, with no comparison, no difference and no utilization drawn
+from it — nothing here writes a capacity, so there is no entry surface that could refuse one.
+No unit this feature names can be less than none, so a negative value is a typo rather than a
+quantity.
 
 **Outcome** — An over-committed release says so in the unit the team actually uses.

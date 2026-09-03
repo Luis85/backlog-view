@@ -1,5 +1,6 @@
 import { App } from 'obsidian';
 import { ownValue, readString, sameValue } from './noteFields';
+import { Decimal, exactSum, toNumber } from './decimal';
 import { ownWorkflowKind, ownWorkflowReading, WorkflowKind, workflowStateInfo } from './board';
 import { ReleaseFigure, ReleaseScope } from './releases';
 import { ReleaseSettings } from './releaseOptions';
@@ -52,9 +53,45 @@ export interface ReleaseReadiness {
 	criteria: ReleaseCriterion[];
 	unestimated: ReleaseFigure<number>;
 	estimatedEffort: ReleaseFigure<number>;
+	/**
+	 * The same total as {@link estimatedEffort}, exactly — the decimal the estimates sum to
+	 * rather than the double that sum rounds to. **The number is for display and this is for
+	 * arithmetic**: they disagree wherever the exact sum has more digits than a double holds,
+	 * and `[1e21, 1]` is the smallest release where that costs a whole unit. Anything that
+	 * SUBTRACTS from the commitment must take this one, or the difference is decided by a
+	 * rounding that happened before the comparison did.
+	 *
+	 * `null` exactly when `estimatedEffort.value` is — no key bound, or a total no double can
+	 * hold — so a reader narrowing one has narrowed both and no second check can disagree with
+	 * the first.
+	 */
+	estimatedEffortExact: Decimal | null;
 	completedEffort: ReleaseFigure<number>;
 	blocked: ReleaseFigure<number>;
 	criticalRisks: ReleaseFigure<number>;
+	/**
+	 * What the release note itself declares it can take, in the view's own unit.
+	 *
+	 * Four readings, not three: unconfigured is no key bound, `invalid` is a bound key
+	 * holding something no reader will make a number of — **a negative among them**, since
+	 * nothing in this plugin writes a capacity and extension 1b therefore judges one on
+	 * READ — and value-null-with-neither-flag is a bound key the note is silent at. The last
+	 * two are drawn differently because they send the reader to different places: one is a
+	 * property to bind, the other a number to type.
+	 */
+	capacity: ReleaseFigure<number>;
+	/**
+	 * Members carrying an estimate while a DESCENDANT member in the same release carries
+	 * one — a possible double count, NAMED and never resolved. Only the vault knows whether
+	 * its parent estimates are aggregates, and a view that guessed would be silently wrong
+	 * in whichever direction it guessed.
+	 *
+	 * **The direction is the contract, not a detail.** This counts the estimate that may
+	 * already CONTAIN the others, so one estimated Epic over two estimated PBIs is one, not
+	 * two. The reverse reading agrees on a chain and disagrees on a fan, which is why it
+	 * survived a test suite once already.
+	 */
+	doubleCounted: ReleaseFigure<number>;
 }
 
 const UNCONFIGURED: ReleaseFigure<number> = { value: null, invalid: false, unconfigured: true };
@@ -92,6 +129,16 @@ function verdictOf(cleared: number, outstanding: number): Verdict {
 const WORKFLOW_KINDS: WorkflowKind[] = ['requirements', 'deliverable', 'test'];
 
 /**
+ * The workflows that can clear a prerequisite in this vault — the same test `blockedCriterion`
+ * applies per prerequisite through `ownWorkflowKind`, asked of the configuration instead so a
+ * renderer can SAY what the criterion will consult. Exported because the alternative was the
+ * view naming `stateKey` alone, which is wrong for any prerequisite that is not ordinary work.
+ */
+export function clearingWorkflows(planSettings: BacklogSettings): WorkflowKind[] {
+	return WORKFLOW_KINDS.filter((kind) => workflowClears(kind, planSettings));
+}
+
+/**
  * **A key is half of a workflow; the other half is which values clear it** — the same rule
  * the risk criterion keeps, read here for the state vocabulary. A bound `stateKey` with an
  * empty `doneValues` clears nothing, so `ownWorkflowReading(...).done` is false for every
@@ -109,16 +156,6 @@ const WORKFLOW_KINDS: WorkflowKind[] = ['requirements', 'deliverable', 'test'];
  * Raised by a review bot against the plan, and confirmed at `settingsResolve.ts`'s
  * `effectiveDoneValues` before it was taken.
  */
-/**
- * The workflows that can clear a prerequisite in this vault — the same test `blockedCriterion`
- * applies per prerequisite through `ownWorkflowKind`, asked of the configuration instead so a
- * renderer can SAY what the criterion will consult. Exported because the alternative was the
- * view naming `stateKey` alone, which is wrong for any prerequisite that is not ordinary work.
- */
-export function clearingWorkflows(planSettings: BacklogSettings): WorkflowKind[] {
-	return WORKFLOW_KINDS.filter((kind) => workflowClears(kind, planSettings));
-}
-
 function workflowClears(kind: WorkflowKind, planSettings: BacklogSettings): boolean {
 	const info = workflowStateInfo(kind, planSettings);
 	return info.key !== '' && info.doneValues.length > 0;
@@ -194,7 +231,70 @@ export function releaseReadiness(
 		...effortFigures(app, members, settings, planSettings),
 		blocked: figureFrom(blocked),
 		criticalRisks: figureFrom(risk),
+		capacity: capacityFigure(app, scope, settings),
+		doubleCounted: doubleCountFigure(app, scope, settings),
 	};
+}
+
+/**
+ * The release's own declared capacity. `estimateValue` is the reader on purpose: it already
+ * refuses a non-finite value and a negative one, and its own comment names this feature as
+ * the reason it refuses negatives — so "an unreadable capacity and an unreadable estimate
+ * are the same judgement" is true by construction rather than by two readers agreeing.
+ */
+function capacityFigure(app: App, scope: ReleaseScope, settings: ReleaseSettings): ReleaseFigure<number> {
+	if (settings.capacityKey === '') return UNCONFIGURED;
+	const item = scope.release?.item;
+	if (item === undefined) return UNCONFIGURED;
+	const raw: unknown = ownValue(app.metadataCache.getFileCache(item.file)?.frontmatter, settings.capacityKey);
+	if (raw === null || raw === undefined) return { value: null, invalid: false, unconfigured: false };
+	const value = estimateValue(raw);
+	return value === null ? { value: null, invalid: true, unconfigured: false } : counted(value);
+}
+
+/**
+ * One pass over the rows the scope tree already drew, carrying the depths of the estimated
+ * member ancestors still open. `rows` is depth-ordered, so an ancestor is open exactly while
+ * rows deeper than it keep arriving.
+ *
+ * **Context rows close nothing and open nothing.** An excluded note is not a member, so its
+ * own estimate is no part of this release and a member below it is not double counted by it
+ * — the context-row rule, asked of this figure like every other.
+ */
+function doubleCountFigure(app: App, scope: ReleaseScope, settings: ReleaseSettings): ReleaseFigure<number> {
+	if (settings.estimateKey === '') return UNCONFIGURED;
+	// One entry per estimated member still open, and `covers` is what makes this count the
+	// ANCESTOR: it is set when an estimated member arrives BELOW this one, and read when the
+	// subtree closes. Counting at the arrival instead counts the descendant, which is the
+	// reversed predicate — right on a chain, wrong on a fan.
+	const open: { depth: number; covers: boolean }[] = [];
+	let total = 0;
+	const close = (depth: number): void => {
+		while (open.length > 0 && open[open.length - 1].depth >= depth) {
+			if (open.pop()?.covers === true) total += 1;
+		}
+	};
+	for (const row of scope.rows) {
+		close(row.depth);
+		if (row.context) continue;
+		if (!isEstimated(estimateOf(app, row.item, settings))) continue;
+		// EVERY open estimate may already contain this one, not just the nearest: an Epic
+		// whose grandchild is estimated is covering an estimate too — but that is a fact
+		// about `covers`'s own INVARIANT, not something this arrival has to re-establish by
+		// writing every entry. Each entry is pushed `covers: false`, and the arrival that
+		// pushed it is the same arrival that would have marked every entry already open at
+		// that moment — so every entry below the top is already `true` by the time a LATER
+		// arrival gets here, and only the top can still be `false`. Marking just the top is
+		// therefore the same result as marking all of them, in O(1) rather than O(open.length)
+		// — the walk this module's own header claims is a single pass over the rows, not
+		// quadratic in a chain's depth.
+		const top = open[open.length - 1];
+		if (top !== undefined) top.covers = true;
+		open.push({ depth: row.depth, covers: false });
+	}
+	// The last subtree has no row after it to close it.
+	close(-1);
+	return counted(total);
 }
 
 /** The figure beside a criterion IS its outstanding count — never a second walk. */
@@ -311,12 +411,17 @@ function effortFigures(
 	members: BacklogItem[],
 	settings: ReleaseSettings,
 	planSettings: BacklogSettings,
-): Pick<ReleaseReadiness, 'unestimated' | 'estimatedEffort' | 'completedEffort'> {
+): Pick<ReleaseReadiness, 'unestimated' | 'estimatedEffort' | 'estimatedEffortExact' | 'completedEffort'> {
 	if (settings.estimateKey === '') {
 		// All three read the SAME key, so all three are unconfigured together. Drawing a
 		// count beside "not configured" contradicts itself — caught in the harness before
 		// this module existed, and `Summing up a release` extension 2a is amended to say so.
-		return { unestimated: UNCONFIGURED, estimatedEffort: UNCONFIGURED, completedEffort: UNCONFIGURED };
+		return {
+			unestimated: UNCONFIGURED,
+			estimatedEffort: UNCONFIGURED,
+			estimatedEffortExact: null,
+			completedEffort: UNCONFIGURED,
+		};
 	}
 	// Read every estimate first, so the readability test below sees exactly the members whose
 	// value reaches a total — never one whose estimate is missing anyway.
@@ -324,14 +429,25 @@ function effortFigures(
 	const missing = weighed.filter((entry) => entry.value === null).length;
 	const counting = weighed.filter((entry): entry is { item: BacklogItem; value: number } => entry.value !== null);
 	const doneReadable = counting.every((entry) => workflowClears(ownWorkflowKind(entry.item), planSettings));
-	let estimated = 0;
-	let completed = 0;
+	// **Summed EXACTLY, never with `+=`** (`domain/decimal.ts`). Each estimate is a decimal
+	// somebody typed, and a running float total answers `0.30000000000000004` for `0.1` and
+	// `0.2` — a commitment the strip then draws beside a capacity of `0.3` and a difference of
+	// zero, contradicting itself in one sentence. Two terms are collected in one pass rather
+	// than two filters, because the done reading is the expensive half.
+	const all: number[] = [];
+	const done: number[] = [];
 	for (const entry of counting) {
-		estimated += entry.value;
+		all.push(entry.value);
 		// The member's OWN workflow, so a Deliverable answers by its own — the reader the
 		// progress bar above this already uses.
-		if (doneReadable && ownWorkflowReading(entry.item).done) completed += entry.value;
+		if (doneReadable && ownWorkflowReading(entry.item).done) done.push(entry.value);
 	}
+	// The exact sum is kept as well as rounded: `estimated` is what the strip DRAWS, and the
+	// decimal beside it is what the capacity comparison subtracts from — see this field's own
+	// comment on {@link ReleaseReadiness.estimatedEffortExact}.
+	const exact = exactSum(all);
+	const estimated = toNumber(exact);
+	const completed = toNumber(exactSum(done));
 	// **A finite estimate can still overflow a finite TOTAL.** `estimateValue` refuses a
 	// non-finite value, which closes that door per member and not for their sum: two members
 	// at `1e308` are each accepted and add to `Infinity`, which reaches the strip as an
@@ -340,16 +456,25 @@ function effortFigures(
 	// Raised by a review bot. Tested at `estimated` alone: every estimate is non-negative, so
 	// `completed <= estimated` and a finite total cannot carry an infinite completion.
 	if (!Number.isFinite(estimated)) {
-		return { unestimated: counted(missing), estimatedEffort: OVERFLOWED, completedEffort: OVERFLOWED };
+		// The exact decimal goes with it: it exists here (two finite estimates summing past
+		// `Number.MAX_VALUE` have a perfectly good decimal sum), and keeping it would leave a
+		// comparison reachable for a total this figure has already declared unreadable.
+		return {
+			unestimated: counted(missing),
+			estimatedEffort: OVERFLOWED,
+			estimatedEffortExact: null,
+			completedEffort: OVERFLOWED,
+		};
 	}
-	// ponytail: a member whose descendant in the same release also carries an estimate is
-	// double counted here. Naming those members is `Capacity against commitment`'s own
-	// figure (`docs/requirements/Capacity against commitment.md`), and it is the next
-	// increment; until it lands this total is wrong in a vault whose parent estimates are
-	// aggregates.
+	// A member whose descendant in the same release also carries an estimate is double
+	// counted here. `doubleCountFigure` NAMES how many members that is; it does not correct
+	// this total, because only the vault knows whether a parent's estimate is an aggregate
+	// — `docs/requirements/Capacity against commitment.md` asks for the count named rather
+	// than guessed away, so this total stays wrong in exactly the vaults it warns about.
 	return {
 		unestimated: counted(missing),
 		estimatedEffort: counted(estimated),
+		estimatedEffortExact: exact,
 		completedEffort: doneReadable ? counted(completed) : UNCONFIGURED,
 	};
 }

@@ -100,21 +100,23 @@ describe("a release's readiness on screen", () => {
 
 	it('keeps the effort figures when progress is unconfigured', () => {
 		// They read the ESTIMATE key, not the state workflow, so the summary's early return
-		// for unconfigured progress must not take them with it.
-		const { containerEl } = openScope({ ...RELEASE_CONFIG, estimateProperty: 'note.effort', stateProperty: '' });
+		// for unconfigured progress must not take them with it. `capacityUnit` is CLEARED
+		// rather than left to `RELEASE_CONFIG`'s own binding (✨ binds `points` since the
+		// product owner's reversal), so this is still the unlabelled twin's own case.
+		const { containerEl } = openScope({ ...RELEASE_CONFIG, estimateProperty: 'note.effort', stateProperty: '', capacityUnit: '' });
 		const strip = containerEl.querySelector('.pbl-rel-summary') as HTMLElement;
 		expect(strip.textContent).toContain('unestimated');
 		expect(strip.querySelector('.pbl-rel-unreadable')).not.toBeNull();
 		// The estimated total still answers; the progress THROUGH it does not, so it is
 		// stated alone rather than against a zero that would read as measured.
-		expect(strip.textContent).toContain('pts estimated');
+		expect(strip.textContent).toContain('5 estimated');
 		expect(strip.textContent).not.toContain('0 of');
 	});
 
 	it('draws the effort figure for a release whose every estimate is zero', () => {
 		// `0` is a valid estimate, so this is not the same release as one nobody estimated —
 		// and the percentage must not be a NaN drawn as one.
-		const { containerEl } = openScope({ ...RELEASE_CONFIG, estimateProperty: 'note.effort' }, 'Zeros.md');
+		const { containerEl } = openScope({ ...RELEASE_CONFIG, estimateProperty: 'note.effort', capacityUnit: 'pts' }, 'Zeros.md');
 		const strip = containerEl.querySelector('.pbl-rel-summary') as HTMLElement;
 		expect(strip.textContent).toContain('0 of 0 pts (0%)');
 		expect(strip.textContent).not.toContain('NaN');

@@ -34,6 +34,8 @@ describe('the release view names its own keys', () => {
 				'addressedRiskValues',
 				'descriptionProperty',
 				'criticalRiskValues',
+				'capacityProperty',
+				'capacityUnit',
 				'dependsOnProperty',
 				'estimateProperty',
 				'doneValues',
@@ -205,6 +207,16 @@ describe('the release view names its own keys', () => {
 		).toEqual([]);
 	});
 
+	it('reports a capacity key aimed at another property the release note owns', () => {
+		// Unlike the released/target pair above, capacity gets no special-cased sentence —
+		// it joined `releaseOwnedProperties` on 2026-09-03 with nothing else reading it, so
+		// the GENERIC collision map is the whole of what catches it colliding with, say, the
+		// release's own status key. Without this test the row and the widened
+		// `ReleaseNoteRole` compile and nothing ever drives the path.
+		const collided = releaseNoteProblems(releaseSettingsWith({ capacityKey: 'shared', statusKey: 'shared' }));
+		expect(collided).toContain('the release status and release capacity properties share the key "shared"');
+	});
+
 	it('reports a membership key aimed at any item-side property, except the backlog’s own release key', () => {
 		// `releaseProperty` bound, or the exemption below would compare against '' — the
 		// same value the unbound case already checks, and the test would pass whether or
@@ -233,7 +245,7 @@ describe('the release view names its own keys', () => {
 		// reported by nothing — while every release in the base counted itself among the
 		// unresolved memberships, a figure that scales with the vault.
 		const plan = resolveSettings(new FakeViewConfig({}));
-		for (const key of ['versionKey', 'targetDateKey', 'statusKey', 'releasedDateKey', 'descriptionKey'] as const) {
+		for (const key of ['versionKey', 'targetDateKey', 'statusKey', 'releasedDateKey', 'descriptionKey', 'capacityKey'] as const) {
 			const settings = releaseSettingsWith({ [key]: 'shared', membershipKey: 'shared' });
 			expect(membershipCollision(settings, plan), key).not.toBeNull();
 		}
@@ -270,5 +282,14 @@ describe('the release view names its own keys', () => {
 		expect(bare.riskKey).toBe('');
 		expect(bare.criticalRiskValues).toEqual([]);
 		expect(bare.addressedRiskValues).toEqual([]);
+	});
+
+	it('resolves the capacity property and its unit, and leaves both empty when unset', () => {
+		const bound = resolveReleaseSettings(new FakeViewConfig({ capacityProperty: 'note.capacity', capacityUnit: 'points' }));
+		expect(bound.capacityKey).toBe('capacity');
+		expect(bound.capacityUnit).toBe('points');
+		const unset = resolveReleaseSettings(new FakeViewConfig({}));
+		expect(unset.capacityKey).toBe('');
+		expect(unset.capacityUnit).toBe('');
 	});
 });
