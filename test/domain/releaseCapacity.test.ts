@@ -67,6 +67,10 @@ describe('the capacity a release declares', () => {
 		expect(capacityOf(vaultWith(undefined))).toEqual({ value: null, invalid: false, unconfigured: false });
 	});
 
+	it('is absent, the same as no key at all, when the note spells the key with null', () => {
+		expect(capacityOf(vaultWith(null))).toEqual({ value: null, invalid: false, unconfigured: false });
+	});
+
 	it('refuses a negative capacity on READ, since nothing writes one', () => {
 		expect(capacityOf(vaultWith(-5))).toEqual({ value: null, invalid: true, unconfigured: false });
 	});
@@ -77,5 +81,77 @@ describe('the capacity a release declares', () => {
 
 	it('accepts zero, which is a statement rather than an error', () => {
 		expect(capacityOf(vaultWith(0))).toEqual({ value: 0, invalid: false, unconfigured: false });
+	});
+});
+
+describe('estimates that may already be inside another estimate', () => {
+	function doubleCountOf(vault: FakeVault): number | null {
+		return readinessOf(vault).doubleCounted.value;
+	}
+
+	function baseVault(): FakeVault {
+		const vault = new FakeVault();
+		vault.addFile('R.md', { frontmatter: { type: 'Release', capacity: 40 } });
+		return vault;
+	}
+
+	it('counts a member whose ancestor member is also estimated', () => {
+		const vault = baseVault();
+		vault.addFile('E.md', { frontmatter: { type: 'Epic', order: 1, release: '[[R]]', effort: 8 } });
+		vault.addFile('F.md', { frontmatter: { type: 'Feature', parent: 'E', order: 1, release: '[[R]]', effort: 5 } });
+		expect(doubleCountOf(vault)).toBe(1);
+	});
+
+	it('counts each estimated ancestor once, however deep the chain', () => {
+		const vault = baseVault();
+		vault.addFile('E.md', { frontmatter: { type: 'Epic', order: 1, release: '[[R]]', effort: 8 } });
+		vault.addFile('F.md', { frontmatter: { type: 'Feature', parent: 'E', order: 1, release: '[[R]]', effort: 5 } });
+		vault.addFile('P.md', { frontmatter: { type: 'PBI', parent: 'F', order: 1, release: '[[R]]', effort: 2 } });
+		// `E` and `F` each cover something estimated below them; `P` covers nothing.
+		expect(doubleCountOf(vault)).toBe(2);
+	});
+
+	it('counts the ancestor once, not each estimated child under it', () => {
+		// The case that tells the two directions apart, and the one a chain cannot: ONE
+		// estimate may already contain the two below it, so there is one possible double
+		// count and not two.
+		const vault = baseVault();
+		vault.addFile('E.md', { frontmatter: { type: 'Epic', order: 1, release: '[[R]]', effort: 8 } });
+		vault.addFile('P1.md', { frontmatter: { type: 'PBI', parent: 'E', order: 1, release: '[[R]]', effort: 3 } });
+		vault.addFile('P2.md', { frontmatter: { type: 'PBI', parent: 'E', order: 2, release: '[[R]]', effort: 2 } });
+		expect(doubleCountOf(vault)).toBe(1);
+	});
+
+	it('does not count a descendant whose ancestor carries no estimate', () => {
+		const vault = baseVault();
+		vault.addFile('E.md', { frontmatter: { type: 'Epic', order: 1, release: '[[R]]' } });
+		vault.addFile('F.md', { frontmatter: { type: 'Feature', parent: 'E', order: 1, release: '[[R]]', effort: 5 } });
+		expect(doubleCountOf(vault)).toBe(0);
+	});
+
+	it('does not count an estimated member whose children are unestimated', () => {
+		const vault = baseVault();
+		vault.addFile('E.md', { frontmatter: { type: 'Epic', order: 1, release: '[[R]]', effort: 8 } });
+		vault.addFile('F.md', { frontmatter: { type: 'Feature', parent: 'E', order: 1, release: '[[R]]' } });
+		expect(doubleCountOf(vault)).toBe(0);
+	});
+
+	it('never counts through a context ancestor — an excluded note is not a member', () => {
+		const vault = baseVault();
+		// `E` is NOT in the release: it is drawn as context to hold `F` in place, and its
+		// own estimate is no part of this release's commitment.
+		vault.addFile('E.md', { frontmatter: { type: 'Epic', order: 1, effort: 8 } });
+		vault.addFile('F.md', { frontmatter: { type: 'Feature', parent: 'E', order: 1, release: '[[R]]', effort: 5 } });
+		expect(doubleCountOf(vault)).toBe(0);
+	});
+
+	it('is unconfigured with no estimate key, rather than a truthful-looking zero', () => {
+		const vault = baseVault();
+		vault.addFile('F.md', { frontmatter: { type: 'Feature', order: 1, release: '[[R]]', effort: 5 } });
+		expect(readinessOf(vault, { estimateKey: '' }).doubleCounted).toEqual({
+			value: null,
+			invalid: false,
+			unconfigured: true,
+		});
 	});
 });

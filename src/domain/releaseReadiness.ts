@@ -66,6 +66,18 @@ export interface ReleaseReadiness {
 	 * property to bind, the other a number to type.
 	 */
 	capacity: ReleaseFigure<number>;
+	/**
+	 * Members carrying an estimate while a DESCENDANT member in the same release carries
+	 * one — a possible double count, NAMED and never resolved. Only the vault knows whether
+	 * its parent estimates are aggregates, and a view that guessed would be silently wrong
+	 * in whichever direction it guessed.
+	 *
+	 * **The direction is the contract, not a detail.** This counts the estimate that may
+	 * already CONTAIN the others, so one estimated Epic over two estimated PBIs is one, not
+	 * two. The reverse reading agrees on a chain and disagrees on a fan, which is why it
+	 * survived a test suite once already.
+	 */
+	doubleCounted: ReleaseFigure<number>;
 }
 
 const UNCONFIGURED: ReleaseFigure<number> = { value: null, invalid: false, unconfigured: true };
@@ -206,6 +218,7 @@ export function releaseReadiness(
 		blocked: figureFrom(blocked),
 		criticalRisks: figureFrom(risk),
 		capacity: capacityFigure(app, scope, settings),
+		doubleCounted: doubleCountFigure(app, scope, settings),
 	};
 }
 
@@ -223,6 +236,42 @@ function capacityFigure(app: App, scope: ReleaseScope, settings: ReleaseSettings
 	if (raw === null || raw === undefined) return { value: null, invalid: false, unconfigured: false };
 	const value = estimateValue(raw);
 	return value === null ? { value: null, invalid: true, unconfigured: false } : counted(value);
+}
+
+/**
+ * One pass over the rows the scope tree already drew, carrying the depths of the estimated
+ * member ancestors still open. `rows` is depth-ordered, so an ancestor is open exactly while
+ * rows deeper than it keep arriving.
+ *
+ * **Context rows close nothing and open nothing.** An excluded note is not a member, so its
+ * own estimate is no part of this release and a member below it is not double counted by it
+ * — the context-row rule, asked of this figure like every other.
+ */
+function doubleCountFigure(app: App, scope: ReleaseScope, settings: ReleaseSettings): ReleaseFigure<number> {
+	if (settings.estimateKey === '') return UNCONFIGURED;
+	// One entry per estimated member still open, and `covers` is what makes this count the
+	// ANCESTOR: it is set when an estimated member arrives BELOW this one, and read when the
+	// subtree closes. Counting at the arrival instead counts the descendant, which is the
+	// reversed predicate — right on a chain, wrong on a fan.
+	const open: { depth: number; covers: boolean }[] = [];
+	let total = 0;
+	const close = (depth: number): void => {
+		while (open.length > 0 && open[open.length - 1].depth >= depth) {
+			if (open.pop()?.covers === true) total += 1;
+		}
+	};
+	for (const row of scope.rows) {
+		close(row.depth);
+		if (row.context) continue;
+		if (!isEstimated(estimateOf(app, row.item, settings))) continue;
+		// EVERY open estimate may already contain this one, not just the nearest: an Epic
+		// whose grandchild is estimated is covering an estimate too.
+		for (const entry of open) entry.covers = true;
+		open.push({ depth: row.depth, covers: false });
+	}
+	// The last subtree has no row after it to close it.
+	close(-1);
+	return counted(total);
 }
 
 /** The figure beside a criterion IS its outstanding count — never a second walk. */
@@ -370,11 +419,11 @@ function effortFigures(
 	if (!Number.isFinite(estimated)) {
 		return { unestimated: counted(missing), estimatedEffort: OVERFLOWED, completedEffort: OVERFLOWED };
 	}
-	// ponytail: a member whose descendant in the same release also carries an estimate is
-	// double counted here. Naming those members is `Capacity against commitment`'s own
-	// figure (`docs/requirements/Capacity against commitment.md`), and it is the next
-	// increment; until it lands this total is wrong in a vault whose parent estimates are
-	// aggregates.
+	// A member whose descendant in the same release also carries an estimate is double
+	// counted here. `doubleCountFigure` NAMES how many members that is; it does not correct
+	// this total, because only the vault knows whether a parent's estimate is an aggregate
+	// — `docs/requirements/Capacity against commitment.md` asks for the count named rather
+	// than guessed away, so this total stays wrong in exactly the vaults it warns about.
 	return {
 		unestimated: counted(missing),
 		estimatedEffort: counted(estimated),
