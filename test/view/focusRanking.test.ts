@@ -679,3 +679,64 @@ describe('a focus drop under an unranked context row', () => {
 		expect(vault.writeLog.map((w) => w.path)).toEqual(['B.md']);
 	});
 });
+
+/**
+ * `drawn` is the SCREEN, and the toggle is part of what that means. A completed row the
+ * eye is hiding sits in `model.roots` all the same, so the guard read its rank, found the
+ * list out of order and refused a drop whose two visible rows were in order and whose
+ * write would have rendered exactly what was asked for.
+ *
+ * The fixture is the smallest shape that separates the two readings: `A` and `B` tie, so
+ * the list is in fallback and the guard's second question is reached at all, and the
+ * hidden `H` ranks BELOW both, so `drawnInRankOrder` fails on the unfiltered list and
+ * passes on the drawn one. Each PBI is under its own Epic, because siblings are drawn in
+ * rank order and a single parent would put `H` first on the screen too.
+ *
+ * All three inputs are driven: the drag reads `siblingPosition`'s copy of the list and the
+ * other two read `siblingContext`'s, and the two filters were added together for that
+ * reason.
+ */
+describe('a focus drop whose only disorder is a row the toggle hides', () => {
+	function withHiddenRow() {
+		const vault = new FakeVault();
+		vault.addFile('Epic A.md', { frontmatter: { type: 'Epic', order: 10 } });
+		vault.addFile('Epic B.md', { frontmatter: { type: 'Epic', order: 20 } });
+		vault.addFile('Epic H.md', { frontmatter: { type: 'Epic', order: 30 } });
+		vault.addFile('A.md', { frontmatter: { type: 'PBI', order: 10 }, parentLink: 'Epic A' });
+		vault.addFile('B.md', { frontmatter: { type: 'PBI', order: 10 }, parentLink: 'Epic B' });
+		vault.addFile('H.md', { frontmatter: { type: 'PBI', order: 5, status: 'Done' }, parentLink: 'Epic H' });
+		const harness = makeView(vault, { stateProperty: 'note.status', stateValues: 'New, Active, Done' }, {
+			focus: 'PBI',
+			hideCompleted: true,
+		});
+		return { vault, ...harness };
+	}
+
+	it('lands the drop, and the same rank, from the drag, Alt+arrow and the menu', async () => {
+		const dragged = withHiddenRow();
+		// The hidden row is in the model and off the screen — the whole subject of the case.
+		expect(dragged.view.model?.roots.map((r) => r.file.basename)).toEqual(['A', 'B', 'H']);
+		expect(titlesOf(dragged.containerEl)).toEqual(['A', 'B']);
+		drag(rowByTitle(dragged.containerEl, 'B'), rowByTitle(dragged.containerEl, 'A'), 'before');
+		await flush();
+
+		const keyed = withHiddenRow();
+		keyed.view.selectItem(keyed.view.model?.byPath.get('B.md') as never);
+		key(treeOf(keyed.containerEl), 'ArrowUp', { altKey: true });
+		await flush();
+
+		const menued = withHiddenRow();
+		rowByTitle(menued.containerEl, 'B').dispatchEvent(new MouseEvent('contextmenu', { bubbles: true }));
+		Menu.lastShown?.item('Move up')?.click();
+		await flush();
+
+		const rank = (v: FakeVault) => v.writeLog.map((w) => [w.path, w.fm['order']]);
+		expect(rank(dragged.vault)).toEqual([['B.md', -990]]);
+		expect(rank(keyed.vault)).toEqual(rank(dragged.vault));
+		expect(rank(menued.vault)).toEqual(rank(dragged.vault));
+
+		// And the screen the write produces is the one the gesture asked for.
+		refresh(dragged.view, dragged.vault);
+		expect(titlesOf(dragged.containerEl)).toEqual(['B', 'A']);
+	});
+});

@@ -46,9 +46,14 @@ function siblingContext(
 		// the population still has to be ranked against. The drag reads the SAME function,
 		// which is what ended the disagreement between the two.
 		const fullList = rankablePeers(model.roots);
-		// `drawn` is the SCREEN, unfiltered — see `DropTarget.drawn`. The focus branch is the
-		// only one that sets it, because it is the only one whose target reaches the guard.
-		return { fullList, drawn: model.roots, idx: fullList.indexOf(item), rankOnly: true };
+		// `drawn` is the SCREEN — see `DropTarget.drawn`. Not through `rankablePeers`, since
+		// an unranked context row IS drawn and is what the field exists to see; but through
+		// `isRowHidden`, since a completed row the toggle is hiding is not. `siblingPosition`
+		// filters the drag's copy by the same question, so all three inputs hand the guard
+		// one list. Reading `model.roots` raw made the guard refuse a move whose only
+		// disorder was invisible — see that function's own note for the fixture.
+		const drawn = model.roots.filter((r) => !host.isRowHidden(r));
+		return { fullList, drawn, idx: fullList.indexOf(item), rankOnly: true };
 	}
 	if (item.focusRoot) return null;
 	// The real root group, not the rendered forest — the same rule `siblingPosition`
@@ -63,7 +68,9 @@ function siblingContext(
 	const group = item.parent ? item.parent.children : model.realRoots;
 	const fullList = rankablePeers(group);
 	const idx = fullList.indexOf(item);
-	return idx === -1 ? null : { fullList, drawn: group, idx, rankOnly: false };
+	// Same reading of `drawn` as the focus branch above: one definition, not two.
+	const drawn = group.filter((r) => !host.isRowHidden(r));
+	return idx === -1 ? null : { fullList, drawn, idx, rankOnly: false };
 }
 
 /**

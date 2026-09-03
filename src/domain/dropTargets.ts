@@ -16,8 +16,9 @@ export interface DropTarget {
 	/** Rows the item is ranked AMONG — intent, not arithmetic. */
 	peers: BacklogItem[];
 	/**
-	 * The same rows AS DRAWN and unfiltered — every focus row except the dragged one,
-	 * including the unranked context rows `rankablePeers` strips out of `peers`.
+	 * The rows ON SCREEN — every focus row the reader can see except the dragged one,
+	 * including the unranked context rows `rankablePeers` strips out of `peers` and
+	 * excluding the ones the completed toggle is hiding.
 	 *
 	 * `peers` is the ranking population and rightly excludes a row nothing can rank
 	 * against; this is the SCREEN, and the screen is what the invisible-rank guard has to
@@ -25,6 +26,12 @@ export interface DropTarget {
 	 * last the moment the fallback lifts, so one drawn anywhere but last moves when a write
 	 * ends the fallback — invisible to a check that never sees it. Set only by the focus
 	 * producers, beside `parentUnchanged`, since only they reach that guard.
+	 *
+	 * **"Unfiltered" is the wrong word for it and cost a round** (2026-09-03): it means
+	 * unfiltered by `rankablePeers`, and this field first went in built from `model.roots`
+	 * raw, so a hidden completed row's rank made the guard refuse a drop whose visible rows
+	 * were in order. There is one question behind the name — is this row drawn — and both
+	 * producers ask it the way their own layer can.
 	 */
 	drawn?: BacklogItem[];
 	/** Position among `peers` where the dragged item should land. */
@@ -134,7 +141,7 @@ export function dropTargetFor(
 	 */
 	drawn: (item: BacklogItem) => boolean,
 ): DropTarget | null {
-	const position = zone === 'inside' ? insidePosition(item, dragged) : siblingPosition(model, item, zone, dragged);
+	const position = zone === 'inside' ? insidePosition(item, dragged) : siblingPosition(model, item, zone, dragged, drawn);
 	if (!position) return null;
 	if (isInvalidParent(position.parent, dragged)) return null;
 	// **A drop may not change which projection draws the row** (`keepsProjection`). An
@@ -216,6 +223,7 @@ function siblingPosition(
 	item: BacklogItem,
 	zone: DropZone,
 	dragged: BacklogItem,
+	drawn: (item: BacklogItem) => boolean,
 ): DropTarget | null {
 	// An ACTIVE focus row is a ranking destination now: the peers are the rendered
 	// focus rows, and the parent is the dragged item's OWN — a focus rank writes
@@ -255,11 +263,20 @@ function siblingPosition(
 		const peers = rankablePeers(model.roots).filter((r) => r !== dragged);
 		const idx = peers.indexOf(item);
 		if (idx === -1) return null;
-		const drawn = model.roots.filter((r) => r !== dragged);
+		// **Filtered by the same predicate the no-op questions above use, because `drawn` is
+		// the SCREEN.** Unfiltered by `rankablePeers` — an unranked context row is drawn and
+		// is what the field exists to see — but a row the completed toggle is hiding is not,
+		// and counting it made the guard refuse a move nobody could see anything wrong with:
+		// focused `A(10)`, `B(10)` and a hidden done `H(5)` under a third parent draw as
+		// `A, B`, and dropping `B` above `A` would write 7.5 and render `B, A`, yet
+		// `drawnInRankOrder([A, H])` read the invisible row's lower rank as the list being
+		// out of order and refused. Two readings of "the screen" in one function is the
+		// mistake; there is one now.
+		const shown = model.roots.filter((r) => r !== dragged && drawn(r));
 		return {
 			parent: dragged.parent,
 			peers,
-			drawn,
+			drawn: shown,
 			insertIndex: zone === 'before' ? idx : idx + 1,
 			parentUnchanged: true,
 		};

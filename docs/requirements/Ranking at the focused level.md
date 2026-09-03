@@ -181,6 +181,20 @@ from.
   whether the OTHER writable rows are distinct among themselves. A reviewer's second clause
   is not decoration.
   **Checked by** `test/view/focusRanking.test.ts` — "refuses, because the write cannot lift a fallback two other rows hold open"
+  **`drawn` is the SCREEN, and the completed toggle is part of what that means** (2026-09-03,
+  round ten). Round nine gave the guard a second list because `rankablePeers` strips a row
+  the sort still moves; it built that list from `model.roots` raw, so it also counted rows
+  the eye is hiding. Focused `A(10)` and `B(10)` under two Epics with a completed `H(5)`
+  under a third draw as `A, B`, and dropping `B` above `A` writes and renders `B, A` — but
+  `drawnInRankOrder([A, H])` read the invisible row's lower rank as disorder and refused,
+  with nothing on screen for the reader to reconcile the refusal against. Both producers
+  filter now, by the question each has to hand: the drag's copy by `dropTargetFor`'s own
+  `drawn` predicate, threaded into `siblingPosition`, and `siblingContext`'s by
+  `host.isRowHidden`. The two edits are one change — either alone leaves that input refusing
+  while the others move the row, which is the disagreement the one-move-three-inputs rule
+  exists to prevent. Not filtered by `rankablePeers`, though: an unranked context row IS
+  drawn, and seeing it is what the field was added for.
+  **Checked by** `test/view/focusRanking.test.ts` — "lands the drop, and the same rank, from the drag, Alt+arrow and the menu", in the "a focus drop whose only disorder is a row the toggle hides" group, which drives all three inputs because each filter is load-bearing on its own assertion
 - **2e — the vault's ranks were never spread for this.** Two palette commands rewrite
   them all: **Seed ranks from the hierarchy** (`seed-ranks`) numbers every note in the
   order the tree draws it, and **Respace ranks** (`respace-ranks`) keeps the rank order and
