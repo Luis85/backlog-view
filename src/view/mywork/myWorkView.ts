@@ -200,8 +200,20 @@ export class MyWorkView extends BasesView {
 		const focusHandle = this.focusedHandle();
 		this.viewEl.empty();
 		this.treeDraw = null;
+		// Nulled beside it for the identical reason: `drawMyWorkTree` is the only writer,
+		// and a draw that returns before building the tree (an empty state) never reaches
+		// the line that would refresh this — so left alone across such a draw, this would
+		// go on pointing at a DETACHED row from the tree `empty()` just removed.
+		this.nextRowEl = null;
 		this.draw();
 		const drawnEl = this.viewEl.querySelector('.pbl-mw-tree');
+		// The cast undoes a real TS 6.0.3 gap rather than restating the field's own type:
+		// `this.nextRowEl = null;` above narrows the property to the literal `null`, and
+		// unlike a local variable's narrowing, TS does not widen it back across the
+		// `this.draw()` call in between — even though `draw()` reaches `drawMyWorkTree`,
+		// which writes this very field. Left uncast, the `!== null` check below narrows an
+		// already-`null` type to `never` and the compiler refuses `.scrollIntoView` on it.
+		const nextRowEl = this.nextRowEl as HTMLElement | null;
 		// A person SWITCH has no offset to restore — `previousTop` is 0 for one, because
 		// an offset belongs to the person it was scrolled in — so the question there is
 		// not "where was this tree" but "where does this reader need to be". The answer
@@ -211,8 +223,8 @@ export class MyWorkView extends BasesView {
 		//
 		// Read against `this.drawnPerson` BEFORE the reassignment below overwrites it —
 		// which is why that assignment moved down here from right after `this.draw()`.
-		if (drawnEl !== null && this.drawnPerson !== this.pickedPerson && this.nextRowEl !== null) {
-			this.nextRowEl.scrollIntoView({ block: 'nearest' });
+		if (drawnEl !== null && this.drawnPerson !== this.pickedPerson && nextRowEl !== null) {
+			nextRowEl.scrollIntoView({ block: 'nearest' });
 		} else if (drawnEl !== null) {
 			// Clamped to the FRESH `scrollHeight`, `releaseView.ts`'s own rule: a redraw
 			// with fewer rows — an item reassigned away, hide-done switched on — must not
