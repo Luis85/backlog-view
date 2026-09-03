@@ -66,6 +66,9 @@ views:
     deliverableStateProperty: note.status
     releasedDateProperty: note.released
     descriptionProperty: note.description
+    estimateProperty: note.effort
+    capacityProperty: note.capacity
+    capacityUnit: points
     releaseNotesFolder: docs/release-notes
     releasedStatusValues: Released
     releasedTransitionValue: Released
