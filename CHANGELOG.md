@@ -54,8 +54,8 @@ See [RELEASING.md](RELEASING.md) for how this file is kept in step with a releas
 
 ### Changed
 
-- `npm run check` caches its static steps (`eslint --cache`, `tsc --incremental`, under
-  `node_modules/.cache/`), which takes lint and both typechecks from 42 s to 5 s on a
+- `npm run check` runs both its typechecks incrementally (cached under
+  `node_modules/.cache/`), which takes the test typecheck from 11 s to 2–5 s on a
   second local run; CI still runs them cold.
 - The sentences that tell you to set a view option now quote that option's own label, so a
   renamed option cannot leave the guidance pointing at a control you cannot find.

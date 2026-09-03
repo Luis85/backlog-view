@@ -13,7 +13,7 @@
 		"test": "vitest run",
 		"test:watch": "vitest",
 		"test:coverage": "vitest run --coverage && node scripts/coverage-floors.mjs",
-		"lint": "eslint . --cache --cache-location node_modules/.cache/eslint/",
+		"lint": "eslint .",
 		"lint:md": "markdownlint-cli2",
 		"analyze": "fallow",
 		"docs": "node scripts/docs-check.mjs",

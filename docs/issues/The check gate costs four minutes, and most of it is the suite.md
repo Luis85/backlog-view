@@ -27,22 +27,36 @@ Timed on a 4-core Linux container, 2026-09-03, one step at a time from a cold ca
 | Step | Cold | Warm |
 | --- | --- | --- |
 | `build` | 3.7 s | 1.2 s |
-| `typecheck:test` | 11.1 s | 2.4 s |
-| `lint` | 22–27 s | 1.7 s |
+| `typecheck:test` | 11.1 s | 2.4–5.5 s |
+| `lint` | 22–27 s | 20.9 s (uncached, below) |
 | `lint:md` | 4.8 s | 4.8 s |
 | `test:coverage` | 198 s | 198 s |
 | `analyze` | ~1 s | ~1 s |
 | `docs` | 11.2 s | 11.2 s |
 
-So the gate is ~4.4 minutes and **the suite is 75% of it**. The static steps were the
-cheap half and are now cached: `--cache` on eslint and `--incremental` on both `tsc`
-invocations, all three writing under `node_modules/.cache/`, which takes 42 s down to
-5.3 s on a second run. The cache location is deliberate — `npm ci` in CI replaces
-`node_modules`, so **every CI run is cold**, which is what keeps the type-aware lint
-honest: an eslint cache invalidates on a file's own content, not on a type change in a
-file it imports, so a warm local lint is a hint and the cold one is the check.
+So the gate is ~4.4 minutes and **the suite is 75% of it**. Both `tsc` invocations now
+run `--incremental` against `node_modules/.cache/`, which takes the three static steps from
+~37 s to ~28 s on a second run — most of it the test typecheck, 11 s down to 2–5 s. The
+cache location is deliberate: `npm ci` replaces `node_modules`, so every CI run is cold.
+
+`tsc` is sound warm, and this was checked rather than assumed: giving
+`rememberBacklogView` a second parameter and re-running the warm typecheck reported
+`backlogView.ts(206,3): error TS2554` and two test files besides. An incremental `tsc`
+re-checks every file that depends on a changed one.
 
 ## What was measured and refused
+
+**`eslint --cache` is not sound here, and the difference from `tsc` is the whole point.**
+It was in this change first — it takes lint from 22 s to 1.7 s, which is the largest single
+saving on offer — and the review that caught it was right. The cache is keyed per file and
+invalidates on that file's own content, so a **type-aware** rule never re-runs on an
+unchanged caller. Reproduced on the same function: making `rememberBacklogView` `async`
+leaves the warm cached run green while a cold run reports
+`@typescript-eslint/no-floating-promises` on `backlogView.ts:206` — the rule this repository
+added because an un-awaited frontmatter write reorders the vault. CI being cold does not
+rescue it: it moves the discovery to after the push, which is the cycle this whole issue is
+about saving. A cached lint would have to invalidate every TypeScript entry on any source
+change, which is a cold run wearing a cache.
 
 **Dropping isolation halves the suite, and the suite cannot take it yet.**
 `vitest run --no-isolate` measures 80 s against 158 s, and 107 s against 198 s with
