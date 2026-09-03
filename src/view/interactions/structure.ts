@@ -86,11 +86,25 @@ function siblingContext(
  * live parent and a dead subject, and the batch landed on a note the base excludes:
  * the one thing this view never does. `saveIteration` (`interactions/create.ts`) is the
  * same lookup with the same answer — notice, and return.
+ *
+ * **A row the model still holds but no longer DRAWS refuses too**, and that is the second
+ * question rather than a restatement of the first: the note is in the base, so the write
+ * gate waves it through, and the four commands then rank or reparent a row nobody can see
+ * move. Measured on a leaf completed in another pane while its menu sat open: all six
+ * entries wrote (orders 15 and 1040, an outdent clearing `parent`, an indent under the
+ * sibling above), each spending the undo slot for no visible movement. That is the same
+ * defect `visibleNeighbor` refuses one row further out — it skips a hidden TARGET, and
+ * nothing was asking the same of the SUBJECT. Asked here rather than at the four call
+ * sites for the reason the lookup is: one gate every captured handler routes through.
  */
 function liveItem(host: BacklogViewHost, item: BacklogItem): BacklogItem | null {
 	const live = host.model?.byPath.get(item.file.path);
 	if (!live) {
 		new Notice(t('rank.itemGone'));
+		return null;
+	}
+	if (host.isRowHidden(live)) {
+		new Notice(t('rank.itemHidden'));
 		return null;
 	}
 	return live;

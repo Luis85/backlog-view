@@ -2,7 +2,18 @@
 import { describe, expect, it } from 'vitest';
 import { FakeVault } from '../helpers/vault';
 import { Menu, Notice } from '../helpers/obsidian-mock';
-import { clickExpandAll, flush, key, makeView, refresh, rowByTitle, treeOf, useViewHarness } from '../helpers/view';
+import { BOARD_WORKFLOW as WORKFLOW } from '../helpers/board';
+import {
+	clickExpandAll,
+	flush,
+	key,
+	makeView,
+	refresh,
+	rowByTitle,
+	titlesOf,
+	treeOf,
+	useViewHarness,
+} from '../helpers/view';
 
 useViewHarness();
 
@@ -75,6 +86,65 @@ describe('a structural command whose subject left the base', () => {
 
 		expect(harness.vault.writeLog).toEqual([]);
 		expect(Notice.messages).toEqual(titles.map(() => GONE));
+	});
+});
+
+/** What every structural command says when its subject is in the base but off the screen. */
+const HIDDEN = 'That item is no longer drawn, so nothing was moved.';
+
+/**
+ * The other half of the same race, and the half `liveItem`'s path lookup cannot see: the
+ * note is still a result, so `byPath` returns it and the write gate has nothing to object
+ * to — it is simply no longer DRAWN. Completed in another pane while the menu sat open is
+ * the everyday way there; the projection and an emptied context scaffold are the other
+ * two.
+ *
+ * Measured before it was fixed: all six entries wrote to the invisible row — `Move up`
+ * and `Move to top` an order of 15, `Move down` and `Move to bottom` 1040, `Outdent` a
+ * cleared `parent`, `Indent under "F1"` a new one — six batches, six spent undo slots,
+ * and nothing on screen moved for any of them.
+ */
+describe('a structural command whose subject stopped being drawn', () => {
+	/** `F2` is a leaf again, so completing it hides that row and no other. */
+	function view() {
+		const vault = new FakeVault();
+		vault.addFile('Epic.md', { frontmatter: { type: 'Epic', order: 10 } });
+		vault.addFile('F1.md', { frontmatter: { type: 'Feature', order: 20 }, parentLink: 'Epic' });
+		vault.addFile('F2.md', { frontmatter: { type: 'Feature', order: 30 }, parentLink: 'Epic' });
+		vault.addFile('F3.md', { frontmatter: { type: 'Feature', order: 40 }, parentLink: 'Epic' });
+		const harness = makeView(vault, WORKFLOW, { hideCompleted: true });
+		clickExpandAll(harness.containerEl);
+		return { ...harness, vault };
+	}
+
+	it('writes nothing and names the note for every entry the menu offered', async () => {
+		const harness = view();
+		rowByTitle(harness.containerEl, 'F2').dispatchEvent(new MouseEvent('contextmenu', { bubbles: true }));
+		const menu = Menu.lastShown;
+		if (!menu) throw new Error('menu not shown');
+		const titles = ['Move up', 'Move down', 'Move to top', 'Move to bottom', 'Outdent', 'Indent under "F1"'];
+		for (const title of titles) expect(menu.item(title), title).toBeDefined();
+
+		// Another pane completes the note; the Bases refresh that follows drops it off the
+		// screen without dropping it from the results.
+		await harness.vault.app.fileManager.processFrontMatter(
+			harness.vault.files.get('F2.md') as never,
+			(fm: Record<string, unknown>) => {
+				fm['status'] = 'Done';
+			},
+		);
+		harness.vault.writeLog.length = 0;
+		refresh(harness.view, harness.vault);
+		expect(titlesOf(harness.containerEl)).toEqual(['Epic', 'F1', 'F3']);
+
+		Notice.messages = [];
+		for (const title of titles) {
+			menu.item(title)?.click();
+			await flush();
+		}
+
+		expect(harness.vault.writeLog).toEqual([]);
+		expect(Notice.messages).toEqual(titles.map(() => HIDDEN));
 	});
 });
 

@@ -97,6 +97,16 @@ usable rather than merely viewable when dragging is not an option.
   reaches the write path and reports rather than going quiet — the placement cannot be
   expressed, not merely refused, and a silent key there would read as broken rather than
   inexpressible.
+- **3e — the SUBJECT is what the toggle hid**, not the neighbour. Every one of the four
+  commands refuses and says so. Same rule as 3b and the other side of it: a note completed
+  in another pane while its menu sat open is still a result, so the path resolves and the
+  write gate has nothing to object to — but the row is off the screen, and ranking or
+  reparenting it spends the undo slot on movement nobody can see. Measured before the
+  refusal existed: all six entries a leaf's menu offers wrote, in six separate batches. The
+  question is asked in `liveItem`, beside the path lookup, because that is the one gate
+  every captured handler routes through — and it gets its own sentence rather than the
+  gone-from-the-base one, which would be false here.
+  **Checked by** `test/view/staleSubject.test.ts` — "writes nothing and names the note for every entry the menu offered", in the "a structural command whose subject stopped being drawn" group
 
 ## Acceptance criteria
 

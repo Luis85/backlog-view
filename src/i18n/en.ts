@@ -1228,6 +1228,15 @@ export const en = {
 	 * said of a resource: gone from the base, so nothing was written.
 	 */
 	'rank.itemGone': 'That item is no longer in this base, so nothing was moved.',
+	/**
+	 * The subject is still in the base — it is simply not DRAWN any more: completed while
+	 * the menu sat open, or left the projection this screen shows. `rank.itemGone` says it
+	 * left the base, which is false here, so it gets its own sentence for the reason
+	 * `rank.targetInvalid` does. No remedy is named because there are three ways to be
+	 * undrawn (the projection, the completed toggle, an emptied context scaffold) and the
+	 * sentence cannot tell which applied.
+	 */
+	'rank.itemHidden': 'That item is no longer drawn, so nothing was moved.',
 
 	/**
 	 * The named destination on `indent` RESOLVED — it is still in this base — but
