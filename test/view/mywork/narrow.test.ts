@@ -94,6 +94,22 @@ describe('the narrow-pane rule, read from the stylesheet source', () => {
 		const body = containerBlock?.[1] ?? '';
 		expect(body).toMatch(/\.pbl-mw-view \.pbl-mw-toolbar\s*\{[^}]*flex-wrap:\s*wrap/);
 	});
+
+	/**
+	 * Step 10's own fallback: the button is what yields below 260px, on a pointer that can
+	 * right-click. Three claims, all checked, because "the touch pane keeps its only route
+	 * in" is exactly the invariant a comment cannot assert on its own — nested INSIDE the
+	 * container query (a bare top-level `@media (hover: hover)` would apply at every width,
+	 * not only the narrow one), and positioned AFTER the base `button.pbl-mw-menu` rule
+	 * (Step 8's own reason repeated: a media query adds no specificity, so a reveal written
+	 * ABOVE the rule it undoes reveals nothing).
+	 */
+	it('hides the row menu button below 260px for a pointer that can hover', () => {
+		const containerBlock = /@container\s*\(max-width:\s*260px\)\s*\{([\s\S]*?)\n\}/.exec(css);
+		const body = containerBlock?.[1] ?? '';
+		expect(body).toMatch(/@media \(hover: hover\)\s*\{[^}]*\.pbl-mw-view button\.pbl-mw-menu\s*\{[^}]*display:\s*none/);
+		expect(css.indexOf('@media (hover: hover)')).toBeGreaterThan(css.indexOf('button.pbl-mw-menu {'));
+	});
 });
 
 /**
