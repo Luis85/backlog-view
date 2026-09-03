@@ -24,7 +24,7 @@ import { dropPlacement } from '../../domain/writePlan';
 function siblingContext(
 	host: BacklogViewHost,
 	item: BacklogItem,
-): { fullList: BacklogItem[]; idx: number; rankOnly: boolean } | null {
+): { fullList: BacklogItem[]; drawn: BacklogItem[]; idx: number; rankOnly: boolean } | null {
 	const model = host.model;
 	// An ancestor from outside the filter has siblings the query never returned, so
 	// ordering it against the loaded ones would be a guess.
@@ -46,7 +46,9 @@ function siblingContext(
 		// the population still has to be ranked against. The drag reads the SAME function,
 		// which is what ended the disagreement between the two.
 		const fullList = rankablePeers(model.roots);
-		return { fullList, idx: fullList.indexOf(item), rankOnly: true };
+		// `drawn` is the SCREEN, unfiltered — see `DropTarget.drawn`. The focus branch is the
+		// only one that sets it, because it is the only one whose target reaches the guard.
+		return { fullList, drawn: model.roots, idx: fullList.indexOf(item), rankOnly: true };
 	}
 	if (item.focusRoot) return null;
 	// The real root group, not the rendered forest — the same rule `siblingPosition`
@@ -58,9 +60,10 @@ function siblingContext(
 	// the anchor for `Move to bottom`/`Move down` past the last writable sibling, wrote a
 	// real order nobody could see land, and spent the undo slot without moving anything
 	// the draw shows. The drag reads the same function over the same population.
-	const fullList = rankablePeers(item.parent ? item.parent.children : model.realRoots);
+	const group = item.parent ? item.parent.children : model.realRoots;
+	const fullList = rankablePeers(group);
 	const idx = fullList.indexOf(item);
-	return idx === -1 ? null : { fullList, idx, rankOnly: false };
+	return idx === -1 ? null : { fullList, drawn: group, idx, rankOnly: false };
 }
 
 /**
@@ -126,7 +129,13 @@ function withinSiblingsTarget(host: BacklogViewHost, item: BacklogItem, delta: -
 	// same `null` for a row whose link does not resolve. `DROP_TARGET_RESTATEMENT` reads
 	// only the `dragged.parent` spelling and so cannot see this one; its own comment says
 	// exactly that, and this is the case it names.
-	return { parent: item.parent, peers, insertIndex, parentUnchanged: ctx.rankOnly };
+	return {
+		parent: item.parent,
+		peers,
+		drawn: ctx.drawn.filter((r) => r !== item),
+		insertIndex,
+		parentUnchanged: ctx.rankOnly,
+	};
 }
 
 /**
@@ -152,7 +161,13 @@ function edgeTarget(host: BacklogViewHost, item: BacklogItem, edge: 'top' | 'bot
 	// Same `parentUnchanged` reasoning as `withinSiblingsTarget`, and it has to be the
 	// same: the two commands differ in where they land, never in whether a landing is a
 	// rank or a relocation.
-	return { parent: item.parent, peers, insertIndex: edge === 'top' ? 0 : peers.length, parentUnchanged: ctx.rankOnly };
+	return {
+		parent: item.parent,
+		peers,
+		drawn: ctx.drawn.filter((r) => r !== item),
+		insertIndex: edge === 'top' ? 0 : peers.length,
+		parentUnchanged: ctx.rankOnly,
+	};
 }
 
 /**

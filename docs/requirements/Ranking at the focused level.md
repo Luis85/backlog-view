@@ -72,7 +72,20 @@ from.
   context row stays: its number is a real constraint, and a swap past it would put the
   moved row above something on screen.
   **Checked by** `test/view/focusedUnrankedContext.test.ts` — "does not offer Move down past a context row with nothing to rank from"
-  **Checked by** `test/view/focusedUnrankedContext.test.ts` — "lands the drag, Alt+ArrowUp and the move menu on the SAME rank above PBI A"
+  **A permanent refusal is exactly what one of these lists gets, and this entry denied it
+  until 2026-09-03.** Skipping the row as a NEIGHBOUR stands — that is `anchoredOrder`'s
+  rule and it is unchanged. What the sentence above got wrong is the inference that no
+  refusal may ever follow from such a row. A null sorts LAST the moment the fallback lifts,
+  so an unranked context row drawn anywhere but last MOVES when a write ends the fallback:
+  drawn `Ctx(null), A(5000), B(5000)`, dropping B above A wrote 2525 and returned
+  `B, A, Ctx`, the dragged row past its slot and the untouched context row at the bottom.
+  No rank does better, because that row's sorted position is fixed and nothing can give it
+  one — so the move is refused, and for that list the refusal is permanent. The advice is
+  not "run a command"; it is that the list cannot be hand-ordered while that row is drawn
+  above the rows in play. The capability this extension's own test appeared to prove was
+  never present in that shape: the assertion stopped at the write and never looked at the
+  screen the write produced.
+  **Checked by** `test/view/focusedUnrankedContext.test.ts` — "has the drag, Alt+ArrowUp and the move menu all REFUSE, identically", and `test/view/focusRanking.test.ts` — "refuses where lifting the fallback would drop that row to the bottom", with "allows it where that row is already drawn last, since the sort agrees" as the control that keeps this from being a blanket refusal of every list holding a context row
 - **2b — the two neighbours have no room between them.** Nothing is written and a notice
   names the remedy: **Respace ranks** for a spent gap, the toolbar's set-up button for a
   neighbour with no rank at all, **Seed ranks from the hierarchy** for two neighbours

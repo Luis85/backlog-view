@@ -630,3 +630,52 @@ describe('a focus drop whose remaining peers still tie', () => {
 		expect(vault.writeLog).toEqual([]);
 	});
 });
+
+/**
+ * Round eight: the guard has to look at the SCREEN, and `peers` is not the screen.
+ *
+ * `rankablePeers` strips an unranked context row out of the ranking population, rightly —
+ * nothing can rank against it. But it is still DRAWN, and a null sorts LAST the moment the
+ * fallback lifts, so one drawn anywhere but last moves when a write ends the fallback.
+ * Drawn `C(null), A(5000), B(5000)`, dropping B above A wrote 2525 and returned
+ * `B, A, C`: B past the slot it was dropped into, and the untouched context row at the
+ * bottom. The check could not see C at all.
+ *
+ * `DropTarget.drawn` carries the unfiltered list for exactly this, and `compareRank` puts a
+ * null last on its own — so a context row already drawn last still passes, and only a
+ * misplaced one refuses. The control below is that case, and without it this fix would be
+ * indistinguishable from refusing every list that has a context row in it.
+ */
+describe('a focus drop under an unranked context row', () => {
+	function withUnrankedContext(order: 'first' | 'last') {
+		const vault = new FakeVault();
+		vault.addFile('Epic C.md', { frontmatter: { type: 'Epic', order: order === 'first' ? 1 : 9 } });
+		vault.addFile('Epic A.md', { frontmatter: { type: 'Epic', order: 2 } });
+		vault.addFile('Epic B.md', { frontmatter: { type: 'Epic', order: 3 } });
+		vault.addFile('C.md', { frontmatter: { type: 'PBI' }, parentLink: 'Epic C' });
+		vault.addFile('A.md', { frontmatter: { type: 'PBI', order: 5000 }, parentLink: 'Epic A' });
+		vault.addFile('B.md', { frontmatter: { type: 'PBI', order: 5000 }, parentLink: 'Epic B' });
+		vault.addFile('T.md', { frontmatter: { type: 'Task', order: 50 }, parentLink: 'C' });
+		return { vault, ...makeView(vault, {}, { focus: 'PBI', except: ['C.md'] }) };
+	}
+
+	it('refuses where lifting the fallback would drop that row to the bottom', async () => {
+		const { containerEl, vault } = withUnrankedContext('first');
+		expect(titlesOf(containerEl)).toEqual(['C', 'T', 'A', 'B']);
+
+		drag(rowByTitle(containerEl, 'B'), rowByTitle(containerEl, 'A'), 'before');
+		await flush();
+
+		expect(vault.writeLog).toEqual([]);
+	});
+
+	it('allows it where that row is already drawn last, since the sort agrees', async () => {
+		const { containerEl, vault } = withUnrankedContext('last');
+		expect(titlesOf(containerEl)).toEqual(['A', 'B', 'C', 'T']);
+
+		drag(rowByTitle(containerEl, 'B'), rowByTitle(containerEl, 'A'), 'before');
+		await flush();
+
+		expect(vault.writeLog.map((w) => w.path)).toEqual(['B.md']);
+	});
+});

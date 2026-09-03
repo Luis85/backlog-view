@@ -112,7 +112,6 @@ export function distinctlyRanked(rows: BacklogItem[]): boolean {
  * screen".
  */
 export function drawnInRankOrder(rows: BacklogItem[]): boolean {
-	if (rows.some((item) => item.order === null)) return false;
 	return rows.every((item, i) => i === 0 || compareRank(rows[i - 1], item) < 0);
 }
 

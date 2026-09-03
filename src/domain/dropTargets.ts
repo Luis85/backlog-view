@@ -15,6 +15,18 @@ export interface DropTarget {
 	parent: BacklogItem | null;
 	/** Rows the item is ranked AMONG — intent, not arithmetic. */
 	peers: BacklogItem[];
+	/**
+	 * The same rows AS DRAWN and unfiltered — every focus row except the dragged one,
+	 * including the unranked context rows `rankablePeers` strips out of `peers`.
+	 *
+	 * `peers` is the ranking population and rightly excludes a row nothing can rank
+	 * against; this is the SCREEN, and the screen is what the invisible-rank guard has to
+	 * reason about. An unranked context row is drawn wherever the tree puts it and sorts
+	 * last the moment the fallback lifts, so one drawn anywhere but last moves when a write
+	 * ends the fallback — invisible to a check that never sees it. Set only by the focus
+	 * producers, beside `parentUnchanged`, since only they reach that guard.
+	 */
+	drawn?: BacklogItem[];
 	/** Position among `peers` where the dragged item should land. */
 	insertIndex: number;
 	/**
@@ -243,7 +255,14 @@ function siblingPosition(
 		const peers = rankablePeers(model.roots).filter((r) => r !== dragged);
 		const idx = peers.indexOf(item);
 		if (idx === -1) return null;
-		return { parent: dragged.parent, peers, insertIndex: zone === 'before' ? idx : idx + 1, parentUnchanged: true };
+		const drawn = model.roots.filter((r) => r !== dragged);
+		return {
+			parent: dragged.parent,
+			peers,
+			drawn,
+			insertIndex: zone === 'before' ? idx : idx + 1,
+			parentUnchanged: true,
+		};
 	}
 	// An ancestor pulled in from outside the filter still has siblings the query never
 	// returned, so ordering it against the loaded ones would be a guess. Every path but

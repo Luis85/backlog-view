@@ -133,7 +133,23 @@ describe('ranking PAST an unranked context row', () => {
 		expect(titlesOf(containerEl)).toEqual(['PBI Ctx', 'Task Ctx', 'PBI A', 'PBI B']);
 	});
 
-	it('lands the drag, Alt+ArrowUp and the move menu on the SAME rank above PBI A', async () => {
+	/**
+	 * **This test asserted a write until 2026-09-03, and the write was wrong.** Its subject —
+	 * that the drag, the keyboard and the menu answer identically — is intact and is what it
+	 * still checks. What changed is the answer all three give.
+	 *
+	 * The fixture is a focused list whose unranked context row is drawn FIRST. A null sorts
+	 * LAST the moment the fallback lifts, so any write that breaks the `A`/`B` tie moves that
+	 * row from the top to the bottom: measured, dropping `PBI B` above `PBI A` wrote 2525 and
+	 * returned `B, A, Ctx` for a gesture that asked for `Ctx, B, A`. The rank the three inputs
+	 * agreed on was a rank that produced the wrong screen, so agreeing on it was not enough.
+	 *
+	 * No rank can do better here, which is why this is a refusal rather than a better number:
+	 * the context row's position is fixed at last-once-sorted and nothing can ever give it a
+	 * rank. So the capability this file was written to prove was never really present in this
+	 * shape — it looked present because the assertion stopped at the write.
+	 */
+	it('has the drag, Alt+ArrowUp and the move menu all REFUSE, identically', async () => {
 		const dragged = focusedView(['Ctx', 'A', 'B']);
 		drag(rowByTitle(dragged.containerEl, 'PBI B'), rowByTitle(dragged.containerEl, 'PBI A'), 'before');
 		await flush();
@@ -148,13 +164,10 @@ describe('ranking PAST an unranked context row', () => {
 		Menu.lastShown?.items.find((i) => i.titleText === 'Move up')?.clickHandler?.();
 		await flush();
 
-		const dragRank = rankOf(dragged.vault, 'PBI B.md');
-		expect(dragRank).not.toBeNull();
-		// Above `PBI A`, never past the end of the population — 6000 is what the unfiltered
-		// peer list produced, and it is the bottom of the backlog rather than the aimed slot.
-		expect(dragRank as number).toBeLessThan(5000);
-		expect(rankOf(keyed.vault, 'PBI B.md')).toBe(dragRank);
-		expect(rankOf(menued.vault, 'PBI B.md')).toBe(dragRank);
+		// All three decline, and none of them writes a rank that would move the context row.
+		expect(rankOf(dragged.vault, 'PBI B.md')).toBeNull();
+		expect(rankOf(keyed.vault, 'PBI B.md')).toBeNull();
+		expect(rankOf(menued.vault, 'PBI B.md')).toBeNull();
 	});
 
 	// **The context row is ABOVE both, and the dragged row is the LAST one.** That is what
@@ -165,14 +178,16 @@ describe('ranking PAST an unranked context row', () => {
 	// says 2 — so a
 	// guard reading the unfiltered list misses the no-op and writes to a row that did not
 	// move. Peers and index have to come off the SAME list, and only this shape shows it.
-	it('still reads the no-op index off the SAME filtered list', async () => {
-		const { containerEl, vault } = focusedView(['Ctx', 'A', 'B']);
-		expect(titlesOf(containerEl)).toEqual(['PBI Ctx', 'Task Ctx', 'PBI A', 'PBI B']);
-
-		// `PBI B` is already after `PBI A`, so this drop moves the row past nothing.
-		drag(rowByTitle(containerEl, 'PBI B'), rowByTitle(containerEl, 'PBI A'), 'after');
-		await flush();
-
-		expect(vault.writeLog.length).toBe(0);
-	});
+	/**
+	 * **Shadowed as of 2026-09-03, and kept with that said out loud.** The refusal above now
+	 * answers this fixture too, so a zero-write assertion here would pass with the no-op
+	 * check deleted — it would prove nothing about the index lists it was written for.
+	 *
+	 * The subject is still worth a test and the fixture is the wrong one for it; the shape
+	 * that discriminates needs a focused list the guard does not refuse, which is a fixture
+	 * with no unranked context row drawn above the rows in play. Recorded rather than
+	 * quietly left green: a test that cannot fail for its own reason is not coverage, and
+	 * this file's own comment above says exactly that about its first version.
+	 */
+	it.todo('reads the no-op index off the same filtered list, on a fixture the guard allows');
 });

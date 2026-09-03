@@ -951,7 +951,14 @@ function invisibleRank(placed: RankResult, dragged: BacklogItem | null, target: 
 	// index, C is written, A and B stay tied, the list stays in tree order and C stays last.
 	// That is the invisible write this whole guard exists to refuse, arriving through the
 	// door the comparator opened.
-	return distinctlyRanked(target.peers) && drawnInRankOrder(target.peers)
+	// The second question is asked of the SCREEN (`target.drawn`), not of the ranking
+	// population: `rankablePeers` strips an unranked context row out of `peers`, and that
+	// row is drawn wherever the tree puts it while sorting LAST the moment the fallback
+	// lifts. Drawn `C(null), A(5000), B(5000)`, dropping B above A broke the writable tie
+	// and returned `B, A, C` — B past the slot it was dropped into and the untouched context
+	// row at the bottom, through a check that could not see it. `compareRank` places a null
+	// last on its own, so one drawn last still passes and only a misplaced one refuses.
+	return distinctlyRanked(target.peers) && drawnInRankOrder(target.drawn ?? target.peers)
 		? placed
 		: { refusal: 'unseededList' };
 }
