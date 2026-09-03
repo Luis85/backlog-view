@@ -95,7 +95,7 @@ describe('estimates that may already be inside another estimate', () => {
 		return vault;
 	}
 
-	it('counts a member whose ancestor member is also estimated', () => {
+	it('counts the estimated ancestor, because an estimated member sits below it', () => {
 		const vault = baseVault();
 		vault.addFile('E.md', { frontmatter: { type: 'Epic', order: 1, release: '[[R]]', effort: 8 } });
 		vault.addFile('F.md', { frontmatter: { type: 'Feature', parent: 'E', order: 1, release: '[[R]]', effort: 5 } });
@@ -122,7 +122,7 @@ describe('estimates that may already be inside another estimate', () => {
 		expect(doubleCountOf(vault)).toBe(1);
 	});
 
-	it('does not count a descendant whose ancestor carries no estimate', () => {
+	it('counts neither the unestimated ancestor nor the estimated member below it, which covers nothing itself', () => {
 		const vault = baseVault();
 		vault.addFile('E.md', { frontmatter: { type: 'Epic', order: 1, release: '[[R]]' } });
 		vault.addFile('F.md', { frontmatter: { type: 'Feature', parent: 'E', order: 1, release: '[[R]]', effort: 5 } });
