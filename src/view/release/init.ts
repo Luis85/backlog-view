@@ -284,10 +284,15 @@ export function adoptableReleaseKeys(config: BasesViewConfig, candidates: Adopti
  * `parent`, `order` and `type`, none of which any candidate suggests.
  */
 export async function runReleaseInit(view: ReleaseView, only?: string[]): Promise<boolean> {
-	// The filter narrows the CANDIDATE LIST, never the sweep: `adoptableReleaseKeys` mutates
-	// a `taken` set as it goes, so narrowing afterwards would let a key this press is not
-	// binding still reserve itself against one it is. `initControl.ts`'s own `fixes`
-	// narrowing makes the identical choice for the offer.
+	// The filter narrows the CANDIDATE LIST, never the sweep, for the shape the sweep
+	// requires: `adoptableReleaseKeys` mutates a `taken` set as it finds each candidate
+	// free, so narrowing its OUTPUT instead would let a key this press is not binding
+	// still reserve itself against one it is, the moment two candidates ever suggest the
+	// same key outside `SHARED_STATUS_OPTIONS`'s own exemption. No pair in
+	// `RELEASE_SUGGESTED_KEYS` does that today, so nothing in this suite can tell the two
+	// orderings apart — this is the shape the sweep's own contract asks for, not a
+	// difference this suite observes. `initControl.ts`'s own `fixes` narrowing makes the
+	// identical choice for the offer, for the identical reason.
 	const wanted = (option: string): boolean => only === undefined || only.includes(option);
 	const keys = RELEASE_SUGGESTED_KEYS.filter((candidate) => wanted(candidate.option));
 	const values = RELEASE_SUGGESTED_VALUES.filter((candidate) => wanted(candidate.option));
