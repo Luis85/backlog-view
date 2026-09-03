@@ -288,9 +288,14 @@ function rankingSection(settings: BacklogSettings): string[] {
 		'',
 		'Both of those describe one sibling group. A view focused on a single type answers all ' +
 			'or nothing instead: while any row on it carries no number, or two share one, the ' +
-			'whole list keeps the order the tree draws rather than sorting the odd row last. So a ' +
-			'rank set by hand there would not show, and the view refuses the move and says which ' +
-			'command fixes it. One blank is enough to hold a whole focused backlog in tree order.',
+			'whole list keeps the order the tree draws rather than sorting the odd row last. One ' +
+			'blank is enough to hold a whole focused backlog in tree order.',
+		'',
+		'A move there is refused only where the move itself cannot end that. Dropping a row ' +
+			'whose own number is the only one shared settles it — the row is written, the list ' +
+			'sorts on the numbers, and it lands where you dropped it. What is refused is a move ' +
+			'that would leave the list in tree order anyway, because a row it does not touch has ' +
+			'no number or shares one, and then the view says which command fixes it.',
 		'',
 		`Two commands in the command palette rewrite every rank at once. **${t('command.seedRanks')}** ` +
 			'numbers the notes in the order the tree draws them, which is what a backlog whose ' +

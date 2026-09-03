@@ -63,7 +63,10 @@ lands, the three ways to make the same move, and where `order` comes from.
    In a SIBLING group the unranked row sorts last, in the Base's own order. A FOCUSED list
    is all or nothing: `inRankOrder` keeps the whole list in tree order while any row lacks
    a rank or two share one, rather than sorting the odd row last, so an order set by hand
-   there would not show — which is why the drag is refused there and names its remedy
+   there would not show. The refusal is narrower than that fallback, and the section says so:
+   a drop whose own row holds the only shared number SETTLES it and lands where it was
+   dropped, and what is refused is a move that would leave the list in tree order anyway,
+   because a row it does not touch has no number or shares one
    ([[Ranking at the focused level]] 2d).
 5. It closes with what a move does *not* do: re-type anything, ever.
 

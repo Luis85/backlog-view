@@ -62,6 +62,21 @@ describe('what the generated README says about ranking', () => {
 	});
 
 	/**
+	 * The fallback is wider than the refusal, and saying "the view refuses the move" flat
+	 * teaches the reader to expect a refusal they will not get: with two rows tied, dropping
+	 * one of THEM settles the tie, the list sorts on the numbers and the row lands where it
+	 * was dropped — measured. A document that over-promises a refusal sends someone to a
+	 * command they did not need, which is the same defect as under-promising one.
+	 */
+	it('does not promise a refusal the view does not make', () => {
+		const content = readme();
+		expect(content).toMatch(/refused only where/);
+		expect(content).toMatch(/settles it/);
+		// The flat claim, in the shape it shipped in.
+		expect(content).not.toContain('the view refuses the move and says which');
+	});
+
+	/**
 	 * The remedies a reader is sent to must be the palette's own names — a retyped one
 	 * sends them looking for a command that is not there. Read from the catalog for the
 	 * same reason the property names are read from the settings.

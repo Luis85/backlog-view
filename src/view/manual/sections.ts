@@ -64,7 +64,11 @@ const MOVING: ManualSection = {
 				'the Base itself returned them. A focused list is all or nothing instead: while ' +
 				'any row in it has no order, or two share one, the whole list keeps the tree\'s ' +
 				'own order rather than sorting the odd row last — so an order set by hand there ' +
-				'would not show, and the drag is refused and says which command fixes it.',
+				'would not show. A drag there is refused only where it could not end that: dropping a ' +
+				'row whose own number is the only one shared settles the clash and lands where you ' +
+				'dropped it, while a move that would leave the list in tree order anyway — because a ' +
+				'row it does not touch has no number or shares one — is refused and names the ' +
+				'command that fixes it.',
 		},
 		{
 			term: 'A move does not re-type',
