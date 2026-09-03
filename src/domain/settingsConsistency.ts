@@ -298,7 +298,8 @@ type ReleaseNoteRole =
 	| 'releaseTarget'
 	| 'releaseStatus'
 	| 'releasedDate'
-	| 'releaseDescription';
+	| 'releaseDescription'
+	| 'releaseCapacity';
 
 /**
  * Every property THIS view owns, named by role — the release note's own fields plus the
@@ -332,6 +333,11 @@ function releaseOwnedProperties(settings: ReleaseSettings): { role: ReleaseNoteR
 		{ role: 'releaseStatus', key: settings.statusKey },
 		{ role: 'releasedDate', key: settings.releasedDateKey },
 		{ role: 'releaseDescription', key: settings.descriptionKey },
+		// Read on the RELEASE note, same as the description above it — the release's own
+		// declared capacity, not a member's effort estimate. `estimateKey` stays off this
+		// table for exactly that reason: it is read on the ITEM, so a collision with a
+		// release-note property is not a fact this table exists to catch.
+		{ role: 'releaseCapacity', key: settings.capacityKey },
 	];
 }
 

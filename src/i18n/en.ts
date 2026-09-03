@@ -826,6 +826,8 @@ export const en = {
 	'release.option.description': 'Release description property',
 	'release.option.releasedDate': 'Released date property',
 	'release.option.estimate': 'Estimate property',
+	'release.option.capacity': 'Capacity property',
+	'release.option.capacityUnit': 'Estimation unit',
 	'release.option.dependsOn': 'Prerequisites property',
 	'release.option.risk': 'Risk property',
 	'release.option.criticalRiskValues': 'Risk values that are critical',
@@ -965,6 +967,7 @@ export const en = {
 	'property.releaseStatus': 'release status',
 	'property.releasedDate': 'released date',
 	'property.releaseDescription': 'release description',
+	'property.releaseCapacity': 'release capacity',
 
 	/**
 	 * The menus — the row and card menu in `view/interactions/menu.ts`, the shelf's picks
@@ -2203,11 +2206,21 @@ export const en = {
 		other: 'Readiness: {count} criteria not configured',
 	},
 	/** The estimate progress: ONE figure with its denominator inside it, never a sum and a
-	 *  second percentage competing with the items bar beside it. */
-	'release.scope.effort': '{done} of {total} pts ({pct}%)',
+	 *  second percentage competing with the items bar beside it. `{done}` and `{total}` reach
+	 *  this pre-formatted with `formatNumber(value, true)`: both are sums of estimates
+	 *  someone TYPED rather than a count this plugin computed, which is the one shape the
+	 *  default formatter's three-fraction-digit cap is wrong for. `{pct}` is computed and
+	 *  already an integer, so it stays a plain number parameter. */
+	'release.scope.effort': '{done} of {total} {unit} ({pct}%)',
+	/** The same figure with no unit configured. `pts` was hard-coded here until 2026-09-03,
+	 *  which contradicted the configurable unit beside it: a vault estimating in person days
+	 *  was told its own numbers were points. An unlabelled number is honest; a guessed unit
+	 *  is not. */
+	'release.scope.effortNoUnit': '{done} of {total} ({pct}%)',
 	/** Estimated but not measurable: the estimate key is bound and no workflow can say what
 	 *  done means, so there is a total and no progress through it. */
-	'release.scope.effortEstimated': '{total} pts estimated',
+	'release.scope.effortEstimated': '{total} {unit} estimated',
+	'release.scope.effortEstimatedNoUnit': '{total} estimated',
 	'release.scope.effortUnconfigured': 'Effort is not configured',
 	/**
 	 * Extension 4a: the estimate key IS bound and no member answers it. Named rather than
@@ -2242,6 +2255,56 @@ export const en = {
 	'release.scope.provenanceEstimate': 'Estimates read {property}.',
 	'release.scope.provenanceDependsOn': 'Prerequisites read {property}, each cleared by its own workflow. Configured: {workflows}.',
 	'release.scope.provenanceRisk': 'Risk reads {property}. Critical: {critical}. Addressed: {addressed}.',
+
+	/**
+	 * The comparison, in the unit the view was told to use. Four numbers in one sentence
+	 * rather than four figures: the strip already carries six, and two percentages beside
+	 * each other read as competing.
+	 *
+	 * `{commitment}`, `{capacity}` and `{over}`/`{left}` all reach every capacity key
+	 * PRE-FORMATTED with `formatNumber(value, true)` — a capacity is typed into the release
+	 * note by hand and the commitment is a sum of typed estimates, neither a count this
+	 * plugin computed, which is the shape `formatNumber`'s own doc names as wrong for the
+	 * default three-fraction-digit cap. `{pct}` alone stays a plain number: it is computed
+	 * and already rounded to an integer.
+	 */
+	'release.scope.capacityOver': '{commitment} of {capacity} {unit} committed ({pct}%, {over} over)',
+	'release.scope.capacityUnder': '{commitment} of {capacity} {unit} committed ({pct}%, {left} left)',
+	/** Zero capacity: the other three figures still answer, the percentage cannot. */
+	'release.scope.capacityNoPct': '{commitment} of {capacity} {unit} committed ({over} over)',
+	'release.scope.capacityZero': 'A percentage needs a capacity',
+	/** The capacity alone, where there is no commitment to set it against — an unbound
+	 *  estimate key, an overflowed sum, or a release nobody has estimated. A readable number
+	 *  is worth drawing on its own; withholding it because the OTHER half is missing is the
+	 *  same defect as withholding the double count for an unset unit. */
+	'release.scope.capacityAlone': '{capacity} {unit} capacity',
+	/**
+	 * A positive capacity is not enough for a finite percentage: `estimateValue` accepts any
+	 * finite non-negative number, so a capacity near `Number.MIN_VALUE` overflows the ratio
+	 * itself. The three figures still answer; the fourth says why it cannot.
+	 */
+	'release.scope.capacityPctOverflow': 'The utilization is too large to state',
+	/** The commitment alone, where the capacity half cannot be read. */
+	'release.scope.committed': '{commitment} {unit} committed',
+	'release.scope.capacityUnreadable': 'Capacity must be a number, and not a negative one',
+	'release.scope.capacityUnconfigured': 'Capacity is not configured',
+	/** The key IS bound and this release is silent at it — a number to type, not a property
+	 *  to bind, which is why it is not the sentence above. */
+	'release.scope.capacityAbsent': 'This release declares no capacity',
+	/** Extension 3a: unlabelled arithmetic is two numbers whose meaning the reader supplies,
+	 *  which is the thing this feature exists to prevent. */
+	'release.scope.capacityNoUnit': 'The capacity unit is not set',
+	'release.scope.doubleCount': {
+		one: '{count} member may double count',
+		other: '{count} members may double count',
+	},
+	/** Drawn on every path with a bound capacity key — the unreadable one included, since
+	 *  that reader is the one who needs to know which key to repair. */
+	'release.scope.provenanceCapacity': 'Capacity reads {property}, in {unit}.',
+	/** The same sentence with no unit set. A separate key rather than an empty parameter:
+	 *  `Capacity reads capacity, in .` is what a screen reader would say otherwise, and a
+	 *  message assembled around a blank is not a sentence in any language. */
+	'release.scope.provenanceCapacityNoUnit': 'Capacity reads {property}.',
 
 	/**
 	 * The summary strip's own label for the progress figure, read into

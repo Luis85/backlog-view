@@ -55,6 +55,9 @@ See [RELEASING.md](RELEASING.md) for how this file is kept in step with a releas
 - Release readiness on a release's own screen: three criteria — everything estimated,
   dependencies resolved, critical risks addressed — beside the effort totals, the estimate
   progress and how much of the scope carries no estimate at all.
+- A release now states the capacity it declared against the effort committed to it — the
+  difference, the utilization and any estimate that may already be inside another one — in a
+  unit the view is told once.
 
 ### Changed
 
@@ -82,10 +85,12 @@ See [RELEASING.md](RELEASING.md) for how this file is kept in step with a releas
   week starts on and the year above them — instead of always in English. English readers
   see the day and month in their own order too (`Jun 29` where a British Obsidian shows
   `29 Jun`); a quarter stays `Q3` everywhere.
-- `main.js` ships about 483 KB, up from the 480 KB ceiling the previous release fitted
+- The release summary's effort figures now read in the unit the view declares rather than
+  always saying `pts`, and say nothing about units where none is set.
+- `main.js` ships about 492 KB, up from the 480 KB ceiling the previous release fitted
   under. Its budget is raised to 512 KB as a decision, not a measurement: this release adds
   the two rank commands, release readiness, the catalog-completeness checks and a catalog
-  grown from 763 keys to 817. No new dependency reached the bundle.
+  grown from 763 keys to 837. No new dependency reached the bundle.
 
 ### Fixed
 

@@ -4,8 +4,13 @@ import { ReleaseView } from '../../src/view/release/releaseView';
 import { installObsidianDom } from './dom';
 import { Modal } from './obsidian-mock';
 import { FakeVault, FakeViewConfig, mountLeaf, mountView, setResults } from './vault';
-import { flush } from './view';
 import { fakeController } from '../helpers/vault';
+
+/** `view.ts`'s own one-liner, inlined: that module reads `node:fs` and imports vitest, so
+ *  importing it here made the release HARNESS bundle unbuildable. */
+function flush(): Promise<void> {
+	return new Promise((resolve) => setTimeout(resolve, 0));
+}
 
 /** `t.pbl-row[data-path="…"]` — the scope tree's own row, or null when `optional` says a
  *  missing one is the assertion rather than a broken fixture. Reads `view.viewEl` rather
@@ -145,12 +150,18 @@ export const RELEASE_CONFIG = {
 	// above are — a suite that wants the unbound case clears the key it is about.
 	descriptionProperty: 'note.description',
 	releaseStatusValues: 'Planned, In progress, Released',
-	// The readiness criteria's own three property keys (2026-09-01), here for the reason
-	// every key above is: this object is what "every candidate already bound" means to four
-	// suites, so a ✨ candidate missing from it makes each of them report work a press
-	// really does have. The two risk VOCABULARIES stay out — ✨ binds no key for them, so a
-	// fixture that bound them would describe a state no press can reach.
+	// The readiness criteria's own three property keys (2026-09-01), plus the capacity
+	// comparison's own (2026-09-03), here for the reason every key above is: this object is
+	// what "every candidate already bound" means to the suites that spread it, so a ✨
+	// candidate missing from it makes each of them report work a press really does have. The
+	// two risk VOCABULARIES stay out — ✨ binds no key for them, so a fixture that bound them
+	// would describe a state no press can reach. `capacityUnit` DOES join the property keys
+	// here, unlike the risk vocabularies: ✨ binds a unit now (the product owner's reversal
+	// of the initializer's former boundary), so this object stays "everything a press could
+	// bind" only with it included.
 	estimateProperty: 'note.effort',
+	capacityProperty: 'note.capacity',
+	capacityUnit: 'points',
 	dependsOnProperty: 'note.dependsOn',
 	riskProperty: 'note.risk',
 	// The closing actions' own three (2026-08-29) — but only TWO of them here.

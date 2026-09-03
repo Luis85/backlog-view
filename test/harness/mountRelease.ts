@@ -69,6 +69,12 @@ const FULL = {
 	releaseNotesFolder: 'Releases/Notes',
 	criticalRiskValues: 'High, Critical',
 	addressedRiskValues: 'Mitigated, Accepted',
+	// `capacityProperty` and `capacityUnit` are already in `RELEASE_CONFIG` (✨ binds both
+	// since the product owner's reversal), so these two lines are no longer load-bearing —
+	// only `pts` in place of `RELEASE_CONFIG`'s own `points`, kept explicit so the harness's
+	// unit reads distinctly from a plain press's.
+	capacityProperty: 'note.capacity',
+	capacityUnit: 'pts',
 };
 
 function configValues(variant: ReleaseConfigVariant): Record<string, unknown> {
@@ -138,6 +144,10 @@ function releaseHarnessVault(variant: ReleaseConfigVariant): FakeVault {
 			status: 'In progress',
 			description: 'Everything the private beta asked for: passwordless sign-in, and the billing rewrite behind it.',
 			order: 1,
+			// Below the members' summed 8 points (5 + 3), so the scope screen shows the
+			// OVER-COMMITTED sentence — the state with the most text in it, and therefore the
+			// one that wraps first at full width, which is the reason to look.
+			capacity: 5,
 		});
 		release('Releases/0.9.md', { version: '0.9.0', 'target-date': inDays(60), status: 'Planned', order: 2 });
 		// The long band: a 60-character name, the longest version and the longest status on
