@@ -21,6 +21,18 @@ Requires Obsidian 1.12.0+ (Bases custom view API, with config-aware view options
 npm run check   # build + test typecheck + lint + markdown + coverage-thresholded tests + fallow + docs register
 ```
 
+The gate costs about four and a half minutes here, and **the suite is three quarters of
+it** — so the inner loop is `npm test` (the same suite, no coverage) and `npm run check` is
+what runs before a commit, not after every edit. The three static steps are cached
+(`eslint --cache`, `tsc --incremental`, all writing under `node_modules/.cache/`), which
+takes them from 42 s to 5 s on a second run; `npm ci` in CI throws that away, so the cold
+run is still the authoritative one — an eslint cache invalidates on a file's own content,
+never on a type change in a file it imports. Two obvious speed-ups were measured and
+refused: `--no-isolate` halves the suite but the suite is not order-independent yet, and
+test selection reaches most of `src/` through the view fixtures anyway. The numbers, and
+the two tests that fail without isolation, are in
+`docs/issues/The check gate costs four minutes, and most of it is the suite.md`.
+
 All seven must pass before committing; CI runs the same steps, on Ubuntu **and Windows** —
 paths and line endings are the only things that differ between them, and both have already
 produced a defect this repository could not see. CI adds two jobs `check` does not: the
