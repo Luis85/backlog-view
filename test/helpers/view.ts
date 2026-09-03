@@ -192,6 +192,19 @@ export function clickExpandAll(containerEl: HTMLElement): void {
 }
 
 /** Hand the view everything the vault now holds, the way Bases does after a change. */
+/**
+ * Re-run the view against the vault's CURRENT contents.
+ *
+ * **It hands over every entry, so a base that was narrowed with `only` or `except` is not
+ * narrowed any more.** A context row becomes an ordinary result on the refresh, and the
+ * model under test stops being the one the fixture built. That is fine for a test whose
+ * subject is unfiltered, and silently wrong for a context-row one — measured on
+ * 2026-09-03, where a post-write render read `A, C, T, D` through this helper and `D, A, C`
+ * with the filter kept, which are different answers to the question being asked.
+ *
+ * For a filtered fixture call `setResults` directly with the same predicate the fixture
+ * used.
+ */
 export function refresh(view: ProductBacklogView, vault: FakeVault): void {
 	setResults(view, vault.entries());
 }

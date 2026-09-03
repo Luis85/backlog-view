@@ -98,13 +98,22 @@ export function distinctlyRanked(rows: BacklogItem[]): boolean {
  * lifted to the top. Measured, not supposed. An UNRANKED context row cannot reach here:
  * `rankablePeers` has already dropped it, which is the same skip `anchoredOrder` makes.
  *
- * Strictly ascending, so this implies distinctness over the rows it reads and is the
- * stronger question: not "is there an order" but "is the order the one on screen".
+ * **Asked with `compareRank` itself, never with a re-spelling of it.** The rank alone is
+ * not the whole comparator: ties break on `entryIndex`, and a tie the sort will leave
+ * exactly where it is drawn is not a reason to refuse. Drawn `A(10)`, context `C(10)`,
+ * `D(10)`, a drop of D above A gives D a rank below 10 and the list comes back `D, A, C` —
+ * the slot the user asked for, because A already wins its tie with C on entry index. A
+ * strict `<` on the order refused it. Every round of this guard that restated the read
+ * side's rule in its own words produced the next defect; calling the comparator is what
+ * stops that.
+ *
+ * So: already sorted by `compareRank`, which implies distinctness among the rows it reads
+ * and is the stronger question — not "is there an order" but "is the order the one on
+ * screen".
  */
 export function drawnInRankOrder(rows: BacklogItem[]): boolean {
-	const orders = rows.map((item) => item.order);
-	if (orders.some((o) => o === null)) return false;
-	return orders.every((order, i) => i === 0 || (orders[i - 1] as number) < (order as number));
+	if (rows.some((item) => item.order === null)) return false;
+	return rows.every((item, i) => i === 0 || compareRank(rows[i - 1], item) < 0);
 }
 
 /**
