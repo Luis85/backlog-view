@@ -37,6 +37,8 @@ export function releaseSettingsWith(overrides: Partial<ReleaseSettings> = {}): R
 		// The capacity figure, added with `Capacity against commitment`'s Task 1 — same
 		// by-hand rule as the others above: unconfigured, since absence is a value here too.
 		capacityKey: '',
+		// Its unit, added with Task 3 — same rule, same reason: unconfigured by default.
+		capacityUnit: '',
 		dependsOnKey: '',
 		riskKey: '',
 		criticalRiskValues: [],
