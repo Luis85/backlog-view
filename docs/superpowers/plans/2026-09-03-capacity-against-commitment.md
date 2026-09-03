@@ -1339,12 +1339,23 @@ Set the feature's own `status` to `Done` only if [[Commitment against declared c
 its last open child — check with
 `grep -l 'parent: "\[\[Capacity against commitment\]\]"' docs/requirements/*.md`.
 
-- [ ] **Step 3: Correct the spec's Slice A**
+- [ ] **Step 3: Correct every place the spec names the wrong module**
 
-In the spec, `## Slice A` says the capacity goes on `ReleaseRow` in `domain/releases.ts`.
-Replace with `ReleaseReadiness` in `domain/releaseReadiness.ts` and the cycle reason from this
-plan's Global Constraints. A spec left promising a module the code does not have is the defect
-the register's own rules warn against.
+The spec says the capacity goes on `ReleaseRow` in `domain/releases.ts` in **two** places, and
+both must change — the decisions table row ("Capacity is a `ReleaseFigure<number>` on
+`ReleaseRow`") and the `## Slice A` paragraph under it. Confirm you have them all before
+committing:
+
+```bash
+grep -n "ReleaseRow\|releases\.ts" docs/superpowers/specs/2026-09-03-capacity-against-commitment-design.md
+```
+
+Replace both with `ReleaseReadiness` in `domain/releaseReadiness.ts`, carrying the reason from
+this plan's Global Constraints: `releaseReadiness.ts` already imports types from `releases.ts`,
+so a value import back the other way is a runtime cycle — and that module already owns the
+other half of this comparison, which is its stated reason for existing. A spec left promising
+a field and a module the code does not have points every future consumer at nothing, which is
+the defect the register's own rules warn against.
 
 - [ ] **Step 4: Add the changelog entries**
 
