@@ -176,6 +176,56 @@ describe('capacity against commitment on the strip', () => {
 		expect(text).not.toContain('0 of 0');
 	});
 
+	it('reads an exactly-filled release as exactly filled, not as a float remainder over', () => {
+		// `0.1 + 0.2` is `0.30000000000000004`, never exactly `0.3` — so a release estimated
+		// at 0.1 and 0.2 against a capacity of 0.3 is honestly exactly full, and the raw
+		// subtraction is a few ULPs of noise rather than a real overage. The default
+		// formatter's three-digit cap hid this before the precise one existed; unnormalized,
+		// the precise one prints it.
+		const vault = capacityVault(0.3);
+		vault.setFrontmatter('F1.md', { type: 'Feature', parent: 'E', order: 1, release: '[[R]]', effort: 0.1 });
+		vault.setFrontmatter('F2.md', { type: 'Feature', parent: 'E', order: 2, release: '[[R]]', effort: 0.2 });
+		const { view, containerEl } = makeReleaseView(vault, CONFIGURED);
+		view.pick('R.md');
+		const text = containerEl.querySelector('.pbl-rel-summary')?.textContent ?? '';
+		expect(text).toContain(
+			t('release.scope.capacityOver', {
+				commitment: formatNumber(0.1 + 0.2, true),
+				capacity: formatNumber(0.3, true),
+				unit: 'pts',
+				pct: 100,
+				over: formatNumber(0, true),
+			}),
+		);
+		// Not merely "the right sentence is present": an unnormalized noise value would print
+		// in exponential form, which this guards against directly.
+		expect(text).not.toMatch(/[eE][+-]\d/);
+	});
+
+	it('keeps a real difference at a tiny magnitude rather than normalizing it away', () => {
+		// The tolerance is RELATIVE to the operands, not a fixed number: an absolute one wide
+		// enough to absorb the float noise above would also erase this difference, which is
+		// real — two ordinary typed values, not a summation remainder — however small the
+		// magnitude both happen to share.
+		const commitment = 1.1e-10;
+		const capacity = 1e-10;
+		// F2 keeps `capacityVault`'s own no-effort default, so the sum is `commitment` alone.
+		const vault = capacityVault(capacity);
+		vault.setFrontmatter('F1.md', { type: 'Feature', parent: 'E', order: 1, release: '[[R]]', effort: commitment });
+		const { view, containerEl } = makeReleaseView(vault, CONFIGURED);
+		view.pick('R.md');
+		const text = containerEl.querySelector('.pbl-rel-summary')?.textContent ?? '';
+		expect(text).toContain(
+			t('release.scope.capacityOver', {
+				commitment: formatNumber(commitment, true),
+				capacity: formatNumber(capacity, true),
+				unit: 'pts',
+				pct: 110,
+				over: formatNumber(commitment - capacity, true),
+			}),
+		);
+	});
+
 	it('names a possible double count beside the figure, and only when there is one', () => {
 		const vault = capacityVault(40);
 		vault.setFrontmatter('E.md', { type: 'Epic', order: 1, release: '[[R]]', effort: 20 });

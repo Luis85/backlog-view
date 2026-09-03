@@ -417,7 +417,13 @@ function drawCapacityFigures(
 		figure(sumEl, t('release.scope.committed', { commitment: formatNumber(commitment, true), unit }));
 		return;
 	}
-	const over = commitment - capacity.value;
+	// **Normalized once, before anything reads its sign or its digits.** `commitment` is a
+	// sum of estimates that can each carry their own floating-point remainder — `0.1 + 0.2`
+	// is `0.30000000000000004`, never exactly `0.3` — so a release filled to EXACTLY its
+	// capacity can subtract to `5.55e-17` rather than `0`. The default formatter's
+	// three-fraction-digit cap hid that; the precise one this figure now uses does not, and
+	// would print `100%, 5.55E-17 over` for a release that is honestly exactly full.
+	const over = normalizedOver(commitment - capacity.value, commitment, capacity.value);
 	if (capacity.value === 0) {
 		figure(
 			sumEl,
@@ -469,6 +475,22 @@ function drawCapacityFigures(
 					left: formatNumber(-over, true),
 				}),
 	);
+}
+
+/**
+ * A few ULPs of slack around the subtraction that decides over/under, scaled off the
+ * OPERANDS rather than a fixed count of decimal places. An absolute tolerance would erase a
+ * real difference at the tiny capacities this feature explicitly accepts — a capacity of a
+ * few thousandths is an ordinary bound key, not noise — while a relative one stays
+ * proportionally tiny at every magnitude the comparison can see, `Number.MIN_VALUE`
+ * (handled separately, by the overflow guard) included. `4` is a small integer multiple of
+ * `Number.EPSILON`, wide enough to absorb one or two float additions' worth of remainder and
+ * narrow enough that a genuine difference many orders of magnitude below the operands —
+ * `0.0004` against `0.00032` — still clears it by a wide margin.
+ */
+function normalizedOver(over: number, commitment: number, capacity: number): number {
+	const tolerance = Number.EPSILON * Math.max(Math.abs(commitment), Math.abs(capacity)) * 4;
+	return Math.abs(over) <= tolerance ? 0 : over;
 }
 
 /** Absent rather than present and empty — extension 4a. */
