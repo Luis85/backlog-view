@@ -58,6 +58,9 @@ See [RELEASING.md](RELEASING.md) for how this file is kept in step with a releas
 
 ### Changed
 
+- `npm run check` runs both its typechecks incrementally (cached under
+  `node_modules/.cache/`), which takes the test typecheck from 11 s to 2–5 s on a
+  second local run; CI still runs them cold.
 - **Breaking:** `order` is one rank over everything the base returns rather than a position
   inside a sibling group, which is what makes a focused backlog orderable at all — its rows
   come from many parents and can only be ranked against each other if the number means the
