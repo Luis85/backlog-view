@@ -88,15 +88,21 @@ export function distinctlyRanked(rows: BacklogItem[]): boolean {
  * top gives C a rank between them and the list comes back `B, C, A` — C is not where it was
  * dropped, and B, which nobody touched, has moved. Measured, not supposed.
  *
- * Asked of the same rows `distinctlyRanked` reads — the writable ones — for the same reason
- * it gives: a context row is one no pass can ever migrate, so counting it would be a
- * permanent veto rather than a condition Seed can clear.
+ * **Every row given, context rows included — and that is the one place this must NOT copy
+ * `distinctlyRanked`.** That predicate skips an `outsideFilter` row because it asks whether
+ * the list can ever be ordered, and a row no pass can migrate would be a permanent veto.
+ * This asks what the SORT will do, and the sort (`ranked.filter`) moves a context row like
+ * any other. Drawn writable `A(20)`, context `C(10)`, writable `D(20)`: skipping C leaves
+ * one writable peer, trivially in order, so a drop of D above A was allowed — it wrote 15
+ * and the list came back `C, D, A`, with D below where it was dropped and the context row
+ * lifted to the top. Measured, not supposed. An UNRANKED context row cannot reach here:
+ * `rankablePeers` has already dropped it, which is the same skip `anchoredOrder` makes.
  *
- * Strictly ascending, so this implies `distinctlyRanked` of the same rows and is the
+ * Strictly ascending, so this implies distinctness over the rows it reads and is the
  * stronger question: not "is there an order" but "is the order the one on screen".
  */
 export function drawnInRankOrder(rows: BacklogItem[]): boolean {
-	const orders = rows.filter((item) => !item.outsideFilter).map((item) => item.order);
+	const orders = rows.map((item) => item.order);
 	if (orders.some((o) => o === null)) return false;
 	return orders.every((order, i) => i === 0 || (orders[i - 1] as number) < (order as number));
 }

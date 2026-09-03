@@ -521,3 +521,56 @@ describe('a focus drop whose peers are ranked against their drawn order', () => 
 		expect(vault.writeLog.map((w) => w.path)).toEqual(['C.md']);
 	});
 });
+
+/**
+ * The same rule, and the third round on it: a RANKED context row is part of the sort.
+ *
+ * `distinctlyRanked` skips an `outsideFilter` row on purpose — it asks whether the list can
+ * ever be ordered, and a row no pass can migrate would veto that forever. `drawnInRankOrder`
+ * asks a different question, what the sort will DO, and the sort moves a context row like
+ * any other. Copying the skip therefore looked consistent and was wrong.
+ *
+ * Drawn writable `A(20)`, context `C(10)` (with its own task keeping it loaded), writable
+ * `D(20)`: the writable peers of a dragged D are just `A`, trivially in order, so the drop
+ * was allowed. It wrote D a 15 and the list came back `C, T, D, A` — D below where it was
+ * dropped, and the context row lifted to the top.
+ */
+describe('a focus drop past a ranked context row', () => {
+	function withContextRoot(dOrder: number) {
+		const vault = new FakeVault();
+		vault.addFile('Epic A.md', { frontmatter: { type: 'Epic', order: 1 } });
+		vault.addFile('Epic C.md', { frontmatter: { type: 'Epic', order: 2 } });
+		vault.addFile('Epic D.md', { frontmatter: { type: 'Epic', order: 3 } });
+		vault.addFile('A.md', { frontmatter: { type: 'PBI', order: 20 }, parentLink: 'Epic A' });
+		vault.addFile('C.md', { frontmatter: { type: 'PBI', order: 10 }, parentLink: 'Epic C' });
+		vault.addFile('D.md', { frontmatter: { type: 'PBI', order: dOrder }, parentLink: 'Epic D' });
+		// The task is what keeps C loaded as a context ancestor while the base excludes it.
+		vault.addFile('T.md', { frontmatter: { type: 'Task', order: 50 }, parentLink: 'C' });
+		return { vault, ...makeView(vault, {}, { focus: 'PBI', except: ['C.md'] }) };
+	}
+
+	it('refuses where the context row would be sorted above the row just dropped', async () => {
+		const { containerEl, vault } = withContextRoot(20);
+		// Tree order, because the two writable rows tie — and C is drawn between them, with
+		// the task that keeps it loaded underneath it.
+		expect(titlesOf(containerEl)).toEqual(['A', 'C', 'T', 'D']);
+
+		drag(rowByTitle(containerEl, 'D'), rowByTitle(containerEl, 'A'), 'before');
+		await flush();
+
+		expect(vault.writeLog).toEqual([]);
+	});
+
+	it('still allows the drop when the list is not in fallback at all', async () => {
+		// The control, and it corrects the reading that nearly went in: with D ranked 30 the
+		// two WRITABLE rows are already distinct, so `inRankOrder` never falls back — the list
+		// is drawn in rank order, the drag moves something visible, and refusing it would be
+		// the feature's removal. The guard only ever speaks where the fallback is holding.
+		const { containerEl, vault } = withContextRoot(30);
+
+		drag(rowByTitle(containerEl, 'D'), rowByTitle(containerEl, 'A'), 'before');
+		await flush();
+
+		expect(vault.writeLog.map((w) => w.path)).toEqual(['D.md']);
+	});
+});

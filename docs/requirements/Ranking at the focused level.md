@@ -128,6 +128,17 @@ from.
   strictly ascending along the drawn list, which implies distinctness and asks the stronger
   question), so lifting the fallback leaves every untouched row where it is.
   **Checked by** `test/view/focusRanking.test.ts` — "refuses, rather than landing the row elsewhere and moving an untouched one", with "still allows the drop where the peers already stand in their rank order" beside it as the control, since a guard that refused every focus drop would satisfy the first on its own
+  **And it reads EVERY peer, context rows included — the one place it must not copy
+  `distinctlyRanked`** (added 2026-09-03, the third round on this guard). That predicate
+  skips an `outsideFilter` row because it asks whether the list can ever be ordered, and a
+  row no pass can migrate would veto that forever; this one asks what the SORT will do, and
+  `ranked.filter` moves a context row like any other. Copying the skip therefore looked
+  consistent and was wrong: drawn writable `A(20)`, context `C(10)`, writable `D(20)`, the
+  writable peers of a dragged D are just `A` and trivially in order, so the drop was allowed
+  — it wrote 15 and the list came back `C, D, A`, D below where it was dropped and the
+  context row lifted to the top. An UNRANKED context row cannot reach the predicate at all:
+  `rankablePeers` drops it first, the same skip `anchoredOrder` makes.
+  **Checked by** `test/view/focusRanking.test.ts` — "refuses where the context row would be sorted above the row just dropped", with "still allows the drop when the list is not in fallback at all" as the control: with the writable rows already distinct there is no fallback, the drag moves something visible, and a guard that spoke there would be removing the feature rather than repairing it
 - **2e — the vault's ranks were never spread for this.** Two palette commands rewrite
   them all: **Seed ranks from the hierarchy** (`seed-ranks`) numbers every note in the
   order the tree draws it, and **Respace ranks** (`respace-ranks`) keeps the rank order and
