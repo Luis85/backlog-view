@@ -522,6 +522,21 @@ In the `ReleaseSettings` interface, beside `capacityKey`:
 	capacityUnit: string;
 ```
 
+**A new field on this interface breaks a test helper, and the gate is where you find out.**
+`releaseSettingsWith` in `test/helpers/releaseSettings.ts` builds a complete `ReleaseSettings`
+literal field by field, so an added field makes it `string | undefined` and
+`npm run typecheck:test` exits 2 — which the task's own targeted commands do not run. Add it
+there in the same style as its neighbours:
+
+```ts
+		capacityUnit: '',
+```
+
+That file's own comment already records this hazard ("EVERY field, and the four below were
+missing until 2026-08-29"); it happened again here, and CI caught it on both platforms after
+the commit. Do not widen the helper's type, make the field optional, or suppress the error —
+the builder exists to fail exactly this way.
+
 In `resolveReleaseSettings`, beside `capacityKey`:
 
 ```ts
@@ -588,7 +603,7 @@ label — it must be passed as a parameter instead.
 - [ ] **Step 9: Commit**
 
 ```bash
-git add src/domain/releaseOptions.ts src/domain/settingsConsistency.ts src/view/release/init.ts src/i18n/en.ts test/domain/releaseOptions.test.ts test/domain/settingsConsistency.test.ts test/view/release/init.test.ts
+git add src/domain/releaseOptions.ts src/domain/settingsConsistency.ts src/view/release/init.ts src/i18n/en.ts test/helpers/releaseSettings.ts test/helpers/release.ts test/domain/releaseOptions.test.ts test/domain/settingsConsistency.test.ts test/view/release/init.test.ts
 git commit -m "Offer the capacity property and the unit it is in"
 ```
 
