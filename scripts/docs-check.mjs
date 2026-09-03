@@ -1,6 +1,7 @@
 import { readdir, readFile, stat } from "node:fs/promises";
 import path from "node:path";
 import process from "node:process";
+import YAML from "yaml";
 import { collapsed, containerAt, headings, localLinks, markers, prose, proseWithSpans, sectionBody, tablesWith, wikilinks } from "./docs-markdown.mjs";
 
 /**
@@ -285,22 +286,139 @@ function between(text, start, end) {
 
 
 /**
+ * **The block, read by a YAML parser rather than by line patterns.**
+ *
+ * This was a regex reader until 2026-09-02, and the two notes it closes say why it stopped
+ * being one. [[The register gate cannot see unparseable frontmatter]] is the gate answering
+ * every question about a block Obsidian refuses outright — a note with no `type`, no
+ * `parent` and no `status` in the metadata cache, so on no projection, reported green.
+ * [[The checker reads frontmatter its own way]] is the same seam one step earlier: two
+ * readers over one block, with nothing comparing them. A differential over the register on
+ * 2026-09-02 — the regex reader against `yaml`, over 654 notes and 9,840 key questions —
+ * found **15 disagreeing shapes and one live casualty**: `Editing a release from its own
+ * screen.md` carried `priority` twice, which no YAML parser accepts, and had been invisible
+ * to Obsidian and green here since 2026-08-29.
+ *
+ * The register refused this dependency three times, and the refusal was priced wrong rather
+ * than argued wrong: ADR 0019 and ADR 0022 cost a parser as a new audit surface and a new
+ * Dependabot row. `yaml` is neither — `npm ls yaml` puts 2.9.0 flat in `node_modules`
+ * already, deduped between `vite` (under vitest) and `yaml-eslint-parser` (under
+ * `eslint-plugin-obsidianmd`). It is on both surfaces today. What the declaration buys is
+ * the right to import it, which fallow's dependency hygiene otherwise refuses.
+ *
  * `field` reads a **value**, `has` reads a **key**, and the difference is load-bearing: a
  * bare `parent:` with nothing after it is an absent field to `field` and an explicit root to
  * `resolveParent`. A rule about what a note must *contain* asks `field`; a rule about what
  * it must not *declare* asks `has`. Which one is not a style choice — it is whichever the
  * rule is actually about, and getting it backwards is how the prohibition below first
- * shipped broken.
+ * shipped broken. That distinction survived the parser and is now exact rather than
+ * approximate: `has` asks the parsed map for an own property, so it cannot be fooled by a
+ * key spelled inside a value.
+ *
+ * `field` is the **scalar** reader and answers `null` for a list or a map, because `files:`
+ * and `dependsOn:` are sequences and no rule here asks one for a value. `has` is what a
+ * rule about those keys asks. The regex reader answered a sequence with its FIRST ITEM,
+ * which is the shape that made this a differential rather than a tidy-up.
+ *
+ * `error` is the parser's own first line, or `null`. It is reported once, by the rule below
+ * this one, over every file rather than at each reader — a category invariant belongs on
+ * the forbidden thing.
  */
+/**
+ * The parse, and its refusal, as one small function.
+ *
+ * Split from `frontmatter` below rather than inlined, and the reason is a gate rather than
+ * taste: written as one function this was cyclomatic 6 in a script no test covers, which is
+ * CRAP 42 and above fallow's threshold — the first thing this change did to `npm run check`
+ * was fail it. Two functions of 3 and 4 are the same code and under it.
+ *
+ * `?? {}` is the whole normalization. A block that parses to a list, to a bare scalar or to
+ * nothing has no keys, and `Object.hasOwn` already answers `false` for every one of those —
+ * only `null` and `undefined` would throw, which is what this replaces.
+ */
+function parseBlock(raw) {
+	try {
+		return { map: YAML.parse(raw) ?? {}, error: null };
+	} catch (problem) {
+		return { map: {}, error: String(problem.message).split("\n")[0] };
+	}
+}
+
+/**
+ * One key's value, as a **non-empty scalar** or `null`.
+ *
+ * `typeof null === "object"` does the work in the middle: an absent key and a bare
+ * `parent:` are the same `null` here, and so is a list or a map — right, because this is
+ * the SCALAR reader and `has` is what a rule about `files:` asks.
+ *
+ * **`|| null` is the last clause and it is a bug fix, not tidiness** (Codex, PR #257). A
+ * quoted `order: ""` parses to the empty string, `String("")` is `""`, and `Number("")` is
+ * **0** — finite, so the checker accepted a note with an explicitly blank rank as rank 0
+ * whenever no sibling had claimed it. The regex reader answered `'""'` and `Number` refused
+ * that, so parsing without this clause was a false green the old reader did not have.
+ *
+ * Fixed here rather than at the `order` call site because that site is not the only one:
+ * `superseded-by`, `supersedes`, `title`, `area`, `adr` and `date` all test `field(…)`
+ * against `null` and would each have read a blank as a stated value. A category invariant
+ * goes on the forbidden thing.
+ *
+ * `has` is deliberately NOT changed: `parent: ""` still DECLARES a parent key, which is
+ * what the ADR prohibition asks about. Stated a value / declared a key stays the exact
+ * distinction it became when this file started parsing.
+ */
+function scalar(map, name) {
+	const value = Object.hasOwn(map, name) ? map[name] : null;
+	return (typeof value === "object" ? "" : String(value)).trim() || null;
+}
+
+/**
+ * The frontmatter block, delimited the way Obsidian delimits it: the closing `---` is a
+ * COMPLETE LINE, not a prefix.
+ *
+ * **Found by review (Codex, PR #257), and it was the parse being handed the wrong bytes
+ * rather than the parse being wrong.** `\n---` alone matches inside `\n---oops`, so a note
+ * written
+ *
+ * ```
+ * ---
+ * type: Feature
+ * ---oops
+ * status: Open
+ * ---
+ * ```
+ *
+ * handed `YAML.parse` the string `type: Feature`, which parses, so the all-files rule
+ * reported no error — while the block Obsidian actually reads runs to the real closing line
+ * and is refused (`Implicit keys need to be on a single line`). Measured both ways before
+ * the fix. That is [[The register gate cannot see unparseable frontmatter]] reopened one
+ * layer down: not a reader that cannot parse, but a reader parsing a prefix of the document
+ * and calling it the document.
+ *
+ * **One function because there were two copies of the pattern**, and the second is in the
+ * narrow ` #`/`[[` rules further down — so the same truncation would have hidden a value
+ * from those as well, and a fix applied to one of two spellings is how this file got
+ * [[The checker reads frontmatter its own way]] in the first place. The trailing `[ \t]*`
+ * allows the whitespace an editor leaves; `(?:\n|$)` allows a file that ends at the
+ * delimiter.
+ */
+function blockOf(text) {
+	const match = /^---\n([\s\S]*?)\n---[ \t]*(?:\n|$)/.exec(text);
+	return match ? match[1] : null;
+}
+
 function frontmatter(text) {
-	const match = /^---\n([\s\S]*?)\n---/.exec(text);
-	if (!match) return null;
-	const field = (name) => {
-		const found = new RegExp(`^${name}:\\s*(.+)$`, "m").exec(match[1]);
-		return found ? found[1].trim() : null;
-	};
-	const has = (name) => new RegExp(`^${name}:`, "m").test(match[1]);
-	return { field, has, raw: match[1] };
+	const raw = blockOf(text);
+	if (raw === null) return null;
+	const { map, error } = parseBlock(raw);
+	// `Object.hasOwn` rather than a truth test, so that `field` and `has` cannot disagree
+	// about a key inherited from `Object.prototype` — `constructor:` is a legal frontmatter
+	// key and YAML gives it as an own property.
+	const has = (name) => Object.hasOwn(map, name);
+	const field = (name) => scalar(map, name);
+	// `raw` is deliberately not returned. It was, and the two rules that read it — the
+	// parent wikilink and the ADR date — are the two that had drifted from what YAML says.
+	// Handing the block's TEXT back beside a parse of it is how a second reader starts.
+	return { field, has, error };
 }
 
 /**
@@ -406,8 +524,27 @@ const claimName = (file, name) => {
 	usedNames.set(name, file);
 	return true;
 };
+/**
+ * **Frontmatter Obsidian cannot read at all**, asked of every file that has any, before any
+ * rule reads a field.
+ *
+ * One loop over every `.md` in the tree rather than a guard in each of the three loops that
+ * read fields — a category invariant goes on the forbidden thing. It also reaches the files
+ * those loops skip: an ADR, a `superpowers/` plan and an index page all have frontmatter
+ * Obsidian parses, and none of them passes through the backlog-note loop below.
+ *
+ * The message is the parser's own first line, because a hand-written summary of a YAML
+ * error is a second reader of the same block, which is what this rule exists to stop.
+ */
+for (const file of files) {
+	const error = frontmatter(texts.get(file))?.error;
+	if (error) fail(file, `frontmatter is not valid YAML, so Obsidian reads none of it — ${error}`);
+}
+
 for (const file of files) {
 	const fm = frontmatter(texts.get(file));
+	// Already reported above, and every rule below would restate it as a missing field.
+	if (fm?.error) continue;
 	const type = fm?.field("type");
 	const name = path.basename(file, ".md");
 	// A spec, a plan or a PRD claims its name like any other note, but needs no backlog
@@ -456,7 +593,11 @@ for (const file of files) {
 	// as ordinary notes, so it joins them in `LEGAL_CHILDREN` and `ROOT_TYPES` below
 	// rather than being skipped. See `docs/issues/The gate was one marker behind.md`.
 	if (type === "Absence" || type === "Resource") continue;
-	const parent = /^parent:\s*"?\[\[([^\]]+)\]\]"?/m.exec(fm.raw)?.[1] ?? null;
+	// Asked of the parsed VALUE, so the quotes the register writes around every wikilink are
+	// the parser's business rather than a `"?` in this pattern. Anchored at both ends, which
+	// the raw-text version could not be: `parent: "[[A]] and [[B]]"` used to name `A`, and
+	// naming one of two parents is worse than reporting none.
+	const parent = /^\[\[([^\]]+)\]\]$/.exec(fm.field("parent") ?? "")?.[1] ?? null;
 	// `Number(field ?? 0)` manufactured a rank for a note that has none: a missing `order`
 	// became 0, which is a legal-looking value that no sibling had claimed, so the note
 	// passed the uniqueness check by being unranked. The register's conventions say every
@@ -862,52 +1003,57 @@ for (const [, note] of notes) {
 }
 
 /**
- * **A frontmatter value that YAML would not read the way the note means it.**
+ * **A frontmatter value that PARSES, and means less than the note says.**
  *
- * `frontmatter()` above is a regex reader, so it answers `field("cadence")` happily for a
- * block no YAML parser will accept — which is exactly how five notes reached `main` with
- * frontmatter Obsidian cannot parse at all. A note whose frontmatter does not parse has no
- * `type` and no `cadence` in the metadata cache, so it is in no Bases query and on no
- * projection: `docs/tests/cases/The assignee chip and Set assignee.md` was invisible to the
- * Tests projection it had just been written for, and this gate said it was fine.
- * [[The register gate cannot see unparseable frontmatter]] is that gap.
+ * That is the whole of what is left for these two rules, and it is a narrower job than the
+ * one they were written for. They used to carry the unparseable case as well, because
+ * `frontmatter()` was a regex reader that answered `field("cadence")` happily for a block
+ * no YAML parser would accept — which is how five notes reached `main` with frontmatter
+ * Obsidian cannot parse at all, `docs/tests/cases/The assignee chip and Set assignee.md`
+ * invisible to the very Tests projection it had just been written for while this gate said
+ * it was fine. [[The register gate cannot see unparseable frontmatter]] was that gap, and
+ * **the parse closed it**: `frontmatter()` reads the block with `yaml` and one rule over
+ * every `.md` reports the parser's own first line.
  *
- * **The claim is narrow on purpose, and narrower than the gap.** Parsing YAML properly
- * would mean a parser dependency for one rule; what this does instead is refuse the two
- * spellings that have actually gone wrong here, and it says which two rather than implying
- * it covers the language:
+ * **So what survives here is the residue a parse cannot see**, and it is the reason these
+ * two are kept rather than deleted with the reader that needed them. Both spellings PARSE.
+ * Neither produces an error for the rule above to report, and both leave the note meaning
+ * something other than what its author typed:
  *
  * - **A value containing ` #`, in a PLAIN scalar.** A hash after a space opens a comment,
- *   so `source: review of PR #114 raised the connector` has always MEANT
- *   `source: review of PR` — Obsidian's own Properties panel shows it truncated. Where the
- *   value continues onto another line, the comment ends the scalar and the continuation is
- *   then an unexpected token, so the whole block fails to parse. Three notes here were in
- *   that state. It is the same hazard as
+ *   so `source: review of PR #114 raised the connector` parses fine and MEANS
+ *   `source: review of PR` — Obsidian's own Properties panel shows it truncated. The parse
+ *   is silent about it, because nothing is wrong with the document: the note simply says
+ *   less than it looks like. Where the value continues onto another line the block does
+ *   fail outright, and the parse now catches that half; the truncation is the half nothing
+ *   else can see. Same hazard as
  *   [[A hash in a value is a comment the first rewrite erases]], met from the other side:
- *   that note is about the bytes a REWRITE drops, this is about the block never parsing.
- * - **A value opening with `[[`.** An unquoted wikilink is read as a nested list rather
- *   than a link, and any prose after the closing bracket is a parse error outright. Two
- *   notes were in that state, both written on the branch that added this rule.
+ *   that note is about the bytes a REWRITE drops, this is about the bytes the READ drops.
+ * - **A value opening with `[[`.** `source: [[A note]]` with nothing after it parses — as
+ *   a list holding a list, not as a link — so the value the note meant to state is not the
+ *   value anything reads. Prose after the closing bracket is a parse error outright, which
+ *   is again the half the parse now owns.
  *
- * **Flow collections are not read at all, and that is a decision rather than an omission.**
+ * **Flow collections are still not read, and that is a decision rather than an omission.**
  * A third check here tried to refuse prose after a closing bracket, and review found a
  * legal form it rejected on three consecutive rounds — a bare collection, one holding a
  * quoted hash, and one with a trailing YAML comment. Measured against the seven notes this
  * rule has actually caught, it caught NONE that the `[[` test above does not already catch:
  * both wikilink notes open with `[[`, and the other five are hash cases. So it was deleted
- * rather than narrowed a fourth time. That is the ADR 0021 shape — each fix closing one
- * hole and opening the next — and the honest end of it here is a smaller claim, not a
- * cleverer pattern, because a real YAML parse would mean a parser dependency for one rule.
+ * rather than narrowed a fourth time — the ADR 0021 shape, each fix closing one hole and
+ * opening the next, ended with a smaller claim rather than a cleverer pattern. The parse
+ * has since taken everything that argument was standing in for, and what is left is a
+ * subset of each spelling rather than a reading of the language.
  *
  * Both are fixed the same way and the register already spells it that way everywhere else:
  * quote the value. `parent: "[[...]]"` has always been quoted here.
  */
 for (const file of files) {
-	const block = /^---\n([\s\S]*?)\n---/.exec(texts.get(file) ?? "");
-	if (!block) continue;
+	const block = blockOf(texts.get(file) ?? "");
+	if (block === null) continue;
 	// Key lines only — a continuation line is part of the value above it, and the value is
 	// what these two rules are about, so the whole entry is reassembled before it is read.
-	const lines = block[1].split("\n");
+	const lines = block.split("\n");
 	const entries = [];
 	for (const line of lines) {
 		const start = /^([A-Za-z_][\w-]*):\s?(.*)$/.exec(line);
@@ -949,6 +1095,8 @@ for (const file of adrFiles) {
 		fail(file, "ADR has no frontmatter");
 		continue;
 	}
+	// Reported once, above; every field rule below would restate it five times over.
+	if (fm.error) continue;
 	for (const field of ["adr", "title", "status", "date", "area"]) {
 		if (fm.field(field) === null) fail(file, `ADR has no ${field}`);
 	}
@@ -994,7 +1142,11 @@ for (const file of adrFiles) {
 	});
 	const area = fm.field("area");
 	if (area && !ADR_AREAS.has(area)) fail(file, `area "${area}" is not one of ${[...ADR_AREAS]}`);
-	if (!/^date:\s*\d{4}-\d{2}-\d{2}\s*$/m.test(fm.raw)) fail(file, "date is not YYYY-MM-DD");
+	// Asked of the value, not of the line: `date: "2026-08-24"` is the same date to YAML and
+	// to Obsidian, and the line pattern refused it — a restriction nothing here states. The
+	// value stays a STRING through the parser (YAML 1.2's core schema has no timestamp
+	// type), so this is still a question about the spelling the note carries.
+	if (!/^\d{4}-\d{2}-\d{2}$/.test(fm.field("date") ?? "")) fail(file, "date is not YYYY-MM-DD");
 	// `docs/adrs/README.md` says "four headings, in this order", and a record that answers
 	// Consequences before Decision is a different document.
 	checkSections(file, text, ADR_SECTIONS, "ADR");

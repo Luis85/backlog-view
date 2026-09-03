@@ -39,6 +39,23 @@ reads as consent.
 That is the whole content of this note, and it is why every claim under it needs to be
 checked rather than read off a page.
 
+### A fourth instance, 2026-09-02, and it was not on the pull request page at all
+
+The note is written about CI, and the same shape reached the **local** run of the same
+seven steps. `npm run check 2>&1 | tail -40` reports the exit status of `tail`, not of
+`npm` — so a run in which `fallow` exited 1 was read as exit 0 and reported as *"all seven
+steps, exit 0"* in a pull request body. CI found it four minutes later, on the step that had
+actually failed (`frontmatter` at CRAP 42 after PR #257 rewrote it).
+
+Worth this paragraph because it widens the note's own subject in a direction it had not
+looked. Every count above is about a gate that never STARTED; this is a gate that ran, said
+no, and had its answer discarded by the instrument reading it. Both arrive as silence, and
+the local one has no checks tab to be missing from. **The fix is the same size as the
+mistake:** redirect to a file and echo `$?`, never pipe the gate into anything.
+
+`> out.txt 2>&1; echo "EXIT: $?"` is what this repository's own passes should use, and it is
+cheaper than the paragraph explaining why.
+
 ## Three attempts at the count, and what each got wrong
 
 This note has said "CI never ran", then "once in eight commits", then "three of eleven
