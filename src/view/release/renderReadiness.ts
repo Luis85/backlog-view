@@ -1,10 +1,12 @@
 import { setTooltip } from 'obsidian';
+import type { ReleaseView } from './releaseView';
 import { formatNumber, t } from '../../i18n/t';
 import { ReleaseCriterion, ReleaseReadiness, clearingWorkflows } from '../../domain/releaseReadiness';
 import { WorkflowKind } from '../../domain/board';
 import { exactDifference, toNumber } from '../../domain/decimal';
 import { ReleaseSettings } from '../../domain/releaseOptions';
 import { BacklogSettings } from '../../domain/settings';
+import { drawFixNote } from './readinessFix';
 
 /**
  * The readiness chip row, and the figures that join the summary strip beside the bar
@@ -216,14 +218,17 @@ function verdictClass(verdict: ReleaseCriterion['verdict']): string {
 }
 
 /** The effort figures, then the capacity comparison beside them. ONE call site for the
- *  second, so it cannot be forgotten on one of the first's three exits. */
+ *  second, so it cannot be forgotten on one of the first's three exits. `view` is threaded
+ *  through to the two red states that name an unbound key of their own — see
+ *  `readinessFix.ts` — and reaches no further than the branch that draws one. */
 export function drawReadinessFigures(
+	view: ReleaseView,
 	sumEl: HTMLElement,
 	readiness: ReleaseReadiness,
 	settings: ReleaseSettings,
 ): void {
-	drawEffortFigures(sumEl, readiness, settings);
-	drawCapacity(sumEl, readiness, settings);
+	drawEffortFigures(view, sumEl, readiness, settings);
+	drawCapacity(view, sumEl, readiness, settings);
 }
 
 /**
@@ -235,6 +240,7 @@ export function drawReadinessFigures(
  * `2 unestimated` beside `Effort is not configured` contradicts itself.
  */
 function drawEffortFigures(
+	view: ReleaseView,
 	sumEl: HTMLElement,
 	readiness: ReleaseReadiness,
 	settings: ReleaseSettings,
@@ -254,8 +260,10 @@ function drawEffortFigures(
 		return;
 	}
 	if (total === null) {
-		// The estimate key itself is unbound, so none of the three figures answers.
-		sumEl.createSpan({ cls: 'pbl-rel-unreadable', text: t('release.scope.effortUnconfigured') });
+		// The estimate key itself is unbound, so none of the three figures answers — and
+		// the property is `estimateProperty`, this screen's own option, so the note draws
+		// as the button that binds it (`readinessFix.ts`).
+		drawFixNote(view, sumEl, t('release.scope.effortUnconfigured'), { kind: 'bind', option: 'estimateProperty' });
 		return;
 	}
 	// A release whose every member is unestimated has nothing to sum, which is a different
@@ -338,11 +346,11 @@ function drawEffort(sumEl: HTMLElement, total: number, done: number | null, unit
  * `estimated` criterion are one walk in `releaseReadiness.ts`; a second sum in the renderer
  * is the drift that module exists to prevent.
  */
-function drawCapacity(sumEl: HTMLElement, readiness: ReleaseReadiness, settings: ReleaseSettings): void {
+function drawCapacity(view: ReleaseView, sumEl: HTMLElement, readiness: ReleaseReadiness, settings: ReleaseSettings): void {
 	// The SAME count `drawEffortFigures` reads, computed once and passed to both, so the two
 	// can never disagree about whether this release has been estimated at all.
 	const estimatedMembers = readiness.criteria.find((criterion) => criterion.key === 'estimated')?.cleared ?? 0;
-	drawCapacityFigures(sumEl, readiness, settings, estimatedMembers);
+	drawCapacityFigures(view, sumEl, readiness, settings, estimatedMembers);
 	// **Outside the comparison, and drawn once.** The double count is a count of ESTIMATES:
 	// it does not read the capacity, it does not read the unit, and it answers on every path
 	// where the comparison cannot be drawn at all. Inside those branches it was suppressed
@@ -366,6 +374,7 @@ function drawCapacity(sumEl: HTMLElement, readiness: ReleaseReadiness, settings:
 }
 
 function drawCapacityFigures(
+	view: ReleaseView,
 	sumEl: HTMLElement,
 	readiness: ReleaseReadiness,
 	settings: ReleaseSettings,
@@ -374,7 +383,10 @@ function drawCapacityFigures(
 	const capacity = readiness.capacity;
 	// The capacity's own state is named even with no commitment to compare it against —
 	// extension 2b's "both halves are named" — but a comparison needs both numbers.
-	if (capacity.unconfigured) note(sumEl, t('release.scope.capacityUnconfigured'));
+	// Unconfigured names `capacityProperty`, this screen's own option, so the note draws
+	// as the button that binds it (`readinessFix.ts`); the other two are read-only refusals
+	// about a bound key's own content and stay the plain span they always were.
+	if (capacity.unconfigured) drawFixNote(view, sumEl, t('release.scope.capacityUnconfigured'), { kind: 'bind', option: 'capacityProperty' });
 	else if (capacity.invalid) note(sumEl, t('release.scope.capacityUnreadable'));
 	else if (capacity.value === null) note(sumEl, t('release.scope.capacityAbsent'));
 	// **The unit is checked BEFORE the commitment, and that order is the requirement.**

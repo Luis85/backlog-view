@@ -2440,6 +2440,17 @@ export const en = {
 	'confirm.cancel': 'Cancel',
 
 	/**
+	 * The tooltip on a red readiness note that has become a button
+	 * (`src/view/release/readinessFix.ts`) — one per {@link Remedy} kind, read off which
+	 * remedy the note carries rather than a sentence written per state, so a state that
+	 * moves from one kind of remedy to another (a bind that later becomes an open) needs
+	 * no new key.
+	 */
+	'release.fix.bind': 'Bind this property and try again',
+	'release.fix.open': 'Open the note holding this value',
+	'release.fix.edit': 'Set this value',
+
+	/**
 	 * The ✨ standalone control (`src/view/release/initControl.ts`), drawn on the index bar
 	 * and on the `noMembership` scope empty state. One label serves both the accessible
 	 * name and the tooltip — the button carries an icon alone on the bar, so nothing on

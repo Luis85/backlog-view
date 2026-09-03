@@ -104,6 +104,8 @@ The capacity key, the estimate key and the unit string are declared in
 so a value import back the other way would be a runtime cycle, and that module already owns
 the other half of this comparison (the commitment), which is its stated reason for existing.
 The panel is the release summary's own render module, `src/view/release/renderReadiness.ts`.
+An unbound capacity key draws through `src/view/release/readinessFix.ts` — the red state's
+own remedy, a bind, an open, or a dialog its caller owns.
 
 Both halves of the comparison are arithmetic on decimals somebody TYPED, so both go through
 `src/domain/decimal.ts` — `exactSum` for the commitment and `exactDifference` for the

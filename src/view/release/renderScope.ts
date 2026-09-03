@@ -203,7 +203,7 @@ function drawHeader(
 	// prevent. `view.settings` is this view's own `ReleaseSettings`, the same object the
 	// model was built from, for `planSettings`' own reason above.
 	const readiness = releaseReadiness(view.app, scope, view.settings, planSettings);
-	drawSummary(footEl, release, scope.members, readiness, { plan: planSettings, release: view.settings });
+	drawSummary(footEl, release, scope.members, readiness, { view, plan: planSettings, release: view.settings });
 	drawReleaseActions(view, footEl, release, scope, planSettings);
 	drawReadiness(headerEl, readiness, view.settings, planSettings);
 }
@@ -469,12 +469,15 @@ function drawDescription(view: ReleaseView, headerEl: HTMLElement, release: Rele
  * live-vault question, the same one `src/view/CLAUDE.md`'s resize-grip section leaves open
  * for a `role="separator"`.
  */
-/** The two settings bags this strip reads, as one argument. Not a shape anybody wanted:
- *  the readiness provenance needed a sixth parameter and `max-params` (5) refused it, and
- *  the alternatives were worse — taking the whole `ReleaseScope` reintroduces a nullable
- *  `release` this caller has already resolved, and an unreachable null guard beside it is
- *  the thing this module just deleted one of. */
+/** Everything this strip reads beyond its own four positional arguments, bundled for the
+ *  same reason twice over: the readiness provenance needed a sixth parameter and
+ *  `max-params` (5) refused it, and the two red states `drawReadinessFigures` can now
+ *  draw as a bind button need the `view` those figures had no way to reach. Taking the
+ *  whole `ReleaseScope` instead reintroduces a nullable `release` this caller has already
+ *  resolved, and an unreachable null guard beside it is the thing this module just
+ *  deleted one of. */
 interface SummarySettings {
+	view: ReleaseView;
 	plan: BacklogSettings;
 	release: ReleaseSettings;
 }
@@ -495,7 +498,7 @@ function drawSummary(
 		// key rather than the state workflow, so a release with an estimate key bound and no
 		// workflow that can say done would otherwise lose readable figures along with the one
 		// that really is unreadable.
-		drawReadinessFigures(sumEl, readiness, settings.release);
+		drawReadinessFigures(settings.view, sumEl, readiness, settings.release);
 		return;
 	}
 	const done = release.done.value;
@@ -513,7 +516,7 @@ function drawSummary(
 	// No `aria-hidden` either: with no description to double against, this text is meant to
 	// be read exactly once, as ordinary content of the strip.
 	sumEl.createSpan({ cls: 'pbl-sr-only', text: provenance });
-	drawReadinessFigures(sumEl, readiness, settings.release);
+	drawReadinessFigures(settings.view, sumEl, readiness, settings.release);
 }
 
 /**
