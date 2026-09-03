@@ -148,7 +148,7 @@ not show is not on the rows, and that includes the state, horizon, risk and tag 
 | Switch projection | Toolbar toggle — **backlog tree**, **kanban board**, **roadmap**, **Deliverables board**. See [The board](#the-board), [The roadmap](#the-roadmap) and [The Deliverables board](#the-deliverables-board) |
 | Expand / collapse | Click the chevron, or use the toolbar buttons |
 | Open an item | Click the row (Ctrl/Cmd-click for a new tab) |
-| Re-order among siblings | Drag a row and drop it **between** two rows |
+| Re-order | Drag a row and drop it **between** two rows — among its siblings, or against the other top rows of a [focused](#focus-on-one-type) view, which need not share a parent |
 | Re-parent | Drag a row and drop it **onto** the middle of the new parent |
 | Make an item top-level | Right-click → **Outdent** (Alt+Left), or drag it just above or below a row that is already top-level |
 | Create a child item | Hover a row and click **+**, or use the context menu — where the row can hold more than one kind of item, the modal asks which |
@@ -334,7 +334,7 @@ Once in the tree (mirroring Azure DevOps backlog shortcuts where sensible):
 | <kbd>←</kbd> | Collapse the item, or jump to its parent |
 | <kbd>→</kbd> | Expand the item, or jump to its first child |
 | <kbd>Enter</kbd> | Open the selected item (Ctrl/Cmd for a new tab) |
-| <kbd>Alt</kbd>+<kbd>↑</kbd> / <kbd>Alt</kbd>+<kbd>↓</kbd> | Move the item up / down among its siblings |
+| <kbd>Alt</kbd>+<kbd>↑</kbd> / <kbd>Alt</kbd>+<kbd>↓</kbd> | Move the item up / down — among its siblings, or among the top rows of a [focused](#focus-on-one-type) view |
 | <kbd>Alt</kbd>+<kbd>←</kbd> | Outdent — make it a sibling of its parent |
 | <kbd>Alt</kbd>+<kbd>→</kbd> | Indent — nest it under the previous sibling |
 | <kbd>Ctrl/Cmd</kbd>+<kbd>Z</kbd> | Undo the last backlog change (again to redo) |
