@@ -2025,7 +2025,11 @@ export const en = {
 		other: 'Readiness: {count} criteria not configured',
 	},
 	/** The estimate progress: ONE figure with its denominator inside it, never a sum and a
-	 *  second percentage competing with the items bar beside it. */
+	 *  second percentage competing with the items bar beside it. `{done}` and `{total}` reach
+	 *  this pre-formatted with `formatNumber(value, true)`: both are sums of estimates
+	 *  someone TYPED rather than a count this plugin computed, which is the one shape the
+	 *  default formatter's three-fraction-digit cap is wrong for. `{pct}` is computed and
+	 *  already an integer, so it stays a plain number parameter. */
 	'release.scope.effort': '{done} of {total} {unit} ({pct}%)',
 	/** The same figure with no unit configured. `pts` was hard-coded here until 2026-09-03,
 	 *  which contradicted the configurable unit beside it: a vault estimating in person days
@@ -2075,6 +2079,13 @@ export const en = {
 	 * The comparison, in the unit the view was told to use. Four numbers in one sentence
 	 * rather than four figures: the strip already carries six, and two percentages beside
 	 * each other read as competing.
+	 *
+	 * `{commitment}`, `{capacity}` and `{over}`/`{left}` all reach every capacity key
+	 * PRE-FORMATTED with `formatNumber(value, true)` — a capacity is typed into the release
+	 * note by hand and the commitment is a sum of typed estimates, neither a count this
+	 * plugin computed, which is the shape `formatNumber`'s own doc names as wrong for the
+	 * default three-fraction-digit cap. `{pct}` alone stays a plain number: it is computed
+	 * and already rounded to an integer.
 	 */
 	'release.scope.capacityOver': '{commitment} of {capacity} {unit} committed ({pct}%, {over} over)',
 	'release.scope.capacityUnder': '{commitment} of {capacity} {unit} committed ({pct}%, {left} left)',

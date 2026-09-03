@@ -2,7 +2,7 @@
 import { describe, expect, it } from 'vitest';
 import { makeReleaseView, RELEASE_CONFIG, scopeVault } from '../helpers/release';
 import { useViewHarness } from '../helpers/view';
-import { t } from '../../src/i18n/t';
+import { formatNumber, t } from '../../src/i18n/t';
 import { FakeVault } from '../helpers/vault';
 
 /**
@@ -152,6 +152,28 @@ describe('capacity against commitment on the strip', () => {
 	it('names no property where the key itself is unbound', () => {
 		const text = stripText(40, { ...CONFIGURED, capacityProperty: '' });
 		expect(text).not.toContain(t('release.scope.provenanceCapacity', { property: '', unit: 'pts' }));
+	});
+
+	it('keeps the precise digits of a typed capacity and commitment', () => {
+		// `t()`'s default number formatter caps at three fraction digits — fine for a count
+		// this plugin computes, wrong for a capacity and an estimate someone TYPED. Both
+		// numbers here carry six, so a fallback to the default formatter renders `0 of 0`
+		// rather than the real values, which is what `formatNumber(value, true)` refuses.
+		const vault = capacityVault(8.123456);
+		vault.setFrontmatter('F1.md', { type: 'Feature', parent: 'E', order: 1, release: '[[R]]', effort: 12.654321 });
+		const { view, containerEl } = makeReleaseView(vault, CONFIGURED);
+		view.pick('R.md');
+		const text = containerEl.querySelector('.pbl-rel-summary')?.textContent ?? '';
+		expect(text).toContain(
+			t('release.scope.capacityOver', {
+				commitment: formatNumber(12.654321, true),
+				capacity: formatNumber(8.123456, true),
+				unit: 'pts',
+				pct: 156,
+				over: formatNumber(4.530865, true),
+			}),
+		);
+		expect(text).not.toContain('0 of 0');
 	});
 
 	it('names a possible double count beside the figure, and only when there is one', () => {

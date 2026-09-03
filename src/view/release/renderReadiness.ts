@@ -1,5 +1,5 @@
 import { setTooltip } from 'obsidian';
-import { t } from '../../i18n/t';
+import { formatNumber, t } from '../../i18n/t';
 import { ReleaseCriterion, ReleaseReadiness, clearingWorkflows } from '../../domain/releaseReadiness';
 import { WorkflowKind } from '../../domain/board';
 import { ReleaseSettings } from '../../domain/releaseOptions';
@@ -295,9 +295,12 @@ function drawEffort(sumEl: HTMLElement, total: number, done: number | null, unit
 	// a real total and no progress through it, so the total is stated alone rather than
 	// against a zero that would read as measured.
 	if (done === null) {
+		// PRECISE, both branches: `total` is a sum of estimates someone TYPED, not a count
+		// this plugin computed — `formatNumber`'s own distinction — so the default formatter's
+		// three-fraction-digit cap would round a fractional estimate away.
 		const text = unit === ''
-			? t('release.scope.effortEstimatedNoUnit', { total })
-			: t('release.scope.effortEstimated', { total, unit });
+			? t('release.scope.effortEstimatedNoUnit', { total: formatNumber(total, true) })
+			: t('release.scope.effortEstimated', { total: formatNumber(total, true), unit });
 		sumEl.createSpan({ cls: 'pbl-rel-figure', text });
 		return;
 	}
@@ -311,9 +314,12 @@ function drawEffort(sumEl: HTMLElement, total: number, done: number | null, unit
 	// `∞%`. `done / total` is bounded by 1 (estimates are non-negative and `done <= total`),
 	// so the multiplication after it cannot overflow.
 	const pct = total === 0 ? 0 : Math.round(100 * (done / total));
+	// `pct` stays a plain number: it is computed and rounded to an integer, not typed in, so
+	// the default formatter is the right one — `done` and `total` are precise for the same
+	// reason as the branch above.
 	const text = unit === ''
-		? t('release.scope.effortNoUnit', { done, total, pct })
-		: t('release.scope.effort', { done, total, pct, unit });
+		? t('release.scope.effortNoUnit', { done: formatNumber(done, true), total: formatNumber(total, true), pct })
+		: t('release.scope.effort', { done: formatNumber(done, true), total: formatNumber(total, true), pct, unit });
 	sumEl.createSpan({ cls: 'pbl-rel-figure', text });
 }
 
@@ -381,7 +387,10 @@ function drawCapacityFigures(
 	// key happens to be unbound. Naming the number is what "the missing half is named"
 	// means from this side.
 	const alone = (): void => {
-		if (capacity.value !== null) figure(sumEl, t('release.scope.capacityAlone', { capacity: capacity.value, unit }));
+		// PRECISE: a capacity is typed into the release note by hand — nothing in this plugin
+		// writes one, which is why extension 1b judges it on read — so it is exactly the shape
+		// `formatNumber`'s own doc names as wrong for the default three-fraction-digit cap.
+		if (capacity.value !== null) figure(sumEl, t('release.scope.capacityAlone', { capacity: formatNumber(capacity.value, true), unit }));
 	};
 	// The effort figures beside this one already said why there is no total.
 	if (commitment === null) {
@@ -399,13 +408,26 @@ function drawCapacityFigures(
 		alone();
 		return;
 	}
+	// PRECISE from here on: the commitment is a sum of estimates someone TYPED, and the
+	// capacity is a value someone typed directly — neither is a count this plugin computed,
+	// so both go through the formatter that does not round a fraction away. `over`/`left` are
+	// the same two typed values subtracted, not a separate measurement, and carry the same
+	// treatment; `pct` stays plain, since it is computed and already rounded to an integer.
 	if (capacity.value === null) {
-		figure(sumEl, t('release.scope.committed', { commitment, unit }));
+		figure(sumEl, t('release.scope.committed', { commitment: formatNumber(commitment, true), unit }));
 		return;
 	}
 	const over = commitment - capacity.value;
 	if (capacity.value === 0) {
-		figure(sumEl, t('release.scope.capacityNoPct', { commitment, capacity: capacity.value, unit, over }));
+		figure(
+			sumEl,
+			t('release.scope.capacityNoPct', {
+				commitment: formatNumber(commitment, true),
+				capacity: formatNumber(capacity.value, true),
+				unit,
+				over: formatNumber(over, true),
+			}),
+		);
 		note(sumEl, t('release.scope.capacityZero'));
 		return;
 	}
@@ -417,15 +439,35 @@ function drawCapacityFigures(
 		// The capacity IS a number and IS positive — it is the ratio that overflowed — so
 		// this is not `capacityUnreadable`, which would send the reader to fix a value that
 		// is fine. Same three figures as the zero case, a different reason for the fourth.
-		figure(sumEl, t('release.scope.capacityNoPct', { commitment, capacity: capacity.value, unit, over }));
+		figure(
+			sumEl,
+			t('release.scope.capacityNoPct', {
+				commitment: formatNumber(commitment, true),
+				capacity: formatNumber(capacity.value, true),
+				unit,
+				over: formatNumber(over, true),
+			}),
+		);
 		note(sumEl, t('release.scope.capacityPctOverflow'));
 		return;
 	}
 	figure(
 		sumEl,
 		over >= 0
-			? t('release.scope.capacityOver', { commitment, capacity: capacity.value, unit, pct, over })
-			: t('release.scope.capacityUnder', { commitment, capacity: capacity.value, unit, pct, left: -over }),
+			? t('release.scope.capacityOver', {
+					commitment: formatNumber(commitment, true),
+					capacity: formatNumber(capacity.value, true),
+					unit,
+					pct,
+					over: formatNumber(over, true),
+				})
+			: t('release.scope.capacityUnder', {
+					commitment: formatNumber(commitment, true),
+					capacity: formatNumber(capacity.value, true),
+					unit,
+					pct,
+					left: formatNumber(-over, true),
+				}),
 	);
 }
 
