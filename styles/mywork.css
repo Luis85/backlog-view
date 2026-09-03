@@ -276,4 +276,20 @@ button.pbl-mw-menu:hover {
 			var(--size-4-1) + min(var(--pbl-depth, 0) * var(--pbl-indent, 24px), 2 * var(--pbl-indent, 24px))
 		);
 	}
+
+	/* The BUTTON is what yields, measured rather than guessed: at 200px the row carrying
+	   the Next marker (`renderTree.ts`'s own ~36px that never shrinks) already pushes the
+	   chip a few pixels past the row's edge, and the button — drawn after it — is pushed
+	   the rest of the way off `.pbl-tree`'s own hidden overflow entirely (21px of a 22px
+	   control past the pane, measured in the harness at `?width=200`; 240px and wider carry
+	   no such row and clip nothing). Neither the chip's own floor nor the 260px cutoff
+	   moves for it — the chip already has the narrower rules above, and a wider cutoff
+	   would cost every row the marker never reaches. Guarded by `(hover: hover)`, `touch.
+	   css`'s own reason repeated: a reader who cannot hover is the reader who cannot
+	   right-click either, so on a touch pane this stays the ONLY route to the menu. */
+	@media (hover: hover) {
+		.pbl-mw-view button.pbl-mw-menu {
+			display: none;
+		}
+	}
 }
