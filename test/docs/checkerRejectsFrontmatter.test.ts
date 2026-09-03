@@ -8,16 +8,26 @@ import { runRejections } from '../helpers/register';
  * groups were, and the same reason: that file is at its line budget and a group that has
  * its own subject belongs beside it rather than inside it.
  *
- * The subject is narrow and the gate says so itself. `frontmatter()` in `docs-check.mjs`
- * is a REGEX reader, so it answers `field("cadence")` for a block no YAML parser accepts —
- * which is how five notes reached `main` with frontmatter Obsidian cannot parse, and two
- * more that parse while silently meaning less than they say. A note whose block does not
- * parse has no `type` and no `cadence` in the metadata cache, so it is in no Bases query
- * and on no projection: `docs/tests/cases/The assignee chip and Set assignee.md` was
- * invisible to the very Tests projection it had just been written for, and the gate
- * reported it green. [[The register gate cannot see unparseable frontmatter]] is that gap,
- * and this closes the two spellings of it that have actually occurred rather than the
- * language.
+ * The subject is narrow and the gate says so itself, though it is no longer narrow for the
+ * reason this paragraph used to give. `frontmatter()` in `docs-check.mjs` was a REGEX
+ * reader, so it answered `field("cadence")` for a block no YAML parser accepts — which is
+ * how five notes reached `main` with frontmatter Obsidian cannot parse, and
+ * `docs/tests/cases/The assignee chip and Set assignee.md` was invisible to the very Tests
+ * projection it had just been written for while the gate reported it green.
+ * [[The register gate cannot see unparseable frontmatter]] is that gap, and **the parse
+ * closed it**: the reader is `YAML.parse` now, and an unparseable block fails its own rule
+ * naming the parser's first line.
+ *
+ * What these two rules are left with is the residue: the spellings that PARSE and mean less
+ * than they say, where no parse error exists for that rule to report.
+ *
+ * **Only one of the two planted cases below is in that residue, and the difference is worth
+ * knowing before adding a third.** Measured against `yaml` 2.9.0 rather than reasoned:
+ * `source: Review of PR #114, which found it` parses, to `"Review of PR"` — the note says
+ * less than it looks like and nothing else can see that. `source: [[Another note]], and why`
+ * does NOT parse, so the rule above would catch it too; what the narrow rule buys there is
+ * the message that names the spelling and the fix. The wikilink form that lands in the
+ * residue is the BARE one, `source: [[A note]]`, which parses to a list holding a list.
  *
  * The accept direction matters more here than in most groups and lives in
  * `checkerAccepts.test.ts`: this rule refuses a SPELLING, and the legal spelling —
@@ -28,11 +38,9 @@ import { runRejections } from '../helpers/register';
 describe('a frontmatter value YAML would not read as written', () => {
 	// Two spellings, because these are the two that have actually reached `main`: five
 	// notes whose frontmatter no YAML parser accepts, and two more that parse while
-	// silently meaning less than they say. A note whose block does not parse has no `type`
-	// and no `cadence` in Obsidian's cache, so it is in no Bases query and on no
-	// projection — `docs/tests/cases/The assignee chip and Set assignee.md` was invisible
-	// to the very Tests projection it had just been written for, and the regex reader in
-	// `docs-check.mjs` reported it green.
+	// silently meaning less than they say. The first five are the parse's job now (the
+	// describe below); these rules keep the second pair, plus the better message on the
+	// overlap. See the header for which of the two cases here is which.
 	runRejections([
 		[
 			'an unquoted wikilink, which YAML reads as a nested list',

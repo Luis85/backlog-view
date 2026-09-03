@@ -968,42 +968,47 @@ for (const [, note] of notes) {
 }
 
 /**
- * **A frontmatter value that YAML would not read the way the note means it.**
+ * **A frontmatter value that PARSES, and means less than the note says.**
  *
- * `frontmatter()` above is a regex reader, so it answers `field("cadence")` happily for a
- * block no YAML parser will accept — which is exactly how five notes reached `main` with
- * frontmatter Obsidian cannot parse at all. A note whose frontmatter does not parse has no
- * `type` and no `cadence` in the metadata cache, so it is in no Bases query and on no
- * projection: `docs/tests/cases/The assignee chip and Set assignee.md` was invisible to the
- * Tests projection it had just been written for, and this gate said it was fine.
- * [[The register gate cannot see unparseable frontmatter]] is that gap.
+ * That is the whole of what is left for these two rules, and it is a narrower job than the
+ * one they were written for. They used to carry the unparseable case as well, because
+ * `frontmatter()` was a regex reader that answered `field("cadence")` happily for a block
+ * no YAML parser would accept — which is how five notes reached `main` with frontmatter
+ * Obsidian cannot parse at all, `docs/tests/cases/The assignee chip and Set assignee.md`
+ * invisible to the very Tests projection it had just been written for while this gate said
+ * it was fine. [[The register gate cannot see unparseable frontmatter]] was that gap, and
+ * **the parse closed it**: `frontmatter()` reads the block with `yaml` and one rule over
+ * every `.md` reports the parser's own first line.
  *
- * **The claim is narrow on purpose, and narrower than the gap.** Parsing YAML properly
- * would mean a parser dependency for one rule; what this does instead is refuse the two
- * spellings that have actually gone wrong here, and it says which two rather than implying
- * it covers the language:
+ * **So what survives here is the residue a parse cannot see**, and it is the reason these
+ * two are kept rather than deleted with the reader that needed them. Both spellings PARSE.
+ * Neither produces an error for the rule above to report, and both leave the note meaning
+ * something other than what its author typed:
  *
  * - **A value containing ` #`, in a PLAIN scalar.** A hash after a space opens a comment,
- *   so `source: review of PR #114 raised the connector` has always MEANT
- *   `source: review of PR` — Obsidian's own Properties panel shows it truncated. Where the
- *   value continues onto another line, the comment ends the scalar and the continuation is
- *   then an unexpected token, so the whole block fails to parse. Three notes here were in
- *   that state. It is the same hazard as
+ *   so `source: review of PR #114 raised the connector` parses fine and MEANS
+ *   `source: review of PR` — Obsidian's own Properties panel shows it truncated. The parse
+ *   is silent about it, because nothing is wrong with the document: the note simply says
+ *   less than it looks like. Where the value continues onto another line the block does
+ *   fail outright, and the parse now catches that half; the truncation is the half nothing
+ *   else can see. Same hazard as
  *   [[A hash in a value is a comment the first rewrite erases]], met from the other side:
- *   that note is about the bytes a REWRITE drops, this is about the block never parsing.
- * - **A value opening with `[[`.** An unquoted wikilink is read as a nested list rather
- *   than a link, and any prose after the closing bracket is a parse error outright. Two
- *   notes were in that state, both written on the branch that added this rule.
+ *   that note is about the bytes a REWRITE drops, this is about the bytes the READ drops.
+ * - **A value opening with `[[`.** `source: [[A note]]` with nothing after it parses — as
+ *   a list holding a list, not as a link — so the value the note meant to state is not the
+ *   value anything reads. Prose after the closing bracket is a parse error outright, which
+ *   is again the half the parse now owns.
  *
- * **Flow collections are not read at all, and that is a decision rather than an omission.**
+ * **Flow collections are still not read, and that is a decision rather than an omission.**
  * A third check here tried to refuse prose after a closing bracket, and review found a
  * legal form it rejected on three consecutive rounds — a bare collection, one holding a
  * quoted hash, and one with a trailing YAML comment. Measured against the seven notes this
  * rule has actually caught, it caught NONE that the `[[` test above does not already catch:
  * both wikilink notes open with `[[`, and the other five are hash cases. So it was deleted
- * rather than narrowed a fourth time. That is the ADR 0021 shape — each fix closing one
- * hole and opening the next — and the honest end of it here is a smaller claim, not a
- * cleverer pattern, because a real YAML parse would mean a parser dependency for one rule.
+ * rather than narrowed a fourth time — the ADR 0021 shape, each fix closing one hole and
+ * opening the next, ended with a smaller claim rather than a cleverer pattern. The parse
+ * has since taken everything that argument was standing in for, and what is left is a
+ * subset of each spelling rather than a reading of the language.
  *
  * Both are fixed the same way and the register already spells it that way everywhere else:
  * quote the value. `parent: "[[...]]"` has always been quoted here.
