@@ -48,6 +48,10 @@ export class MyWorkView extends BasesView {
 	private drawnPerson: string | null = null;
 	planSettings: BacklogSettings = defaultSettings();
 	activeRowFile: TFile | null = null;
+	/** The drawn row carrying the Next marker, published by `drawMyWorkTree` — what a
+	 *  person switch scrolls to instead of the top. Null in every state that draws no
+	 *  tree, and on a tree where every row is finished. */
+	nextRowEl: HTMLElement | null = null;
 	treeHadFocus = false;
 	/** The last draw's own row index, kept so `syncOpenRow` can mark a row without
 	 *  querying the tree — `TREE_SCAN`'s own ban, and the reason `wireScopeKeys` takes
@@ -197,12 +201,25 @@ export class MyWorkView extends BasesView {
 		this.viewEl.empty();
 		this.treeDraw = null;
 		this.draw();
-		this.drawnPerson = this.pickedPerson;
 		const drawnEl = this.viewEl.querySelector('.pbl-mw-tree');
-		// Clamped to the FRESH `scrollHeight`, `releaseView.ts`'s own rule: a redraw with
-		// fewer rows — an item reassigned away, hide-done switched on — must not park the
-		// pane below its own last row.
-		if (drawnEl !== null) drawnEl.scrollTop = Math.min(previousTop, drawnEl.scrollHeight);
+		// A person SWITCH has no offset to restore — `previousTop` is 0 for one, because
+		// an offset belongs to the person it was scrolled in — so the question there is
+		// not "where was this tree" but "where does this reader need to be". The answer
+		// this view exists to give is the Next row, which in a long tree is below the
+		// fold. A same-person redraw restores the offset exactly as before: a reader who
+		// scrolled somewhere on purpose must not be dragged back by a data update.
+		//
+		// Read against `this.drawnPerson` BEFORE the reassignment below overwrites it —
+		// which is why that assignment moved down here from right after `this.draw()`.
+		if (drawnEl !== null && this.drawnPerson !== this.pickedPerson && this.nextRowEl !== null) {
+			this.nextRowEl.scrollIntoView({ block: 'nearest' });
+		} else if (drawnEl !== null) {
+			// Clamped to the FRESH `scrollHeight`, `releaseView.ts`'s own rule: a redraw
+			// with fewer rows — an item reassigned away, hide-done switched on — must not
+			// park the pane below its own last row.
+			drawnEl.scrollTop = Math.min(previousTop, drawnEl.scrollHeight);
+		}
+		this.drawnPerson = this.pickedPerson;
 		this.restoreFocus(focusHandle);
 		this.syncOpenRow();
 	}

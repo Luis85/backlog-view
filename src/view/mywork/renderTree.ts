@@ -136,6 +136,13 @@ export function drawMyWorkTree(view: MyWorkView, parentEl: HTMLElement): TreeDra
 			}),
 		);
 	}
+	// Published for `render()`'s own scroll decision: a NEW person's tree is parked at the
+	// top by the offset restore, and the top is not where this view's one headline answer
+	// necessarily is. `?? null` rather than `=== null`, over `nextAssigned`'s own declared
+	// return type — `ScopeRow | null`, never `undefined` — but the lookup itself can still
+	// miss: `next` is drawn only when it survives `visibleRows`, so a Next row folded away
+	// under a collapsed ancestor is a real state this leaves null rather than throwing.
+	view.nextRowEl = next === null ? null : (rowEls.get(next.item.file.path) ?? null);
 	const draw: TreeDraw = { treeEl, rows: visible, kids: withKids, rowEls, folded };
 	// The keyboard, wired as the last step — `renderScope.ts`'s own second step, for the
 	// identical reason: this module already holds the draw, so the tree's own roving

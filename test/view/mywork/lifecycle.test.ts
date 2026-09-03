@@ -2,7 +2,7 @@
 import { describe, expect, it } from 'vitest';
 import { MyWorkView } from '../../../src/view/mywork/myWorkView';
 import { OpenController } from '../../../src/view/openTarget';
-import { makeMyWorkView, myWorkVault } from '../../helpers/mywork';
+import { makeMyWorkView, mwRow, myWorkVault } from '../../helpers/mywork';
 
 describe('opener', () => {
 	it('is the OpenController row clicks will open notes through, once Task 6 draws rows', () => {
@@ -32,6 +32,37 @@ describe('onunload', () => {
 		view.onunload();
 
 		expect(containerEl.contains(view.viewEl)).toBe(false);
+	});
+});
+
+describe('render scrolling on a person switch', () => {
+	it('scrolls the Next row into view when the person changes', () => {
+		// `PBI Ada.md` is the Next row of Ada's tree in `myWorkVault()`: the pre-order walk is
+		// Epic (context) -> Feature (context) -> PBI Ada (member) -> PBI Hidden (member,
+		// re-rooted past the outsideFilter `Hidden Feature.md`), so PBI Ada is the first
+		// non-context, unfinished row `nextAssigned` finds — `test/view/mywork/tree.test.ts`'s
+		// own header states the identical order.
+		const { view } = makeMyWorkView(myWorkVault());
+		view.pick('People/Bo.md');
+
+		const scrolled: HTMLElement[] = [];
+		// jsdom computes no layout and `test/helpers/dom.ts` installs its `scrollIntoView`
+		// no-op as an OWN property of `HTMLElement.prototype` (not `Element.prototype`), so
+		// stubbing the latter would be shadowed and never called — this test overrides the
+		// same prototype `dom.ts` patched. What it can honestly say is WHICH element was
+		// asked to scroll, never that it moved.
+		const proto = HTMLElement.prototype as unknown as { scrollIntoView: () => void };
+		const original = proto.scrollIntoView;
+		proto.scrollIntoView = function (this: HTMLElement): void {
+			scrolled.push(this);
+		};
+		try {
+			view.pick('People/Ada.md');
+		} finally {
+			proto.scrollIntoView = original;
+		}
+
+		expect(scrolled).toContain(mwRow(view, 'PBI Ada.md'));
 	});
 });
 
