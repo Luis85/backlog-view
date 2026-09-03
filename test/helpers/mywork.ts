@@ -145,6 +145,13 @@ export function mwTwisty(view: MyWorkView, path: string): HTMLElement {
 	return el;
 }
 
+/** The row menu button on one row — never optional, because every row draws one. */
+export function mwMenuButton(view: MyWorkView, path: string): HTMLElement {
+	const el = mwRow(view, path)?.querySelector<HTMLElement>('.pbl-mw-menu');
+	if (!el) throw new Error(`row menu button not found: ${path}`);
+	return el;
+}
+
 /** The tree element itself — never optional, because every caller of this one already
  *  knows a person is picked. `test/helpers/release.ts`'s own `.pbl-tree` query, over
  *  this view's tree rather than the release scope's. */

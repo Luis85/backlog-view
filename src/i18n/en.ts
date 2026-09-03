@@ -1962,6 +1962,10 @@ export const en = {
 	'mywork.menu.openTab': 'Open in a new tab',
 	'mywork.menu.setState': 'Set state',
 
+	/** The row's own menu button (`view/mywork/renderTree.ts`) — the pointer's way into
+	 *  the menu the right-click and the Menu key already build. */
+	'mywork.rowMenu': 'Actions',
+
 	/**
 	 * The two groups the index is drawn in, headed where a row's own `shipped` flag changes
 	 * (`release/renderIndex.ts`). In flight is everything without a released date; shipped

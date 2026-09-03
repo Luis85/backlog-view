@@ -149,4 +149,12 @@ describe('the rules that hold at every width', () => {
 		expect(rule).toBeGreaterThan(-1);
 		expect(rule).toBeLessThan(query);
 	});
+
+	it('reveals the row menu button on hover, on selection, and always without hover', () => {
+		expect(css).toMatch(/\.pbl-row:hover button\.pbl-mw-menu/);
+		expect(css).toMatch(/\.pbl-row\.pbl-selected button\.pbl-mw-menu/);
+		// The touch rule, and its POSITION: a media query adds no specificity, so it has
+		// to come after the `opacity: 0` it undoes.
+		expect(css.indexOf('@media (hover: none)')).toBeGreaterThan(css.indexOf('button.pbl-mw-menu {'));
+	});
 });

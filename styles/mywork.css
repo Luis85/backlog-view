@@ -145,6 +145,50 @@ button.pbl-mw-toggle-on {
 	border-radius: var(--radius-s);
 }
 
+/* The row's own menu button (`renderTree.ts`) — revealed the way `.pbl-grip` is in
+   `tree.css`, which is the idiom this tree's neighbours already use: the control is
+   always PRESENT (so no row reflows when a pointer crosses it) and only becomes visible
+   where a pointer or the selection says the reader is on that row. */
+button.pbl-mw-menu {
+	flex: 0 0 auto;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	inline-size: 22px;
+	block-size: 22px;
+	padding: 0;
+	color: var(--text-muted);
+	background-color: transparent;
+	box-shadow: none;
+	border: 0;
+	border-radius: var(--radius-s);
+	opacity: 0;
+	transition: opacity 120ms ease-in-out;
+	cursor: pointer;
+}
+
+.pbl-row:hover button.pbl-mw-menu,
+.pbl-row:focus-within button.pbl-mw-menu,
+.pbl-row.pbl-selected button.pbl-mw-menu {
+	opacity: 1;
+}
+
+button.pbl-mw-menu:hover {
+	color: var(--text-normal);
+	background-color: var(--background-modifier-hover);
+}
+
+/* A reader who cannot hover is exactly the reader who cannot right-click, so on a touch
+   pane the button is the ONLY route to the menu and is never hidden. `styles/touch.css`
+   states the same rule for the six controls that came before it, and the same trap: a
+   media query adds no specificity, so a reveal written ABOVE the rule it undoes reveals
+   nothing. This sits after the rules it overrides. */
+@media (hover: none) {
+	button.pbl-mw-menu {
+		opacity: 1;
+	}
+}
+
 /* Task 10: a `.base` tab drags into the left sidebar already, so this pane is where the
    plugin's own promise that "nothing needs width it will not get" is either kept or
    broken. `container-type: inline-size` makes `.pbl-mw-view` a query container over its

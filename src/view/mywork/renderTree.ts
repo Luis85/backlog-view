@@ -238,6 +238,7 @@ function drawRow(view: MyWorkView, treeEl: HTMLElement, row: ScopeRow, place: Ro
 	rowEl.createDiv({ cls: 'pbl-row-spacer' });
 
 	drawScopeStateChip(rowEl, row, 'pbl-mw-statecol');
+	drawRowMenuButton(view, rowEl, row);
 	return rowEl;
 }
 
@@ -270,4 +271,33 @@ function drawNextMarker(rowEl: HTMLElement, isNext: boolean): void {
 	if (!isNext) return;
 	const markerEl = rowEl.createSpan({ cls: 'pbl-mw-next', text: t('mywork.next') });
 	setTooltip(markerEl, t('mywork.nextTip'));
+}
+
+/**
+ * The POINTER's own way into the row menu — the same menu `showMyWorkRowMenu` builds for
+ * a right-click and for the Menu key, on a control that can be seen and can be tapped.
+ * Set state was reachable by right-click and Shift+F10 alone until now, which is no route
+ * at all on a touch device and no hint anywhere that the menu exists.
+ *
+ * Drawn on EVERY row, context rows included: the menu itself is what withholds Set state
+ * there (`rowMenu.ts`), and Open and Open in a new tab are offered on a context row on
+ * purpose — reading a note is not a write.
+ *
+ * `tabindex="-1"` because the tree is one tab stop (`src/view/CLAUDE.md`), and the
+ * keyboard already reaches the identical menu through ContextMenu / Shift+F10.
+ *
+ * The click does NOT need `stopPropagation`: `wireRowOpen` (`view/scopeRow.ts`) asks
+ * whether the event began on a control in the row, which is the receiver-side question
+ * `render/rows.ts`'s own `fromRowControl` records the reason for — ten per-control
+ * `stopPropagation` guards, each new control having to remember an eleventh, and two that
+ * did not.
+ */
+function drawRowMenuButton(view: MyWorkView, rowEl: HTMLElement, row: ScopeRow): void {
+	const btnEl = rowEl.createEl('button', {
+		cls: 'pbl-mw-menu',
+		attr: { type: 'button', tabindex: '-1', 'aria-label': t('mywork.rowMenu') },
+	});
+	setIcon(btnEl, 'ellipsis');
+	setTooltip(btnEl, t('mywork.rowMenu'));
+	btnEl.addEventListener('click', (evt) => showMyWorkRowMenu(view, row, evt));
 }

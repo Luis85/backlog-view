@@ -54,18 +54,31 @@ export interface RowOpener {
  *
  * `auxclick` is wired as its pair rather than left to each surface, the rule
  * `wireOpenGestures` keeps for cards: a middle click never fires `click`, so a surface
- * wiring the primary click alone loses "open in a new tab" silently. The disclosure is
- * excluded by hand rather than through `stopPropagation`, because unlike its `click`
- * handler it wires no `auxclick` of its own to stop one at.
+ * wiring the primary click alone loses "open in a new tab" silently. Both gestures ask
+ * ONE receiver-side question — did this event begin on a control inside the row rather
+ * than on the row itself — rather than excluding the disclosure by hand: a hand-picked
+ * exclusion is exactly the shape `render/rows.ts`'s own `fromRowControl` replaced ten
+ * per-control `stopPropagation` guards with, and the my-work tree's row menu button
+ * (Task 2) is a second control that would otherwise have had to remember it too.
  */
 export function wireRowOpen(view: RowOpener, rowEl: HTMLElement, row: ScopeRow): void {
+	// One question, asked by BOTH gestures: did this event begin on a control inside the
+	// row rather than on the row? `render/rows.ts`'s own `fromRowControl` records what the
+	// alternative costs — a `stopPropagation` per control, ten of them accumulated, and
+	// each new control having to remember an eleventh. `button` is the whole selector
+	// because every control either tree draws inside a row is one: the disclosure
+	// (`.pbl-twisty`) and, since the my-work tree grew one, the row menu button
+	// (`.pbl-mw-menu`). Naming those two classes here would put one tree's vocabulary in
+	// the module the other shares.
+	const fromControl = (evt: Event): boolean => evt.target instanceof Element && evt.target.closest('button') !== null;
 	rowEl.addEventListener('click', (evt) => {
+		if (fromControl(evt)) return;
 		if (window.getSelection()?.isCollapsed === false) return;
 		view.opener.open(view.openContext(), row.item, evt);
 	});
 	rowEl.addEventListener('auxclick', (evt) => {
 		if (evt.button !== 1) return;
-		if (evt.target instanceof Element && evt.target.closest('.pbl-twisty') !== null) return;
+		if (fromControl(evt)) return;
 		view.opener.openIn(view.openContext(), row.item, 'tab');
 	});
 }
