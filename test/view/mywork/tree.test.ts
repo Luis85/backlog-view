@@ -431,3 +431,46 @@ describe('what is next is drawn ahead of what a narrow pane may drop', () => {
 		expect(chip?.getAttribute('data-tooltip')).toBe('Waiting for review');
 	});
 });
+
+/**
+ * Which note the workspace has open, marked by `pbl-mw-open` — a different fact from
+ * `pbl-selected` (Task 1's roving keyboard selection): a note opened from a link, the
+ * graph or another pane moves this mark without moving the selection.
+ */
+describe('which note is open', () => {
+	it('marks the row whose note the workspace has open', () => {
+		const vault = myWorkVault();
+		const { view } = makeMyWorkView(vault);
+		view.pick('People/Ada.md');
+
+		vault.openNote('PBI Ada.md');
+
+		expect(mwRow(view, 'PBI Ada.md').classList.contains('pbl-mw-open')).toBe(true);
+		expect(mwRow(view, 'Feature.md').classList.contains('pbl-mw-open')).toBe(false);
+	});
+
+	it('moves the mark when a different note is opened, and drops it when none is', () => {
+		const vault = myWorkVault();
+		const { view } = makeMyWorkView(vault);
+		view.pick('People/Ada.md');
+
+		vault.openNote('PBI Ada.md');
+		vault.openNote('Feature.md');
+		expect(mwRow(view, 'PBI Ada.md').classList.contains('pbl-mw-open')).toBe(false);
+		expect(mwRow(view, 'Feature.md').classList.contains('pbl-mw-open')).toBe(true);
+
+		vault.openNote(null);
+		expect(mwRow(view, 'Feature.md').classList.contains('pbl-mw-open')).toBe(false);
+	});
+
+	it('keeps the mark across a redraw, which builds fresh elements', () => {
+		const vault = myWorkVault();
+		const { view } = makeMyWorkView(vault);
+		view.pick('People/Ada.md');
+		vault.openNote('PBI Ada.md');
+
+		refreshMyWork(view, vault);
+
+		expect(mwRow(view, 'PBI Ada.md').classList.contains('pbl-mw-open')).toBe(true);
+	});
+});

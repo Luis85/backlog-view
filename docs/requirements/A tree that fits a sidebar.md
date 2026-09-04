@@ -398,3 +398,13 @@ cell and its floor, the dropped title floor, `user-select`), and the narrow bloc
 what it takes and what it keeps; both describe blocks strip comments from the stylesheet
 before matching, because a paragraph quoting the declaration it replaced is otherwise read
 as the declaration.
+
+**The pointer polish (added 2026-09-03):** a new term joined this row — `.pbl-mw-menu`,
+the row's own menu button — and its own narrow rule joined this same `@container
+(max-width: 260px)` block: `@media (hover: hover) { .pbl-mw-view button.pbl-mw-menu {
+display: none } }`, withdrawing the button below 260px only for a pointer that has a
+right-click to fall back on. That rule, the button's own reserved width at every pane
+size, and the widths it was measured at — 200, 240, 260 and 600px, against a fixture
+whose deepest row carries the Next marker — are stated in
+[[The tree answers the pointer]], not repeated here: this note owns the row's own width
+measurement and that PBI owns the button it added to it.

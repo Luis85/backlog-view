@@ -128,6 +128,8 @@ export class FakeVault {
 	leaves: FakeLeaf[] = [];
 	/** The view the workspace calls active; null unless a test focuses a leaf. */
 	activeView: unknown = null;
+	/** The file the workspace calls active, as `getActiveFile()` answers it. */
+	activeFile: TFile | null = null;
 	/** Vault-scoped localStorage, as Obsidian's load/saveLocalStorage present it. */
 	localStorage = new Map<string, unknown>();
 	/** Paths whose processFrontMatter throws — how tests make a batch fail partway. */
@@ -152,6 +154,8 @@ export class FakeVault {
 	private basenameIndex: Map<string, TFile> | null = null;
 	/** Handlers registered through workspace.on('css-change'), fired by `changeCss`. */
 	private cssChangeHandlers: (() => void)[] = [];
+	/** Handlers registered through workspace.on('file-open'), fired by `openNote`. */
+	private fileOpenHandlers: ((file: TFile | null) => void)[] = [];
 
 	readonly app = asApp({
 		workspace: {
@@ -182,8 +186,15 @@ export class FakeVault {
 			 * ladder measures rendered text, so a theme change has to re-run it, and
 			 * nothing else in the app reports one.
 			 */
-			on: (name: string, cb: () => void) => {
+			getActiveFile: () => this.activeFile,
+			// `file` is optional here rather than typed like `fileOpenHandlers`'s own
+			// entries below: this one signature backs both `css-change` (no argument) and
+			// `file-open` (the opened file), and a required parameter would make the
+			// `css-change` push — which never had one — fail to satisfy `cssChangeHandlers`'
+			// own `() => void` element type.
+			on: (name: string, cb: (file?: TFile | null) => void) => {
 				if (name === 'css-change') this.cssChangeHandlers.push(cb);
+				if (name === 'file-open') this.fileOpenHandlers.push(cb);
 				return { name };
 			},
 		},
@@ -345,6 +356,13 @@ export class FakeVault {
 	/** What Obsidian fires when the theme, the appearance settings or a snippet change. */
 	changeCss(): void {
 		for (const cb of this.cssChangeHandlers) cb();
+	}
+
+	/** Open a note the way the workspace does: the active file moves, then `file-open`
+	 *  fires. `null` is "the workspace has no file open", which a view has to survive. */
+	openNote(path: string | null): void {
+		this.activeFile = path === null ? null : (this.files.get(path) ?? null);
+		for (const cb of this.fileOpenHandlers) cb(this.activeFile);
 	}
 
 	/**

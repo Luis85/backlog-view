@@ -308,4 +308,45 @@ describe('the scope tree’s keyboard', () => {
 		expect(document.activeElement).toBe(view.viewEl.querySelector('.pbl-tree'));
 		expect(active(view)).not.toBeNull();
 	});
+
+	it('marks the row a click lands on', () => {
+		const { view } = mountKeys();
+		row(view, 'Passwordless sign-in.md').dispatchEvent(new MouseEvent('mousedown', { bubbles: true }));
+
+		expect(active(view)).toBe('Passwordless sign-in.md');
+	});
+
+	/**
+	 * Whole-branch review, Important 2: `show()`'s own `scrollIntoView` used to run on
+	 * every `mousedown`, including this one — synchronous, and between `mousedown` and
+	 * `mouseup`, which is exactly the window a scroll can move a partially clipped row's
+	 * own controls out from under a cursor that never moved. The reader is already
+	 * pointing at the row a `mousedown` lands on, so nothing needs bringing into view.
+	 * `test/view/mywork/lifecycle.test.ts`'s own spy technique: `test/helpers/dom.ts`
+	 * installs the no-op `scrollIntoView` as an OWN property of `HTMLElement.prototype`
+	 * (not `Element.prototype`), so stubbing the latter would be shadowed and never run.
+	 */
+	it('does not scroll the tree on a mousedown — the reader is already pointing at the row', () => {
+		const { view } = mountKeys();
+		const scrolled: HTMLElement[] = [];
+		const proto = HTMLElement.prototype as unknown as { scrollIntoView: () => void };
+		const original = proto.scrollIntoView;
+		proto.scrollIntoView = function (this: HTMLElement): void {
+			scrolled.push(this);
+		};
+		try {
+			row(view, 'Passwordless sign-in.md').dispatchEvent(new MouseEvent('mousedown', { bubbles: true }));
+		} finally {
+			proto.scrollIntoView = original;
+		}
+
+		// Not `toHaveLength(0)` alone: "nothing was scrolled" is also true of a mousedown
+		// listener that was deleted outright, so the assertion above passes for the wrong
+		// reason on its own. The selection MOVING is what proves the listener ran and chose
+		// not to scroll, rather than not running. (The neighbouring "marks the row a click
+		// lands on" test covers the deletion too — but a test that only stands up in a pair
+		// is one edit away from standing up in none.)
+		expect(active(view)).toBe('Passwordless sign-in.md');
+		expect(scrolled).toHaveLength(0);
+	});
 });

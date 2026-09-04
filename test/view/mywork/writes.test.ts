@@ -2,7 +2,7 @@
 import { describe, expect, it } from 'vitest';
 import { Menu } from '../../helpers/obsidian-mock';
 import { flush } from '../../helpers/view';
-import { makeMyWorkView, mwActive, mwPress, mwRow, myWorkVault, refreshMyWork, treeEl } from '../../helpers/mywork';
+import { makeMyWorkView, mwActive, mwMenuButton, mwPress, mwRow, myWorkVault, refreshMyWork, treeEl } from '../../helpers/mywork';
 import { t } from '../../../src/i18n/t';
 import type { MyWorkView } from '../../../src/view/mywork/myWorkView';
 import { FakeVault } from '../../helpers/vault';
@@ -213,5 +213,36 @@ describe('the my-work row menu writes', () => {
 		await flush();
 
 		expect(vault.fm('PBI Ada.md').status).toBeUndefined();
+	});
+
+	it('opens the SAME menu from the row’s own button as from a right-click', () => {
+		const { view } = makeMyWorkView(myWorkVault(), { stateProperty: 'note.state' });
+		view.pick('People/Ada.md');
+
+		menuOn(view, 'PBI Ada.md');
+		const fromRightClick = labels(Menu.lastShown);
+
+		mwMenuButton(view, 'PBI Ada.md').dispatchEvent(new MouseEvent('click', { bubbles: true }));
+
+		expect(labels(Menu.lastShown)).toEqual(fromRightClick);
+	});
+
+	it('does not open the note when the menu button is pressed', () => {
+		const vault = myWorkVault();
+		const { view } = makeMyWorkView(vault);
+		view.pick('People/Ada.md');
+
+		mwMenuButton(view, 'PBI Ada.md').dispatchEvent(new MouseEvent('click', { bubbles: true }));
+
+		expect(vault.opened).toHaveLength(0);
+	});
+
+	it('draws the button on a context row too — the menu there is the two Opens', () => {
+		const { view } = makeMyWorkView(myWorkVault());
+		view.pick('People/Ada.md');
+
+		mwMenuButton(view, 'Epic.md').dispatchEvent(new MouseEvent('click', { bubbles: true }));
+
+		expect(labels(Menu.lastShown)).toEqual([t('mywork.menu.open'), t('mywork.menu.openTab')]);
 	});
 });

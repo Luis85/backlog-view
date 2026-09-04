@@ -94,6 +94,22 @@ describe('the narrow-pane rule, read from the stylesheet source', () => {
 		const body = containerBlock?.[1] ?? '';
 		expect(body).toMatch(/\.pbl-mw-view \.pbl-mw-toolbar\s*\{[^}]*flex-wrap:\s*wrap/);
 	});
+
+	/**
+	 * Step 10's own fallback: the button is what yields below 260px, on a pointer that can
+	 * right-click. Three claims, all checked, because "the touch pane keeps its only route
+	 * in" is exactly the invariant a comment cannot assert on its own — nested INSIDE the
+	 * container query (a bare top-level `@media (hover: hover)` would apply at every width,
+	 * not only the narrow one), and positioned AFTER the base `button.pbl-mw-menu` rule
+	 * (Step 8's own reason repeated: a media query adds no specificity, so a reveal written
+	 * ABOVE the rule it undoes reveals nothing).
+	 */
+	it('hides the row menu button below 260px for a pointer that can hover', () => {
+		const containerBlock = /@container\s*\(max-width:\s*260px\)\s*\{([\s\S]*?)\n\}/.exec(css);
+		const body = containerBlock?.[1] ?? '';
+		expect(body).toMatch(/@media \(hover: hover\)\s*\{[^}]*\.pbl-mw-view button\.pbl-mw-menu\s*\{[^}]*display:\s*none/);
+		expect(css.indexOf('@media (hover: hover)')).toBeGreaterThan(css.indexOf('button.pbl-mw-menu {'));
+	});
 });
 
 /**
@@ -106,7 +122,7 @@ describe('the narrow-pane rule, read from the stylesheet source', () => {
  * and shrinkable, it shows the value in full where there is room and ellipsises where
  * there is not, instead of clipping against the pane's edge.
  *
- * `user-select` is `releaseScope.css`'s own correction, owed here for the identical
+ * `user-select` is `releaseScopeTree.css`'s own correction, owed here for the identical
  * reason: `.pbl-row` earns its `none` in the backlog tree by DRAGGING its rows, and
  * neither scope tree drags anything. Left unstated the tree's `none` still won the
  * cascade, so a reader could not select a title to copy it — and `renderTree.ts`'s own
@@ -148,5 +164,21 @@ describe('the rules that hold at every width', () => {
 		const rule = css.search(/\.pbl-mw-view \.pbl-title\s*\{[^}]*min-width:\s*0/);
 		expect(rule).toBeGreaterThan(-1);
 		expect(rule).toBeLessThan(query);
+	});
+
+	it('reveals the row menu button on hover, on selection, and always without hover', () => {
+		expect(css).toMatch(/\.pbl-row:hover button\.pbl-mw-menu/);
+		expect(css).toMatch(/\.pbl-row\.pbl-selected button\.pbl-mw-menu/);
+		// The touch rule, and its POSITION: a media query adds no specificity, so it has
+		// to come after the `opacity: 0` it undoes.
+		expect(css.indexOf('@media (hover: none)')).toBeGreaterThan(css.indexOf('button.pbl-mw-menu {'));
+	});
+
+	it('dims a context row without an opacity over the whole row', () => {
+		// `opacity` over the row dims the badge and the chip with the title, and takes the
+		// title's own muted colour under the contrast floor. The emphasis is carried by
+		// colour instead, per element.
+		expect(css).not.toMatch(/\.pbl-mw-context\s*\{[^}]*opacity/);
+		expect(css).toMatch(/\.pbl-mw-context \.pbl-title/);
 	});
 });

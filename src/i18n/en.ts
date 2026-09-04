@@ -1908,9 +1908,6 @@ export const en = {
 
 	/** The my-work view's own label, `release.viewName`'s case exactly. */
 	'mywork.viewName': 'My work',
-	/** Between construction and the first result set Bases delivers — the other views' own
-	 *  reason for saying so rather than showing an empty pane. */
-	'mywork.loading': 'Loading assigned work…',
 	/**
 	 * The two unconfigured states, `release.empty.noType`'s own split: one is a mapping to
 	 * bind, the other is a base that simply holds no roster yet.
@@ -1921,6 +1918,9 @@ export const en = {
 	'mywork.empty.noRoster.hint': 'A person is a note of type Resource. Widen the filter, or make one.',
 	'mywork.empty.noPick.title': 'Pick a person',
 	'mywork.empty.noPick.hint': 'Their work appears below in plan order, with the next thing to do marked.',
+	/** The press a roster of ONE draws in the no-pick state (`view/mywork/myWorkView.ts`).
+	 *  The name is a parameter: it is vault data, never text this catalog spells. */
+	'mywork.empty.noPick.cta': 'Show {name}’s work',
 	'mywork.empty.noWork.title': 'Nothing is assigned to this person',
 	'mywork.empty.noWork.hint': 'Set the assignee on an item, in the backlog or on its own note, and it appears here.',
 	'mywork.empty.allDone.title': 'Everything here is done',
@@ -1961,6 +1961,10 @@ export const en = {
 	'mywork.menu.open': 'Open',
 	'mywork.menu.openTab': 'Open in a new tab',
 	'mywork.menu.setState': 'Set state',
+
+	/** The row's own menu button (`view/mywork/renderTree.ts`) — the pointer's way into
+	 *  the menu the right-click and the Menu key already build. */
+	'mywork.rowMenu': 'Actions',
 
 	/**
 	 * The two groups the index is drawn in, headed where a row's own `shipped` flag changes

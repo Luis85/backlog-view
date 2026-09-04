@@ -5,17 +5,36 @@
    the static state chip, and the "what is next" marker beside the title, below.
 
    Position in `styles/index.css`'s import list is NOT load-bearing, and since 2026-09-01
-   that is a claim about SPECIFICITY rather than about a disjoint vocabulary. Two rules
-   here re-target a selector another partial owns, and both are written as
-   `.pbl-mw-view <selector>` — (0,2,0) against the bare class's (0,1,0), so each wins from
-   any position in that list: `user-select` on `.pbl-row` (`tree.css`), and `display` on
-   `.pbl-state-text` inside the narrow block (`columns.css`, which declares only that
-   element's `overflow`/`text-overflow`). Everything else here is `.pbl-mw-*`, a vocabulary
-   no other partial declares — the disclosure (`button.pbl-twisty`, `releaseScope.css`),
-   the spacer (`.pbl-row-spacer`, `propertyColumns.css`) and the state chip's own base
-   rules (`.pbl-state-chip`, `.pbl-state-static`, …, `columns.css`) are used here exactly
-   as drawn. Write an UNPREFIXED rule over another partial's selector and this paragraph
-   is what contradicts you.
+   that is a claim about SPECIFICITY rather than about a disjoint vocabulary. **Six**
+   sites here re-target a selector another partial owns — counted by walking every
+   selector in this file against the class names the other partials declare, not by
+   reading down looking for them, because this inventory has been wrong twice from doing
+   that. Five are a two-class compound at (0,2,0), beating the bare single-class rule
+   each targets at (0,1,0), so each wins from any position in the import list:
+   `.pbl-mw-view .pbl-row` (`user-select`, against `tree.css`'s bare `.pbl-row`),
+   `.pbl-mw-view .pbl-title` (`min-width`, against `tree.css`'s bare `.pbl-title`),
+   `.pbl-mw-view .pbl-state-text` (`display`, inside the narrow block, against
+   `columns.css`'s bare `.pbl-state-text`, which declares only that element's
+   `overflow`/`text-overflow`), and — added 2026-09-03 with the context row's own
+   colour-based emphasis — `.pbl-mw-context .pbl-title` (`color`, `tree.css`'s bare
+   `.pbl-title` again) and `.pbl-mw-context .pbl-badge` (`opacity`, against
+   `badges.css`'s bare `.pbl-badge`). **The sixth is a three-class compound at (0,3,0)
+   since 2026-09-03's second correction**: `.pbl-row.pbl-mw-open .pbl-title`
+   (`color`/`font-weight`, `tree.css`'s bare `.pbl-title` a third time) used to be the
+   two-class `.pbl-mw-open .pbl-title` and win only by being written after
+   `.pbl-mw-context .pbl-title` in this same file — a claim a whole-branch review found
+   undocumented and, worse, silent about the one row shape that needs it decided at all: a
+   context ancestor can BE the open note (`wireRowOpen` opens one on purpose,
+   `syncOpenRow` marks every path in `rowEls`), so a row can carry both classes and the two
+   rules disagree about the title's colour. Raised to `.pbl-row.pbl-mw-open` rather than
+   documented as order-dependent, this repo's own preference where a claim CAN be made
+   structural: the open state must read as open regardless of where either rule sits in
+   this file. Everything else here is `.pbl-mw-*`, a vocabulary no other partial declares
+   — the disclosure (`button.pbl-twisty`, `releaseScope.css`), the spacer
+   (`.pbl-row-spacer`, `propertyColumns.css`) and the state chip's own base rules
+   (`.pbl-state-chip`, `.pbl-state-static`, …, `columns.css`) are used here exactly as
+   drawn. Write an UNPREFIXED rule over another partial's selector and this paragraph is
+   what contradicts you.
    ========================================================================== */
 
 /* A tree that DRAGS nothing may not keep the tree's own `user-select: none` —
@@ -79,12 +98,40 @@ button.pbl-mw-toggle-on {
 }
 
 /* A context ancestor is scaffolding holding a member in place, not something the reader
-   asked to see — dimmed for that, never hidden, or the member loses its place. The
-   identical rule `.pbl-rel-context` states for the release scope's own tree
-   (`releaseScope.css`), under this view's own class because the two trees are unrelated
-   screens sharing a shape rather than one screen the other includes. */
-.pbl-mw-context {
-	opacity: 0.62;
+   asked to see — de-emphasised for that, never hidden, or the member loses its place.
+   **By colour, not by `opacity`**, and that changed on 2026-09-03: `opacity: 0.62` over
+   the whole row dimmed the badge along with the title, and multiplied the title's own
+   `--text-muted` down under the contrast floor a theme picked that token to clear — never
+   a state chip, which a context row draws none of at all (`drawScopeStateChip` in
+   `scopeRow.ts` returns early on `row.context`, for both trees). Colour per element says
+   the same thing and stays legible, and the badge — the one part of the row that is a
+   colour statement of its own — carries the softening instead. The release scope's own
+   `.pbl-rel-context` is the identical rule and was changed with this one; two trees
+   drawing one shape must not drift. */
+.pbl-mw-context .pbl-title {
+	color: var(--text-faint);
+}
+
+.pbl-mw-context .pbl-badge {
+	opacity: 0.7;
+}
+
+/* The note the workspace has open — a different fact from `.pbl-selected`, which is the
+   row the keyboard is on, and drawn differently for it: the selection keeps `tree.css`'s
+   inset accent bar, and this is a faint ground with the title at full strength. Obsidian's
+   own file explorer marks its active file the same way, with the same token. */
+.pbl-mw-open {
+	background-color: var(--nav-item-background-active, var(--background-modifier-hover));
+}
+
+/* `.pbl-row.pbl-mw-open`, never the bare `.pbl-mw-open .pbl-title` this used to be —
+   structural rather than order-dependent, since a row can carry `.pbl-mw-context` too (a
+   context ancestor that is also the open note) and this is the rule that must win when it
+   does: (0,3,0) beats `.pbl-mw-context .pbl-title`'s (0,2,0) regardless of which rule this
+   file writes second. See this file's own header. */
+.pbl-row.pbl-mw-open .pbl-title {
+	color: var(--text-normal);
+	font-weight: var(--font-medium);
 }
 
 /* The chip's own end-anchored cell. It was a fixed `inline-size: 92px` until 2026-09-01,
@@ -143,6 +190,50 @@ button.pbl-mw-toggle-on {
 	color: var(--text-on-accent);
 	background-color: var(--interactive-accent);
 	border-radius: var(--radius-s);
+}
+
+/* The row's own menu button (`renderTree.ts`) — revealed the way `.pbl-grip` is in
+   `tree.css`, which is the idiom this tree's neighbours already use: the control is
+   always PRESENT (so no row reflows when a pointer crosses it) and only becomes visible
+   where a pointer or the selection says the reader is on that row. */
+button.pbl-mw-menu {
+	flex: 0 0 auto;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	inline-size: 22px;
+	block-size: 22px;
+	padding: 0;
+	color: var(--text-muted);
+	background-color: transparent;
+	box-shadow: none;
+	border: 0;
+	border-radius: var(--radius-s);
+	opacity: 0;
+	transition: opacity 120ms ease-in-out;
+	cursor: pointer;
+}
+
+.pbl-row:hover button.pbl-mw-menu,
+.pbl-row:focus-within button.pbl-mw-menu,
+.pbl-row.pbl-selected button.pbl-mw-menu {
+	opacity: 1;
+}
+
+button.pbl-mw-menu:hover {
+	color: var(--text-normal);
+	background-color: var(--background-modifier-hover);
+}
+
+/* A reader who cannot hover is exactly the reader who cannot right-click, so on a touch
+   pane the button is the ONLY route to the menu and is never hidden. `styles/touch.css`
+   states the same rule for the six controls that came before it, and the same trap: a
+   media query adds no specificity, so a reveal written ABOVE the rule it undoes reveals
+   nothing. This sits after the rules it overrides. */
+@media (hover: none) {
+	button.pbl-mw-menu {
+		opacity: 1;
+	}
 }
 
 /* Task 10: a `.base` tab drags into the left sidebar already, so this pane is where the
@@ -231,5 +322,31 @@ button.pbl-mw-toggle-on {
 		padding-inline-start: calc(
 			var(--size-4-1) + min(var(--pbl-depth, 0) * var(--pbl-indent, 24px), 2 * var(--pbl-indent, 24px))
 		);
+	}
+
+	/* The BUTTON is what yields, measured rather than guessed: at 200px the row carrying
+	   the Next marker (`renderTree.ts`'s own ~36px that never shrinks) already pushes the
+	   chip a few pixels past the row's edge, and the button — drawn after it — is pushed
+	   the rest of the way off `.pbl-tree`'s own hidden overflow entirely (21px of a 22px
+	   control past the pane, measured in the harness at `?width=200`; 240px and wider carry
+	   no such row and clip nothing). Neither the chip's own floor nor the 260px cutoff
+	   moves for it — the chip already has the narrower rules above, and a wider cutoff
+	   would cost every row the marker never reaches. Guarded by `(hover: hover)`, so the
+	   button is withdrawn only where the reader has a right-click to fall back on instead —
+	   never the biconditional this comment stated until a whole-branch review narrowed it:
+	   `hover: hover`/`hover: none` answer for the PRIMARY pointer, not for every input a
+	   device has, so a touchscreen laptop whose primary pointer is a mouse reports `hover:
+	   hover` even while a reader is tapping its screen with a finger, and below this width
+	   that reader loses the button to this rule with no hover reveal and no right-click to
+	   replace it — a device this media feature cannot see and this rule cannot help.
+	   What holds is narrower and still true: a device that DOES report `hover: hover`
+	   through its primary pointer has a right-click through that same pointer, so THIS
+	   rule costs that reader nothing; a device that reports `hover: none` never reaches
+	   this block at all, since the media query excludes it, and keeps the button as its
+	   only route (the `@media (hover: none)` rule above). */
+	@media (hover: hover) {
+		.pbl-mw-view button.pbl-mw-menu {
+			display: none;
+		}
 	}
 }

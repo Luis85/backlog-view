@@ -175,13 +175,15 @@ toolbar's three controls are about the TREE and this one is about the release th
 itself — the rows, the disclosure and a row's click (and middle click), which open the
 note through `src/view/openTarget.ts`'s `OpenController`, the estimation view's own
 mechanism; `drawStateChip` there also sets the chip's own value as its tooltip (extension
-2d), which is what a chip ellipsised by `styles/releaseScope.css`'s content-sized
-`.pbl-rel-statecol` cannot show. That partial sits exactly at the 400-line cap
-`scripts/styles-assemble.mjs` enforces, so the argument for its state cell is written at
+2d), which is what a chip ellipsised by `styles/releaseScopeTree.css`'s content-sized
+`.pbl-rel-statecol` cannot show. That rule was in `styles/releaseScope.css` until
+2026-09-04, when the partial reached the 400-line cap `scripts/styles-assemble.mjs`
+enforces and its member tree and toolbar split out. The argument for the state cell is
+still written at
 `styles/mywork.css`'s copy of the same rule and checked in
-`test/view/release/rowChrome.test.ts` rather than restated there — the next rule this
-partial gains splits it, the way `shelfList.css` and `timelineLeadResize.css` were split
-out of theirs. **The fold set — scoped to the open release, never a bare path — and the
+`test/view/release/rowChrome.test.ts` rather than restated there — and the split this
+sentence predicted is the one that happened, the way `shelfList.css` and
+`timelineLeadResize.css` were split out of theirs. **The fold set — scoped to the open release, never a bare path — and the
 hide-done flag beside it moved to `src/view/scopeFolds.ts`** (Task 5 of [[Assigned work in
 the sidebar]]): the assigned-work tree asks the identical two questions per person rather
 than per release, and the whole of what varied was the key prefix, so `scopeTree.ts` now
@@ -210,7 +212,8 @@ They do not, and cannot: that module takes a `BacklogViewHost` and wires menus, 
 tag removal and drag into every row — every one of them a write this screen does not offer — so
 reusing it would make a read-only view satisfy a host interface in order to withhold what the
 interface is for. The rows are drawn by `src/view/release/scopeTree.ts` instead, reusing the
-stylesheet (`styles/release.css`, `styles/releaseScope.css`), `badgeStyleFor` from
+stylesheet (`styles/release.css`, `styles/releaseScope.css`, `styles/releaseScopeTree.css`),
+`badgeStyleFor` from
 `src/view/render/badges.ts` and — for the rollup — the backlog tree's own `.pbl-meta-col` /
 `.pbl-progress` vocabulary from `styles/columns.css`, which is the same reuse the estimation
 view settled on for its own read-only rows.
