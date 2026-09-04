@@ -173,6 +173,22 @@ export function resolveSecondaryWorkflow(inputs: SecondaryWorkflowInputs, names:
 }
 
 /**
+ * The comma-list parse every declared vocabulary is read through: split, trim each
+ * entry, drop the empty ones. `configReaders`'s own `list` closure is this applied to a
+ * config key; it is exported separately so a caller validating a value BEFORE it is
+ * written — the risk vocabularies dialog (`view/release/readinessFix.ts`) — asks the
+ * SAME question of the raw string rather than re-implementing the trim. A validation
+ * that checked only `=== ''` let `"  "` or `","` through, which this parses to `[]`
+ * exactly as `list()` does once it lands in the `.base`.
+ */
+export function parseListValue(raw: string): string[] {
+	return raw
+		.split(',')
+		.map((s) => s.trim())
+		.filter((s) => s.length > 0);
+}
+
+/**
  * The primitive readers every option in this `.base` is read through — property ids,
  * clearable defaults, plain strings, booleans, comma lists, and the dedupe every
  * declared vocabulary needs. `resolveSettings` is their first and largest caller, but not
@@ -230,11 +246,7 @@ export function configReaders(config: BasesViewConfig) {
 		const v = config.get(key);
 		return typeof v === 'boolean' ? v : def;
 	};
-	const list = (key: string): string[] =>
-		str(key)
-			.split(',')
-			.map((s) => s.trim())
-			.filter((s) => s.length > 0);
+	const list = (key: string): string[] => parseListValue(str(key));
 	// Duplicate states would render as duplicate menu entries — drop them silently.
 	const dedupe = (values: string[]): string[] => {
 		const seen = new Set<string>();

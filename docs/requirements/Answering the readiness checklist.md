@@ -109,6 +109,16 @@ which adds the three verdict colours and the row's own layout to the `.pbl-state
 draws a different thing from a different model, and nothing in it derives a number — every
 figure and every verdict is handed to it by the one walk above.
 
+**The risk criterion's own third fix button** (Task 4, beside `estimateProperty`'s and
+`capacityProperty`'s from Task 2) is `editRiskValues` in `src/view/release/readinessFix.ts`,
+drawn beside the chip row exactly when `riskProperty` IS bound and one of the two
+vocabularies is empty — with the key itself unbound there is no vocabulary to write yet.
+It opens `src/ui/twoFieldPrompt.ts`'s `TwoFieldPromptModal`, a `ui/` leaf beside
+`prompts.ts` and `textPrompt.ts` for that file's own reason (its 400-line budget), so
+both risk lists are written from one press — `view.config.set` twice, then one
+`view.render()` — rather than two dialogs that could leave a criterion half-configured
+on a cancel between them.
+
 **Two decisions the code cannot show.** A prerequisite is cleared by **this view's own
 already-bound `stateProperty` and its done values**, not by a sixth and seventh option: the
 rule that each criterion declares its own key guards against borrowing the key from the view
@@ -119,3 +129,47 @@ span beside the count — three chips saying nothing three times is noise on exa
 that most needs signal, a first run where ✨ has bound the keys and nobody has written the
 risk vocabularies yet. The names ride the chip itself rather than the tooltip alone because
 the chip is a static, unfocusable `div`, which a tooltip reaches by pointer and nobody else.
+
+**Two of the three criteria's own keys stopped being read-only on 2026-09-04 (Task 8 of
+[[Release readiness]]), and the guarantee above is unchanged by it.** "Evaluating them
+writes nothing" is a claim about the CHECKLIST — the three verdict chips this note
+describes, still a pure read over `releaseReadiness`'s own walk. It was never a claim
+about the member's own properties, and two of those now have a write path: the scope
+tree's per-row Effort and Risk chips (`src/view/release/scopeChips.ts`, drawn read-only in
+Task 7) open a dialog and a menu respectively, planned by `memberEffortWrites` and
+`memberRiskWrites` (`src/domain/releaseWritePlan.ts`) and applied through
+`ReleaseView.applyRelease` — the same gate the release note's own status and description
+already went through. A member's effort or risk set this way is what the NEXT evaluation
+of this checklist reads; nothing here recomputes a verdict as a side effect of the write,
+because the redraw that follows every batch does that already.
+
+**A chip is a drill-down as well as a verdict, since 2026-09-04 (Task 11).** An unsatisfied
+criterion's chip is a real `<button>` — `outstandingPaths` (Task 9) is the same field the
+count came from, so the toggle can never disagree with the number beside it — carrying
+`aria-pressed` and narrowing the scope tree, through `rowsForPaths` (Task 10 of [[The scope
+of a release as a tree]]), to exactly the members failing that criterion and the ancestors
+holding them in place. A satisfied, empty or unconfigured criterion keeps the plain,
+unfocusable `div` it always drew: a control that filtered to the whole tree, or to nothing,
+would be a control that lies. The narrowing is `ReleaseView.criterionFilter` — session
+state, deliberately, never the view-state store and never the `.base`, for the shelf
+search's own reason (`src/view/CLAUDE.md`) — and it clears itself the moment the criterion
+it names is satisfied, on the next render: work the list to zero and the screen hands the
+release back. Hide-done yields to an active filter (its EFFECT only; the stored preference
+is untouched), because a member can be done and still be outstanding on a criterion, and
+hiding the row the reader is being shown to fix would be the dead end this whole feature
+exists to remove. Drawn in `src/view/release/renderReadiness.ts` (the chip),
+`src/view/release/renderScope.ts` (the narrowing, between the readiness walk and the tree)
+and `src/view/release/scopeToolbar.ts` (the toolbar's own way to clear it).
+
+**The narrowing is resolved before anything else reads it, and that ordering is load-bearing
+rather than cosmetic (fixed the same day, on review).** `renderScope` calls `criterionRows`
+immediately after the readiness walk — before `drawScopeToolbar` and the hide-done/all-done
+check, both of which also read `view.criterionFilter` — so a render that satisfies the
+filtered criterion has already cleared the field by the time either asks. Read afterwards,
+as it first shipped, the toolbar drew a "Show every row again" that had stopped being true
+and the all-done check answered from a filter one render stale, both self-healing on the
+NEXT render (which is why the suite did not catch it): a done member the reader had just
+finished estimating stayed drawn for one extra render instead of folding straight into the
+all-done state. `scope.rows`, not the narrowed set, still goes to the toolbar and that
+check — only `drawScopeTree` reads `filtered` — so the fix moves WHEN the field is resolved,
+never what a control after it is handed.

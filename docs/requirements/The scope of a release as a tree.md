@@ -134,6 +134,9 @@ note assumed and `## Where it lives` explains it cannot be.
 - With the membership property unconfigured, no tree is drawn and the empty state names the
   option.
 - Drawing the scope plans no write.
+- A write aimed at a CONTEXT row is refused at the write itself, not only by withholding the
+  control: neither readiness chip is drawn on one, and a control planted on one anyway still
+  writes nothing.
 - A folded parent keeps its own rollup: folding is a render decision over what is drawn, and it
   must never change a figure computed over the subtree.
 - Hiding never removes a context ancestor that still holds a visible member: a context row
@@ -234,3 +237,27 @@ names. The context marker reuses
 `.pbl-outside-marker`'s STYLING and none of its sentence: that one says a row is outside the
 base's filter, which is false of every row here, since `releaseScope` skips an `outsideFilter`
 ancestor outright rather than keeping it as context.
+
+**The row's trailing strip gained two more cells beside the state chip** ([[Release
+readiness]]): `src/view/release/scopeChips.ts`'s `drawReadinessChips` draws
+`.pbl-rel-effortcol` and `.pbl-rel-riskcol`, each holding a `.pbl-state-chip` button reading
+the member's own effort and risk value — dashed where the property is bound and the note is
+silent, drawn but empty on a context row (the columnar-layout rule above applies to these two
+exactly as it does to the state chip), and absent whole where the property is unbound, or,
+for risk, where neither `criticalRiskValues`, `addressedRiskValues` nor any member's own
+value gives it anything to offer (`computeRiskChoices` in `scopeTree.ts`, built once per draw
+— over the release's WHOLE scope, never the rows a readiness narrowing left standing, or the
+column would appear and vanish as a side effect of a filter). `scopeTree.ts` calls it after
+`drawScopeStateChip` and before the rollup, so the strip reads state, effort, risk, then the
+count. **Both chips WRITE, since 2026-09-04** (Task 8 of [[Release readiness]]): each is a
+`tabindex="-1"` button opening the effort dialog or the risk menu, with the row menu's own
+`Set effort` / `Set risk` as the keyboard path the tree's one tab stop requires, and both
+inputs per field plan through one function (`memberEffortWrites` / `memberRiskWrites`) and
+apply through `ReleaseView.applyRelease`. **A context row is refused at the write, not merely
+undrawn**: `applyAndRefocus` is the one funnel every input IN `scopeChips.ts` passes through
+and it declines a context row itself, because the gate cannot — `releaseScope` skips an
+`outsideFilter` ancestor, so a context row here is a base result the gate has no question
+about. **That is a claim about this module, not about every path to those writes**: the two
+planner functions and `applyRelease` are reachable directly from anywhere else in the
+codebase, and nothing — no lint rule, no spy — sits on either call to catch a writer built
+elsewhere that reaches them without going through `applyAndRefocus`.

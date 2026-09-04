@@ -471,6 +471,11 @@ describe('recording the day a release shipped', () => {
 	});
 });
 
+// The capacity dialog — this view's fourth editor (Task 3) — is driven in
+// `readinessFix.test.ts`, beside the rest of its wiring through `renderReadiness.ts`'s
+// `drawCapacityFigures`: that file already carried the forward reference for it, and
+// this one has no room left under its own line budget to duplicate the coverage.
+
 describe('what an edit is, and is not', () => {
 	it('goes through the gate’s own writer, never the item-batch path', async () => {
 		// `applyWrites` and `applyRestores` are the BACKLOG's batches — a hierarchy, a state,
@@ -540,7 +545,11 @@ describe('what an edit is, and is not', () => {
 		vault.addFile('R.md', {
 			frontmatter: { type: 'Release', version: '1.0.0', status: ['Planned', 'Cut'], description: { a: 1 } },
 		});
-		const { view, containerEl } = makeReleaseView(vault, { ...RELEASE_CONFIG, estimateProperty: '' });
+		// The risk vocabularies are bound on top of `RELEASE_CONFIG`, which leaves them out —
+		// this test is about the status and description fields, and the risk criterion's own
+		// third fix button (Task 4) would otherwise add a fifth, unrelated line below.
+		const risk = { criticalRiskValues: 'Critical', addressedRiskValues: 'Mitigated' };
+		const { view, containerEl } = makeReleaseView(vault, { ...RELEASE_CONFIG, estimateProperty: '', ...risk });
 		view.pick('R.md');
 
 		expect(containerEl.querySelector('.pbl-rel-status')).toBeNull();

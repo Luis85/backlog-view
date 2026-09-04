@@ -202,6 +202,28 @@ button.pbl-rel-desc-empty {
 	gap: var(--size-4-1);
 }
 
+/* The capacity comparison's own bar, modelled on `.pbl-rel-bar`/`.pbl-rel-bar-fill`
+   (`release.css`) at a size that fits beside the strip's other figures rather than that
+   bar's own 96px. `--pbl-rel-cap` is published per render (`drawCapacityFigures`),
+   clamped at 100% there — the sentence beside it is what says how far over. */
+.pbl-rel-cap {
+	flex: 0 0 auto;
+	width: 80px;
+	height: 4px;
+	border-radius: 2px;
+	background: var(--background-modifier-border);
+	overflow: hidden;
+}
+
+.pbl-rel-cap-fill {
+	width: var(--pbl-rel-cap, 0%);
+	height: 100%;
+	background: var(--interactive-accent);
+}
+
+.pbl-rel-cap-over .pbl-rel-cap-fill {
+	background: var(--text-error);
+}
 
 /* The header's last line: the summary keeps the left, the actions take the right.
 

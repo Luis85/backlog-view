@@ -280,8 +280,11 @@ export function scopeVault(): FakeVault {
 	// never adds `0.9` at all — repointing them there leaves a vault whose members name a
 	// release that does not exist, which is the one test that failed when this was tried
 	// that way (2026-08-30). Each release keeps its own members.
-	vault.addFile('M1.md', { frontmatter: { type: 'PBI', order: 1, release: '[[0.9]]' } });
-	vault.addFile('M2.md', { frontmatter: { type: 'PBI', order: 2, release: '[[0.9]]', status: 'Done' } });
+	// `effort` sums to 15 across the two (2026-09-03), the capacity comparison's own
+	// fixture: `releaseHeader.test.ts`'s bar test reads this real sum rather than inventing
+	// one, so a change to either number here is a change to what that test claims too.
+	vault.addFile('M1.md', { frontmatter: { type: 'PBI', order: 1, release: '[[0.9]]', effort: 9 } });
+	vault.addFile('M2.md', { frontmatter: { type: 'PBI', order: 2, release: '[[0.9]]', status: 'Done', effort: 6 } });
 	addToolbarReleases(vault);
 	return vault;
 }

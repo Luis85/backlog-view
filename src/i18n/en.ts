@@ -2209,6 +2209,18 @@ export const en = {
 		one: 'Readiness: {count} criterion not configured',
 		other: 'Readiness: {count} criteria not configured',
 	},
+	/**
+	 * The toolbar's own sentence for an active drill-down (Task 11) — its tooltip and
+	 * accessible name, since the visible button carries the shorter `filterClear` below.
+	 * `{criterion}` is the criterion's own name, taken as a parameter from the same table
+	 * the chip reads (`criterionName`), never re-spelled: two sentences naming a criterion
+	 * two different ways is the drift every other provenance sentence in this file refuses.
+	 */
+	'release.scope.filterOn': 'Showing only what is outstanding for {criterion}',
+	/** The clear control's own visible text — short, since the criterion is already said in
+	 *  `filterOn` beside it and a reader does not need it twice to press the one button on
+	 *  screen that clears a narrowing. */
+	'release.scope.filterClear': 'Show every row again',
 	/** The estimate progress: ONE figure with its denominator inside it, never a sum and a
 	 *  second percentage competing with the items bar beside it. `{done}` and `{total}` reach
 	 *  this pre-formatted with `formatNumber(value, true)`: both are sums of estimates
@@ -2298,6 +2310,17 @@ export const en = {
 	/** Extension 3a: unlabelled arithmetic is two numbers whose meaning the reader supplies,
 	 *  which is the thing this feature exists to prevent. */
 	'release.scope.capacityNoUnit': 'The capacity unit is not set',
+	/** The number dialog `capacityAbsent` above opens, Task 3's own fourth field this view
+	 *  edits. `{name}` is the release's own — never re-spelled, taken as a parameter from
+	 *  `ReleaseRow.name`. */
+	'release.scope.capacityTitle': 'Capacity for {name}',
+	'release.scope.capacityPlaceholder': 'A number, in the unit this view is configured with',
+	'release.scope.capacitySave': 'Set capacity',
+	/** The dialog's own refusal — `estimateValue`'s predicate, spelled for a reader typing
+	 *  into a box rather than reading a figure: `40 pts` and `-1` are the two shapes it
+	 *  refuses, and this is what tells the reader why nothing was recorded, in the dialog,
+	 *  before the undo slot would have been spent on nothing. */
+	'release.scope.capacityInvalid': 'Enter a number of 0 or more',
 	'release.scope.doubleCount': {
 		one: '{count} member may double count',
 		other: '{count} members may double count',
@@ -2309,6 +2332,28 @@ export const en = {
 	 *  `Capacity reads capacity, in .` is what a screen reader would say otherwise, and a
 	 *  message assembled around a blank is not a sentence in any language. */
 	'release.scope.provenanceCapacityNoUnit': 'Capacity reads {property}.',
+	/** The unit dialog `capacityNoUnit` opens (`readinessFix.ts`) — doubles as the modal's
+	 *  heading and its one field's label, the way `capacityTitle` reads as a sentence but
+	 *  `capacityPlaceholder` is the field's own hint below it. */
+	'release.scope.unitTitle': 'Unit for capacity and effort',
+	'release.scope.unitPlaceholder': 'points',
+	'release.scope.unitSave': 'Set unit',
+	/** The risk vocabularies dialog `editRiskValues` opens — also the fix button drawn
+	 *  beside the chip row, so the same sentence names the problem and the dialog it opens. */
+	'release.scope.riskValuesTitle': 'Which risk values matter',
+	'release.scope.riskValuesCritical': 'Critical values',
+	'release.scope.riskValuesAddressed': 'Addressed values',
+	'release.scope.riskValuesHint': 'Comma-separated. The criterion needs both.',
+	'release.scope.riskValuesSave': 'Set risk values',
+	/** The dialog's own refusal. A criterion with either list empty is unconfigured exactly
+	 *  as if neither were, so a submit that leaves one blank writes two empty options and
+	 *  lands the reader back on the identical red note — the dead end this screen's fix
+	 *  buttons exist to remove, reached through the button meant to clear it. */
+	'release.scope.riskValuesRequired': 'Enter at least one value in each list',
+	/** The red note beside the chip row, which is NOT the dialog's title: every other red
+	 *  note on this screen states a problem, and a question in error red says what is wrong
+	 *  to nobody. The dialog it opens keeps `riskValuesTitle` as its own heading. */
+	'release.scope.riskValuesUnset': 'Risk values are not set',
 
 	/**
 	 * The summary strip's own label for the progress figure, read into
@@ -2420,6 +2465,39 @@ export const en = {
 	 * already reuses that key for its own stated reason.
 	 */
 	'release.scope.rollup': '{done}/{total}',
+	/**
+	 * The two readiness values a member row can carry, drawn as its own chip beside the
+	 * state one (`scopeChips.ts`) — never re-spelled from `release.option.estimate` /
+	 * `release.option.risk`, which name the PROPERTY in the options panel ("Estimate
+	 * property", "Risk property") rather than the value a reader sees on a row.
+	 */
+	'release.scope.effortLabel': 'Effort',
+	'release.scope.riskLabel': 'Risk',
+	/**
+	 * Each chip's accessible name, a whole sentence PER FIELD rather than `chip.set` /
+	 * `chip.change` with one of the two labels above spliced in. Those two take the COLUMN's
+	 * display name — the user's own word for a property, data this catalog never touches —
+	 * and feeding them catalog text builds a message out of two catalog pieces, which no
+	 * locale that inflects the noun after the verb can spell. The sentence is the unit.
+	 */
+	'release.scope.effortChipSet': 'Set effort',
+	'release.scope.effortChipChange': 'Change effort (currently {value})',
+	'release.scope.riskChipSet': 'Set risk',
+	'release.scope.riskChipChange': 'Change risk (currently {value})',
+	/**
+	 * The chip's own dialog (Task 8) — a plain number, judged by the same reader the
+	 * capacity dialog is (`estimateValue`), so a value this control accepts is a value the
+	 * header's own effort figure will sum.
+	 */
+	'release.scope.effortTitle': 'Effort for {name}',
+	'release.scope.effortPlaceholder': 'A number',
+	'release.scope.effortSave': 'Set effort',
+	/** The row menu's own two entries — the chip's own name repeated as an action, rather
+	 *  than the value it currently holds, which is what a MENU entry names everywhere else
+	 *  in this plugin (`menu.setRisk`, `menu.setPriority`). */
+	'release.scope.setEffort': 'Set effort',
+	'release.scope.setRisk': 'Set risk',
+	'release.scope.clearRisk': 'Clear risk',
 
 	/** `src/ui/newReleaseDialog.ts` — a plain-data leaf that knows nothing of property
 	 *  keys, so every one of its labels is its own key rather than a reuse of the index
@@ -2442,6 +2520,17 @@ export const en = {
 	 *  because the question, the rows and the CTA are about what is being confirmed and
 	 *  belong to the screen that asks. */
 	'confirm.cancel': 'Cancel',
+
+	/**
+	 * The tooltip on a red readiness note that has become a button
+	 * (`src/view/release/readinessFix.ts`) — one per {@link Remedy} kind, read off which
+	 * remedy the note carries rather than a sentence written per state, so a state that
+	 * moves from one kind of remedy to another (a bind that later becomes an open) needs
+	 * no new key.
+	 */
+	'release.fix.bind': 'Bind this property and try again',
+	'release.fix.open': 'Open the note holding this value',
+	'release.fix.edit': 'Set this value',
 
 	/**
 	 * The ✨ standalone control (`src/view/release/initControl.ts`), drawn on the index bar

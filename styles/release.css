@@ -313,6 +313,22 @@ button.pbl-rel-band {
 	font-style: italic;
 }
 
+/* A red state that names an unbound key, turned into the button that binds it
+   (`readinessFix.ts`) — drawn only on the scope screen, but living beside its own
+   `.pbl-rel-unreadable` above rather than in `releaseScope.css`, which the `.pbl-rel-fix`
+   addition would have put over the 400-line cap. Undoes the browser's own button chrome
+   and keeps this class's colour and italic; the pointer and dotted underline are the
+   only visible difference from a note with no remedy. */
+.pbl-rel-fix {
+	background: none;
+	border: none;
+	padding: 0;
+	font: inherit;
+	color: inherit;
+	cursor: pointer;
+	text-decoration: underline dotted;
+}
+
 /* The progress bar: a fixed-width track and a filled portion. `--pbl-rel-fill` is
    published per band (`renderIndex.ts`'s `drawProgressLine`) rather than every possible
    percentage getting its own class. */

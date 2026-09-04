@@ -1,7 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import { TFile } from '../helpers/obsidian-mock';
 import {
+	memberEffortWrites,
+	memberRiskWrites,
 	reconfiguredKey,
+	releaseCapacityWrites,
 	releaseClosureWrites,
 	releaseDescriptionWrites,
 	releaseReleasedWrites,
@@ -112,17 +115,67 @@ describe('planning a release description', () => {
 	});
 });
 
+describe('releaseCapacityWrites', () => {
+	const file = { path: 'R.md' } as TFile;
+
+	it('writes the number the reader typed', () => {
+		// The NUMBER, never the string that was typed: the estimation view writes numbers and
+		// a hand-authored vault holds numbers, so a `'40'` here would leave one property
+		// mixed-typed and drop these notes out of any numeric Bases filter or sort.
+		expect(releaseCapacityWrites(file, 'capacity', null, ' 40 ')).toEqual([
+			{ file, sets: [{ key: 'capacity', value: 40, role: 'capacity' }], requiresType: 'Release' },
+		]);
+	});
+
+	it('plans nothing for the value the note already holds', () => {
+		expect(releaseCapacityWrites(file, 'capacity', 40, '40')).toEqual([]);
+		// The same number spelled differently is the same number — never a rewrite.
+		expect(releaseCapacityWrites(file, 'capacity', 40, '40.0')).toEqual([]);
+	});
+
+	it('writes a genuinely different number over the one the note already holds', () => {
+		// The `current !== null` half of the no-op test, exercised with its OTHER outcome:
+		// `plans nothing for the value the note already holds` above never changes an
+		// existing capacity, only re-confirms or clears one.
+		expect(releaseCapacityWrites(file, 'capacity', 40, '55')).toEqual([
+			{ file, sets: [{ key: 'capacity', value: 55, role: 'capacity' }], requiresType: 'Release' },
+		]);
+	});
+
+	it('clears the key on an emptied box', () => {
+		expect(releaseCapacityWrites(file, 'capacity', 40, '  ')).toEqual([
+			{ file, sets: [{ key: 'capacity', value: null, role: 'capacity' }], requiresType: 'Release' },
+		]);
+	});
+
+	it('plans nothing when the key is unbound, and nothing for a clear of an absent value', () => {
+		expect(releaseCapacityWrites(file, '', null, '40')).toEqual([]);
+		expect(releaseCapacityWrites(file, 'capacity', null, '')).toEqual([]);
+	});
+
+	it('refuses a value the reader of this figure would not count', () => {
+		expect(releaseCapacityWrites(file, 'capacity', null, '40 pts')).toEqual([]);
+		expect(releaseCapacityWrites(file, 'capacity', null, '-1')).toEqual([]);
+	});
+});
+
 describe('the keys this view may write', () => {
-	const settings = { statusKey: 'status', descriptionKey: 'summary', releasedDateKey: 'released' };
+	const settings = releaseSettingsWith({
+		statusKey: 'status',
+		descriptionKey: 'summary',
+		releasedDateKey: 'released',
+		capacityKey: 'capacity',
+	});
 	const write = (role: ReleaseField, key: string): ReleaseWrite[] => [
 		{ file: file, sets: [{ key, value: 'x', role }], requiresType: 'Release' },
 	];
 
-	it('accepts each of the three roles the release screen edits', () => {
+	it('accepts each of the four roles the release screen edits', () => {
 		const roles: [ReleaseField, string][] = [
 			['status', 'status'],
 			['description', 'summary'],
 			['released', 'released'],
+			['capacity', 'capacity'],
 		];
 		for (const [role, key] of roles) expect(reconfiguredKey(settings, write(role, key))).toBeNull();
 		expect(reconfiguredKey(settings, [])).toBeNull();
@@ -136,6 +189,16 @@ describe('the keys this view may write', () => {
 		const swapped = { ...settings, statusKey: 'summary', descriptionKey: 'status' };
 		expect(reconfiguredKey(swapped, write('status', 'status'))).toBe('status');
 		expect(reconfiguredKey(swapped, write('description', 'summary'))).toBe('summary');
+	});
+
+	it('refuses the capacity key too, once it has swapped with another role — the widened union', () => {
+		// The same corruption, asked of the role widening `reconfiguredKey` cost nothing at
+		// its one call site: the capacity dialog captured `capacity`, the reader swapped the
+		// capacity and released-date options while it was open, and `capacity` is now the
+		// RELEASED key. Submitting it would put the typed number on the release's date.
+		const swapped = { ...settings, capacityKey: 'released', releasedDateKey: 'capacity' };
+		expect(reconfiguredKey(swapped, write('capacity', 'capacity'))).toBe('capacity');
+		expect(reconfiguredKey(swapped, write('released', 'released'))).toBe('released');
 	});
 
 	it('refuses a key the settings no longer name — the captured key of a re-pointed option', () => {
@@ -153,6 +216,51 @@ describe('the keys this view may write', () => {
 		// unbound case reaches here as the key the control was DRAWN with, against a role
 		// that now names nothing. Refused before `applyPropertyWrites` drops it quietly.
 		expect(reconfiguredKey({ ...settings, descriptionKey: '' }, write('description', 'summary'))).toBe('summary');
+	});
+});
+
+describe('memberEffortWrites', () => {
+	const file = { path: 'M1.md' } as TFile;
+
+	it('writes the number, refuses what the criterion would not count, and clears on empty', () => {
+		// The NUMBER — `releaseCapacityWrites`' own reason, one planner over.
+		expect(memberEffortWrites(file, 'effort', null, '5')).toEqual([
+			{ file, sets: [{ key: 'effort', value: 5, role: 'effort' }] },
+		]);
+		expect(memberEffortWrites(file, 'effort', null, '5 pts')).toEqual([]);
+		expect(memberEffortWrites(file, 'effort', null, '-2')).toEqual([]);
+		expect(memberEffortWrites(file, 'effort', 5, '  ')).toEqual([
+			{ file, sets: [{ key: 'effort', value: null, role: 'effort' }] },
+		]);
+	});
+
+	it('plans nothing for the value already held, however it is spelled', () => {
+		expect(memberEffortWrites(file, 'effort', 5, '5')).toEqual([]);
+		expect(memberEffortWrites(file, 'effort', '5', '5.0')).toEqual([]);
+	});
+
+	it('never writes an unconfigured key', () => {
+		expect(memberEffortWrites(file, '', null, '5')).toEqual([]);
+	});
+
+	it('carries no type requirement — a member is work, not a release', () => {
+		expect(memberEffortWrites(file, 'effort', null, '5')[0].requiresType).toBeUndefined();
+	});
+});
+
+describe('memberRiskWrites', () => {
+	const file = { path: 'M1.md' } as TFile;
+
+	it('writes the pick, clears on null, and plans nothing for a re-pick', () => {
+		expect(memberRiskWrites(file, 'risk', null, 'High')).toEqual([
+			{ file, sets: [{ key: 'risk', value: 'High', role: 'risk' }] },
+		]);
+		expect(memberRiskWrites(file, 'risk', 'High', null)).toEqual([
+			{ file, sets: [{ key: 'risk', value: null, role: 'risk' }] },
+		]);
+		// Case-insensitively — every other pick in this plugin keeps that rule.
+		expect(memberRiskWrites(file, 'risk', 'High', 'high')).toEqual([]);
+		expect(memberRiskWrites(file, 'risk', null, null)).toEqual([]);
 	});
 });
 

@@ -7,6 +7,7 @@ import { t } from '../../i18n/t';
 import { BacklogModel, buildModel } from '../../domain/model';
 import { ReleaseSettings, resolveReleaseSettings } from '../../domain/releaseOptions';
 import { releaseIndex, releaseScope } from '../../domain/releases';
+import { ReleaseCriterion } from '../../domain/releaseReadiness';
 import { todayCivil } from '../../domain/noteFields';
 import { resolveSettings } from '../../domain/settingsResolve';
 import { membershipCollision, releaseNoteProblems } from '../../domain/settingsConsistency';
@@ -77,18 +78,22 @@ const FOCUS_HANDLE_CLASSES = [
 
 /**
  * The release view: the plugin's third Bases view, and the one that **creates release
- * notes and its own config, and edits the RELEASE NOTE it is showing and nothing else.**
+ * notes and its own config, edits the release note it is showing, and edits a member's
+ * readiness values — and nothing else.**
  *
- * Read that claim as narrowly as it is written; it has now been narrowed twice. It was
- * `WRITES NOTHING` until 2026-08-24, when `New release` retired the wider sentence, and
+ * Read that claim as narrowly as it is written; it has now been narrowed three times. It
+ * was `WRITES NOTHING` until 2026-08-24, when `New release` retired the wider sentence;
  * `never edits a note that already exists` until 2026-08-29, when
  * [[Editing a release from its own screen]] asked for the status and the description to be
- * settable from the release's own screen. What is refused now is everything else: no MEMBER
- * is ever written to — a member is work, and the backlog view is where work is edited —
- * and `applyWrites` and `applyRestores`, the ITEM-batch entry points, are still never
- * called from `src/view/release/`. `test/view/releaseNeverEdits.test.ts` states what the
- * screens' ordinary gestures still do not do; `test/view/release/releaseEdits.test.ts`
- * drives the two that now write and asserts the batch names the release note alone.
+ * settable from the release's own screen; and it deliberately narrowed a THIRD boundary on
+ * 2026-09-04, when the scope tree's own two chips (Task 8) made a member's effort and risk
+ * the second kind of note this view edits. What is refused now is everything else: no
+ * HIERARCHY, no STATE and no PLACEMENT is ever written to a member — those stay the backlog
+ * view's, and `applyWrites` and `applyRestores`, the ITEM-batch entry points, are still
+ * never called from `src/view/release/`. `test/view/releaseNeverEdits.test.ts` states what
+ * the screens' ordinary gestures still do not do; `test/view/release/releaseEdits.test.ts`
+ * drives the two that write to the RELEASE note and asserts the batch names it alone, and
+ * `test/view/release/scopeChips.test.ts` drives the two that write to a MEMBER.
  *
  * **So there is a `WriteGate` here now, and it is the plugin's own one lock behind it.**
  * The gate's absence used to be the design — a create is not a batch, so there was nothing
@@ -140,6 +145,18 @@ export class ReleaseView extends BasesView {
 	 *  beside `previousTop` and for the identical reason: a detached element answers
 	 *  nothing, so this has to be read before the teardown rather than after it. */
 	treeHadFocus = false;
+	/**
+	 * Which criterion the scope tree is narrowed to, or null for the whole tree.
+	 *
+	 * **Session state, deliberately** — a plain field, never the view-state store and never
+	 * the `.base`. Opening a release must not restore a narrowing nobody remembers asking
+	 * for; the shelf search takes the identical decision for the identical reason
+	 * (`src/view/CLAUDE.md`).
+	 *
+	 * Cleared by `pick`, beside `activeRowFile`: a filter is a statement about ONE release's
+	 * rows, and carrying it to the next screen would narrow a tree the reader never narrowed.
+	 */
+	criterionFilter: ReleaseCriterion['key'] | null = null;
 
 	/**
 	 * The gate every edit passes, over the plugin-wide lock this view is handed. There is
@@ -246,10 +263,16 @@ export class ReleaseView extends BasesView {
 	}
 
 	/**
-	 * The one place an edit to the release note is applied — every input that changes a
-	 * release's own field lands here, which is the root guide's "one move, N inputs" read
-	 * for this view: the status menu, its Clear entry and the description dialog all hand
-	 * this a planned batch rather than each calling the gate beside its own plan.
+	 * The one place an edit THIS VIEW MAKES is applied — every input that changes the
+	 * release note's own fields OR a member's readiness values lands here, which is the
+	 * root guide's "one move, N inputs" read for this view: the status menu, its Clear
+	 * entry, the description dialog and, since Task 8, the readiness chip's dialog and its
+	 * own menu all hand this a planned batch rather than each calling the gate beside its
+	 * own plan. Widened from "an edit to the release note" on 2026-09-04, when a member's
+	 * effort and risk joined what this method applies — the gate does not ask WHICH note a
+	 * batch names, only whether it is inside the base's own results
+	 * (`outsideFilter`) and whether the configuration is coherent (`releaseNoteProblems`),
+	 * so nothing here had to change for the second note to reach it.
 	 *
 	 * The redraw is skipped when the batch's own deferred update already drew this state
 	 * (`WriteGate.flushedLastBatch`) — the estimation view's `applyPlan`, and its reason:
@@ -304,8 +327,20 @@ export class ReleaseView extends BasesView {
 	pick(path: string | null): void {
 		this.pickedPath = path;
 		this.activeRowFile = null;
+		this.criterionFilter = null;
 		const id = resolveViewIdentity(this.app, this.viewEl, this.config.name ?? '');
 		if (id) updateViewPrefs(this.app, id, { release: path ?? undefined });
+		this.render();
+	}
+
+	/**
+	 * Narrow the scope tree to one criterion's outstanding rows, or clear the narrowing.
+	 *
+	 * Re-renders itself: no config was set and no Bases refresh is coming —
+	 * `setProjection`'s own rule, one view over (`src/view/CLAUDE.md`).
+	 */
+	setCriterionFilter(key: ReleaseCriterion['key'] | null): void {
+		this.criterionFilter = key;
 		this.render();
 	}
 

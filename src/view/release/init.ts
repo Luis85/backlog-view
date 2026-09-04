@@ -259,7 +259,16 @@ export function adoptableReleaseKeys(config: BasesViewConfig, candidates: Adopti
  * resolve `view.settings` fresh so the caller can immediately ask which fields are now
  * bound. Three callers reach it, all through `bindAndReport` in `newRelease.ts`: both
  * `New release` presses, and the standalone ✨ (`initControl.ts`) that draws no dialog of
- * its own and exists only to run this and say what it did.
+ * its own and exists only to run this and say what it did. All three pass no `only`
+ * today — it exists for a fourth kind of caller, a red note on the scope screen that
+ * binds the ONE option its own sentence names, and every candidate otherwise.
+ *
+ * The return is whether anything was actually written, decided from the writes themselves
+ * rather than from a before/after read of the config — and it is what `bindAndReport`
+ * (`newRelease.ts`) hands its own callers, since 2026-09-04. It asked the config a second
+ * way until then, which is exactly the two-answers-to-one-question this paragraph warned
+ * against: the two agreed, and one of them was reading a config to learn what the other had
+ * just written.
  *
  * `runEstimationInit` states an ORDER as a rule: decide the bindings, gate on the model
  * they would produce, and only then write — because a batch that changed the
@@ -276,20 +285,38 @@ export function adoptableReleaseKeys(config: BasesViewConfig, candidates: Adopti
  * On the shipped defaults nothing changes for the three model mappings: they resolve to
  * `parent`, `order` and `type`, none of which any candidate suggests.
  */
-export async function runReleaseInit(view: ReleaseView): Promise<void> {
+export async function runReleaseInit(view: ReleaseView, only?: string[]): Promise<boolean> {
+	// The filter narrows the CANDIDATE LIST, never the sweep, for the shape the sweep
+	// requires: `adoptableReleaseKeys` mutates a `taken` set as it finds each candidate
+	// free, so narrowing its OUTPUT instead would let a key this press is not binding
+	// still reserve itself against one it is, the moment two candidates ever suggest the
+	// same key outside `SHARED_STATUS_OPTIONS`'s own exemption. No pair in
+	// `RELEASE_SUGGESTED_KEYS` does that today, so nothing in this suite can tell the two
+	// orderings apart — this is the shape the sweep's own contract asks for, not a
+	// difference this suite observes. `initControl.ts`'s own `fixes` narrowing makes the
+	// identical choice for the offer, for the identical reason.
+	const wanted = (option: string): boolean => only === undefined || only.includes(option);
+	const keys = RELEASE_SUGGESTED_KEYS.filter((candidate) => wanted(candidate.option));
+	const values = RELEASE_SUGGESTED_VALUES.filter((candidate) => wanted(candidate.option));
+
 	const pending = new Map<string, string>();
-	for (const { option, suggested } of adoptableReleaseKeys(view.config, RELEASE_SUGGESTED_KEYS)) {
+	for (const { option, suggested } of adoptableReleaseKeys(view.config, keys)) {
 		pending.set(option, notePropertyId(suggested));
 	}
 	for (const [option, value] of pending) view.config.set(option, value);
+	let bound = pending.size > 0;
 	// The second sweep, in order: each candidate reads the config as the one before it
 	// left it, which is what lets the transition pick from a vocabulary this same press
 	// may have just supplied. `wouldBindValue` is the one guard — an option the reader has
 	// touched is never overwritten, and an empty computed value binds nothing (a
 	// transition with no list to choose from is not a value, and writing `''` would
 	// report as touched to the next press).
-	for (const candidate of RELEASE_SUGGESTED_VALUES) {
-		if (wouldBindValue(view.config, candidate)) view.config.set(candidate.option, candidate.value(view.config));
+	for (const candidate of values) {
+		if (wouldBindValue(view.config, candidate)) {
+			view.config.set(candidate.option, candidate.value(view.config));
+			bound = true;
+		}
 	}
 	view.settings = resolveReleaseSettings(view.config);
+	return bound;
 }

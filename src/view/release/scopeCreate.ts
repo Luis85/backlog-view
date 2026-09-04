@@ -13,6 +13,7 @@ import { createBacklogItem } from '../../storage/createNote';
 import { TitlePromptModal } from '../../ui/prompts';
 import { showMenuAtElement, showMenuForClick } from '../interactions/menu';
 import { TreeDraw } from '../scopeKeys';
+import { addReadinessItems } from './scopeChips';
 import { releaseFoldedPaths, toggleReleaseFold } from './scopeTree';
 
 /**
@@ -45,10 +46,23 @@ import { releaseFoldedPaths, toggleReleaseFold } from './scopeTree';
  * have reached it. `renderScope.ts` calls this as its third step, beside `wireScopeKeys`
  * and for the same reason — it is the module that already holds both the draw and the
  * settings, so the leaves stay acyclic.
+ *
+ * **`riskChoices` joined the parameter list in Task 8**, for `addReadinessItems`'s own
+ * `Set risk` entry: the same vocabulary the tree was drawn against, handed down rather than
+ * re-walked here. Added to `menuFor`'s own closure rather than to `scopeMenu`'s parameter
+ * list, which was already at `max-params`'s budget without it — `RowPlace`'s own reason,
+ * one function over.
  */
-export function wireScopeCreate(view: ReleaseView, release: ReleaseRow, settings: BacklogSettings, draw: TreeDraw): void {
+export function wireScopeCreate(view: ReleaseView, release: ReleaseRow, settings: BacklogSettings, draw: TreeDraw, riskChoices: string[]): void {
 	const { treeEl, rows, rowEls } = draw;
-	const menuFor = (row: ScopeRow): Menu | null => scopeMenu(view, release, settings, row);
+	const menuFor = (row: ScopeRow): Menu | null => {
+		const { menu, added } = scopeMenu(view, release, settings, row);
+		// The row's OWN readiness — Set effort and Set risk — after the type entries;
+		// withheld automatically on a context row (`addReadinessItems`' own gate), which a
+		// catalog row always is, so no second check is needed for it here.
+		const readiness = addReadinessItems(view, menu, row, riskChoices);
+		return added || readiness ? menu : null;
+	};
 
 	treeEl.addEventListener('contextmenu', (evt) => {
 		// `evt.target` is asserted rather than tested: this listener is on `treeEl`, so a
@@ -94,11 +108,21 @@ export function wireScopeCreate(view: ReleaseView, release: ReleaseRow, settings
 }
 
 /**
- * One entry per type the row may hold, and nothing else — the answer to "what else could
- * be on this menu" is `test/view/releaseNeverEdits.test.ts`: every other entry the backlog's
- * own row menu carries edits the row's own frontmatter, which this view does not do.
+ * One entry per type the row may hold — the menu's TYPE half. `menuFor` (above) appends
+ * `addReadinessItems`' own `Set effort` / `Set risk` after it and decides, over BOTH
+ * halves, whether the row gets a menu at all: `test/view/releaseNeverEdits.test.ts` still
+ * answers "what else could be on this menu" — every other entry the backlog's own row menu
+ * carries edits the row's HIERARCHY, STATE or PLACEMENT, which this view still never
+ * touches, and a member's readiness values are a narrower kind of edit stated where
+ * `addReadinessItems` builds them.
  *
- * **`null` on a TEST-CATALOG row**, which is the one row this tree draws whose children
+ * Returns `added` alongside the menu rather than `null` on an empty type half, because a
+ * catalog row's own children can add nothing here while its readiness half (never offered,
+ * a catalog row being always a CONTEXT row) adds nothing either — `menuFor` is what decides
+ * null over the SUM of both, and returning early here would answer that question with only
+ * half the facts.
+ *
+ * **EMPTY on a TEST-CATALOG row's TYPE half** (`added: false`, no entries) — the one row this tree draws whose children
  * could not join the release the menu would seed. It is reachable and was found by review
  * (Codex, PR #214): `ladderFor` chains off the parent for a `Task` and a typeless note
  * alone, so an `Epic` parented under a `Test suite` stays on the plan's ladder and can be a
@@ -120,23 +144,30 @@ export function wireScopeCreate(view: ReleaseView, release: ReleaseRow, settings
  * holds no children to be above), and every plan row offers its own rung plus the extra
  * types, none of which is a marker.
  */
-function scopeMenu(view: ReleaseView, release: ReleaseRow, settings: BacklogSettings, row: ScopeRow): Menu | null {
-	// A catalog row's children are catalog notes, and a release holds plan work.
-	if (inCatalog(row.item)) return null;
-	const types = childTypeChoices(row.item);
+function scopeMenu(
+	view: ReleaseView,
+	release: ReleaseRow,
+	settings: BacklogSettings,
+	row: ScopeRow,
+): { menu: Menu; added: boolean } {
 	const menu = new Menu();
-	for (const type of types) {
-		// One entry per type rather than one entry that then asks, the backlog menu's own
-		// reason: a menu is already a list of choices, so naming them here is a click
-		// shorter than a picker in the modal.
-		menu.addItem((mi) =>
-			mi
-				.setTitle(t('menu.newChild', { type }))
-				.setIcon('plus')
-				.onClick(() => promptNewMember(view, release, settings, row, type)),
-		);
+	let added = false;
+	// A catalog row's children are catalog notes, and a release holds plan work.
+	if (!inCatalog(row.item)) {
+		for (const type of childTypeChoices(row.item)) {
+			added = true;
+			// One entry per type rather than one entry that then asks, the backlog menu's own
+			// reason: a menu is already a list of choices, so naming them here is a click
+			// shorter than a picker in the modal.
+			menu.addItem((mi) =>
+				mi
+					.setTitle(t('menu.newChild', { type }))
+					.setIcon('plus')
+					.onClick(() => promptNewMember(view, release, settings, row, type)),
+			);
+		}
 	}
-	return menu;
+	return { menu, added };
 }
 
 /**

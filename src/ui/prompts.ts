@@ -7,8 +7,13 @@ import { ValueSuggest } from './valueSuggest';
  * screen — the shape every text field in these prompts wants. The Enter that
  * confirms an IME composition is not a submit: taking it would close the prompt
  * on the half-finished reading instead of the word being composed.
+ *
+ * Exported alongside {@link refusableBody}: this file is at its 400-line budget, so a
+ * prompt that needs one more text field than any modal here already has (the risk
+ * vocabularies' two, `src/ui/twoFieldPrompt.ts`) reuses both rather than growing this
+ * file or reimplementing either.
  */
-function submitOnEnter(inputEl: HTMLInputElement, submit: () => void, autofocus = false): void {
+export function submitOnEnter(inputEl: HTMLInputElement, submit: () => void, autofocus = false): void {
 	inputEl.addEventListener('keydown', (evt) => {
 		if (evt.key === 'Enter' && !evt.isComposing) {
 			evt.preventDefault();
@@ -104,7 +109,7 @@ export interface Refusable<T> {
  * The error element comes back so the field renderers can clear it — a refusal was about
  * what was entered, so it stops being true the moment the entry changes.
  */
-function refusableBody<T>(
+export function refusableBody<T>(
 	modal: Modal,
 	options: Refusable<T>,
 	read: () => T,
@@ -257,19 +262,29 @@ export interface ValuePromptOptions extends Closable {
 	 * `Işıl` on the roster.
 	 */
 	duplicateWarning?: string;
+	/**
+	 * Refuse the trimmed, non-blank entry with a reason, keeping the prompt open and the
+	 * typing in place — `Refusable<T>`'s own rule (`refusableBody`, above), asked of this
+	 * modal for the first time by the release capacity dialog: undefined for every caller
+	 * before it, where anything typed is a value this plugin can hold. Never asked of a
+	 * blank entry — the blank test below stays in front of it, so a caller cannot refuse
+	 * "nothing typed" a second way with a different message.
+	 */
+	validate?: (value: string) => string | null;
 	onSubmit: (value: string) => void;
 }
 
 /**
  * Prompt asking for a single value from a vocabulary that is not fixed: the known ones
- * are suggested, and anything typed is accepted. Two callers — a tag to add, and who an
- * item is assigned to — because both ask the same question of a list this plugin does
- * not own.
+ * are suggested, and anything typed is accepted — unless the caller supplies `validate`,
+ * for a value this plugin will not accept at all (a release's capacity, judged by the
+ * same reader its own figure counts it with) rather than one merely worth a second look.
  */
 export class ValuePromptModal extends PromptModal<ValuePromptOptions> {
 	onOpen(): void {
 		this.titleEl.setText(this.options.title);
 		let value = '';
+		let errorEl: HTMLElement | null = null;
 		const submit = () => {
 			// **The value it VALIDATES is the value it delivers.** The blank test below is on
 			// the trimmed string, and handing `onSubmit` the raw one made those two different
@@ -281,6 +296,11 @@ export class ValuePromptModal extends PromptModal<ValuePromptOptions> {
 			// the modal, so a caller cannot forget it.
 			const entry = value.trim();
 			if (entry.length === 0) return;
+			const problem = this.options.validate?.(entry) ?? null;
+			if (problem !== null) {
+				errorEl?.setText(problem);
+				return;
+			}
 			this.close();
 			this.options.onSubmit(entry);
 		};
@@ -301,10 +321,20 @@ export class ValuePromptModal extends PromptModal<ValuePromptOptions> {
 			text.onChange((v) => {
 				value = v;
 				syncWarning();
+				// The refusal was about what was entered, so it stops being true the moment
+				// the entry changes — every other refusable prompt in this file clears the
+				// same way.
+				errorEl?.setText('');
 			});
 			new KnownValueSuggest(this.app, text.inputEl, this.options.known, this.options.sigil);
 			submitOnEnter(text.inputEl, submit, true);
 		});
+
+		// Built only for a caller that can refuse — every caller before the capacity dialog
+		// supplies no `validate`, so this stays absent for them exactly as it always has.
+		if (this.options.validate) {
+			errorEl = this.contentEl.createDiv({ cls: 'pbl-modal-error', attr: { role: 'alert' } });
+		}
 
 		// Only built when the caller wants the feature, and then kept in the DOM and empty
 		// rather than created on demand — `.pbl-modal-error`'s own reason: a dialog must

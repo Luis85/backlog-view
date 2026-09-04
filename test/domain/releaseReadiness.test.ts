@@ -43,7 +43,24 @@ function readinessOf(
 	// than sitting in one test that a new exit need not visit. It still cannot see an exit
 	// nothing drives; the paired-exits test below is what drives today's four.
 	expectPairedCommitment(readiness);
+	expectOutstandingPathsMatch(readiness);
 	return readiness;
+}
+
+/**
+ * **The list IS the count, on every criterion this fixture reaches — not only on the one
+ * test named for it.** Riding every call through `readinessOf`, the way
+ * `expectPairedCommitment` already does, is what makes this an assertion over every
+ * criterion on every fixture rather than of one hand-picked case: a second pass that
+ * disagreed with its own count would fail here long before a test asked about it by name.
+ */
+function expectOutstandingPathsMatch(readiness: ReleaseReadiness): void {
+	for (const criterion of readiness.criteria) {
+		// Null exactly where `outstanding` is; a length match everywhere else — the list IS
+		// the count, so there is nothing further to ask once both hold.
+		expect(criterion.outstandingPaths === null).toBe(criterion.outstanding === null);
+		if (criterion.outstandingPaths !== null) expect(criterion.outstandingPaths).toHaveLength(criterion.outstanding!);
+	}
 }
 
 /**
@@ -656,5 +673,21 @@ describe('the critical risk predicate', () => {
 		expect(criterion?.unreadable).toBe(0);
 		// And the prerequisite is done, so the member clears.
 		expect(criterion?.cleared).toBe(1);
+	});
+});
+
+describe('outstandingPaths', () => {
+	it('names the members behind every outstanding count', () => {
+		// `readinessOf` already rides `expectOutstandingPathsMatch` on every fixture in this
+		// suite; asserting it again here, by name, over a criterion set with a real
+		// `outstanding` on more than one member is the brief's own first test.
+		expectOutstandingPathsMatch(blockedReadiness(blockedVault()));
+	});
+
+	it('never names a context row', () => {
+		// `E.md` is `effortVault`'s context ancestor: unestimated, and never a member — the
+		// row a second, looser pass would let slip in.
+		const readiness = readinessOf(effortVault(), 'R.md', { estimateKey: 'effort' });
+		for (const c of readiness.criteria) expect(c.outstandingPaths ?? []).not.toContain('E.md');
 	});
 });

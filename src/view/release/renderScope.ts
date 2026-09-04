@@ -9,10 +9,11 @@ import { WorkflowKind, workflowStateInfo } from '../../domain/board';
 import { guidanceShell } from '../render/emptyStates';
 import { renderReleaseInit } from './initControl';
 import { drawScopeTree, effectiveHideDone } from './scopeTree';
-import { rowsAfterHideDone } from '../../domain/scopeRows';
+import { rowsAfterHideDone, rowsForPaths, ScopeRow } from '../../domain/scopeRows';
 import { drawScopeToolbar } from './scopeToolbar';
 import { wireScopeKeys } from '../scopeKeys';
 import { wireScopeCreate } from './scopeCreate';
+import { wireReadinessChips } from './scopeChips';
 import { drawReleaseActions } from './releaseClose';
 import { drawReadiness, drawReadinessFigures } from './renderReadiness';
 import { releaseReadiness, ReleaseReadiness } from '../../domain/releaseReadiness';
@@ -39,13 +40,15 @@ import { RELEASE_FOLD } from '../viewState';
  * the second step, handing it `RELEASE_FOLD` and this release's own path as its `scope`.
  * One-directional edges from here rather than a cycle between the two tree modules.
  *
- * **Nothing here writes a note, and one thing this WIRES does.** Nothing in this module
+ * **Nothing here writes a note, and two things this WIRES do.** Nothing in this module
  * touches the vault: the back control sets view state, a row's click opens a note
  * (`scopeTree.ts`), and the `noMembership` empty state's own ✨ ({@link renderReleaseInit})
  * only binds this view's own config — see that function for why it writes no note either.
- * The third wiring step below, `wireScopeCreate` (`scopeCreate.ts`), is the exception and
- * the only one: it CREATES a note from a row's menu, which is the one write this screen
- * offers and still not an edit of a note that already exists.
+ * The third wiring step below, `wireScopeCreate` (`scopeCreate.ts`), CREATES a note from a
+ * row's menu — the one write this screen offered until Task 8, and still not an edit of a
+ * note that already exists. The fourth, `wireReadinessChips` (`scopeChips.ts`), is the
+ * exception to THAT: a chip's click or its row menu entry edits a MEMBER's own effort or
+ * risk, the first note this screen edits that is not the release it is showing.
  *
  * `release` is a parameter rather than `scope.release` read here, because the caller has
  * already ruled on it — a screen is chosen by whether the pick still names a release, and
@@ -65,7 +68,19 @@ export function renderScope(
 	planSettings: BacklogSettings,
 	index: ReleaseIndex,
 ): void {
-	drawHeader(view, scope, release, planSettings, index);
+	// `drawHeader` computes the readiness walk for its own chips and figures and hands it
+	// back — never a second call here, `domain/releaseReadiness.ts`'s own "one walk, one
+	// predicate per number" rule read at this call site too.
+	const readiness = drawHeader(view, scope, release, planSettings, index);
+	// Resolved HERE, immediately, and not at the tree below: `criterionRows` is what clears
+	// a filter whose criterion just became satisfied, and `drawScopeToolbar` (the clear
+	// button) and the hide-done/all-done check both read `view.criterionFilter` before the
+	// tree is ever reached. Left until the tree, a Bases refresh that satisfies the filtered
+	// criterion drew a "Show every row again" button that was already lying, and suspended
+	// hide-done for one render it no longer needed to — found by review. `scope.rows` still
+	// goes to the toolbar and the hide-done check below: only `drawScopeTree` gets the
+	// narrowed set, `filtered`'s own name for it.
+	const filtered = criterionRows(view, scope.rows, readiness);
 	// Both empty states sit BELOW the header, so the back control survives either. A
 	// release nobody can read the scope of must not also be a dead end.
 	if (view.settings.membershipKey === '') {
@@ -103,13 +118,22 @@ export function renderScope(
 		drawAllDoneState(view.viewEl, scope.members);
 		return;
 	}
-	const draw = drawScopeTree(view, release, scope.rows);
+	// `filtered` was resolved right after `readiness`, above — see `criterionRows`' own
+	// docblock, below, for what it narrows to and when it clears.
+	// `scope.rows` beside `filtered`: the tree DRAWS the narrowed set and derives its risk
+	// vocabulary from the whole scope — see `drawScopeTree`'s own `riskChoices` line for why
+	// a column must not appear and vanish with a filter.
+	const draw = drawScopeTree(view, release, filtered, scope.rows);
 	wireScopeKeys(view, draw.treeEl, { prefix: RELEASE_FOLD, path: release.path }, draw);
 	// The third step, for `wireScopeKeys`' own reason: this module already holds the draw
 	// and the settings, so the row menu is wired from here rather than by `scopeTree.ts`
-	// importing a writer back. It is the one write this screen offers, and it creates a
-	// note rather than editing one — see `scopeCreate.ts`.
-	wireScopeCreate(view, release, planSettings, draw);
+	// importing a writer back. `draw.riskChoices` is `drawScopeTree`'s own walk — the risk
+	// vocabulary the tree was DRAWN against, read off the draw rather than re-derived here,
+	// so a chip's menu and the row menu's `Set risk` can never offer a different list.
+	wireScopeCreate(view, release, planSettings, draw, draw.riskChoices);
+	// The fourth step, since Task 8: the readiness chips' own click, which is the second
+	// write this screen offers — a member's effort and risk, never the release note.
+	wireReadinessChips(view, draw, view.settings, draw.riskChoices);
 }
 
 /**
@@ -148,6 +172,11 @@ function drawAllDoneState(viewEl: HTMLElement, count: number): void {
  * It said two — the hline and `.pbl-rel-summary` — until 2026-08-30, when the summary
  * moved INSIDE the footline and the actions joined it there, so `.pbl-rel-summary` is no
  * longer a child of the header at all.
+ *
+ * **Returns the readiness it computes**, since Task 11: `renderScope` needs the identical
+ * walk to resolve the criterion filter before it draws the tree, and a second call there
+ * would be the second opinion `domain/releaseReadiness.ts` exists to prevent — returned
+ * rather than taken as a sixth parameter, which `max-params` (5) already refuses.
  */
 function drawHeader(
 	view: ReleaseView,
@@ -155,7 +184,7 @@ function drawHeader(
 	release: ReleaseRow,
 	planSettings: BacklogSettings,
 	index: ReleaseIndex,
-): void {
+): ReleaseReadiness {
 	const headerEl = view.viewEl.createDiv({ cls: 'pbl-rel-header' });
 	const hlineEl = headerEl.createDiv({ cls: 'pbl-rel-hline' });
 
@@ -203,9 +232,29 @@ function drawHeader(
 	// prevent. `view.settings` is this view's own `ReleaseSettings`, the same object the
 	// model was built from, for `planSettings`' own reason above.
 	const readiness = releaseReadiness(view.app, scope, view.settings, planSettings);
-	drawSummary(footEl, release, scope.members, readiness, { plan: planSettings, release: view.settings });
+	drawSummary(footEl, release, scope.members, readiness, { view, plan: planSettings, release: view.settings });
 	drawReleaseActions(view, footEl, release, scope, planSettings);
-	drawReadiness(headerEl, readiness, view.settings, planSettings);
+	drawReadiness(view, headerEl, readiness, view.settings, planSettings);
+	return readiness;
+}
+
+/**
+ * `view.criterionFilter` resolved against the readiness `drawHeader` just computed, never a
+ * remembered list of paths: a member that stopped failing (or a config change) between one
+ * render and the next must narrow to what is true NOW.
+ *
+ * A satisfied — or now-unconfigured — criterion has nothing left to show, so this clears
+ * the filter itself, as a plain field assignment: `view.setCriterionFilter` would re-render
+ * from inside a render already under way, which is exactly the rule its own docblock states.
+ */
+function criterionRows(view: ReleaseView, rows: ScopeRow[], readiness: ReleaseReadiness): ScopeRow[] {
+	if (view.criterionFilter === null) return rows;
+	const paths = readiness.criteria.find((c) => c.key === view.criterionFilter)?.outstandingPaths ?? null;
+	if (paths === null || paths.length === 0) {
+		view.criterionFilter = null;
+		return rows;
+	}
+	return rowsForPaths(rows, new Set(paths));
 }
 
 /**
@@ -469,12 +518,15 @@ function drawDescription(view: ReleaseView, headerEl: HTMLElement, release: Rele
  * live-vault question, the same one `src/view/CLAUDE.md`'s resize-grip section leaves open
  * for a `role="separator"`.
  */
-/** The two settings bags this strip reads, as one argument. Not a shape anybody wanted:
- *  the readiness provenance needed a sixth parameter and `max-params` (5) refused it, and
- *  the alternatives were worse — taking the whole `ReleaseScope` reintroduces a nullable
- *  `release` this caller has already resolved, and an unreachable null guard beside it is
- *  the thing this module just deleted one of. */
+/** Everything this strip reads beyond its own four positional arguments, bundled for the
+ *  same reason twice over: the readiness provenance needed a sixth parameter and
+ *  `max-params` (5) refused it, and the two red states `drawReadinessFigures` can now
+ *  draw as a bind button need the `view` those figures had no way to reach. Taking the
+ *  whole `ReleaseScope` instead reintroduces a nullable `release` this caller has already
+ *  resolved, and an unreachable null guard beside it is the thing this module just
+ *  deleted one of. */
 interface SummarySettings {
+	view: ReleaseView;
 	plan: BacklogSettings;
 	release: ReleaseSettings;
 }
@@ -495,7 +547,7 @@ function drawSummary(
 		// key rather than the state workflow, so a release with an estimate key bound and no
 		// workflow that can say done would otherwise lose readable figures along with the one
 		// that really is unreadable.
-		drawReadinessFigures(sumEl, readiness, settings.release);
+		drawReadinessFigures(settings.view, sumEl, readiness, settings.release, release);
 		return;
 	}
 	const done = release.done.value;
@@ -513,7 +565,7 @@ function drawSummary(
 	// No `aria-hidden` either: with no description to double against, this text is meant to
 	// be read exactly once, as ordinary content of the strip.
 	sumEl.createSpan({ cls: 'pbl-sr-only', text: provenance });
-	drawReadinessFigures(sumEl, readiness, settings.release);
+	drawReadinessFigures(settings.view, sumEl, readiness, settings.release, release);
 }
 
 /**

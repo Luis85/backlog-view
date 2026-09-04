@@ -5,7 +5,7 @@ import { releaseNoteProblems } from '../../../src/domain/settingsConsistency';
 import { en } from '../../../src/i18n/en';
 import { RELEASE_SUGGESTED_KEYS, runReleaseInit } from '../../../src/view/release/init';
 import { bindAndReport } from '../../../src/view/release/newRelease';
-import { makeReleaseView, mountRelease, RELEASE_CONFIG, scopeVault } from '../../helpers/release';
+import { makeReleaseView, mountRelease, noReleaseVault, RELEASE_CONFIG, scopeVault } from '../../helpers/release';
 import { FakeVault } from '../../helpers/vault';
 import { useViewHarness } from '../../helpers/view';
 
@@ -232,6 +232,22 @@ describe('runReleaseInit', () => {
 		expect(config.get('criticalRiskValues')).toBeUndefined();
 		expect(config.get('addressedRiskValues')).toBeUndefined();
 	});
+
+	it('binds only the option it was narrowed to', async () => {
+		const { view } = makeReleaseView(noReleaseVault(), {});
+		const bound = await runReleaseInit(view, ['estimateProperty']);
+
+		expect(bound).toBe(true);
+		expect(view.config.getAsPropertyId('estimateProperty')).toBe('note.effort');
+		// Every other candidate is untouched — the whole point of the narrowing.
+		expect(view.config.getAsPropertyId('capacityProperty')).toBeNull();
+		expect(view.config.getAsPropertyId('membershipProperty')).toBeNull();
+	});
+
+	it('reports nothing bound when the narrowed option is already set', async () => {
+		const { view } = makeReleaseView(noReleaseVault(), { estimateProperty: 'note.effort' });
+		expect(await runReleaseInit(view, ['estimateProperty'])).toBe(false);
+	});
 });
 
 describe('the press binds the options that are not properties', () => {
@@ -346,10 +362,11 @@ describe('the press binds the options that are not properties', () => {
 
 describe('the press reports binding a non-property option', () => {
 	it('sees a folder bind that no property key reflects', async () => {
-		// Every PROPERTY already bound, so the only work left is the folder. `boundKeys`
-		// reads `declaredPropertyKeys`, which filters to property options — so before this
-		// fix the comparison was equal and the press reported it had bound nothing, then
-		// skipped the redraw that would show the button it had just switched on.
+		// Every PROPERTY already bound, so the only work left is the folder — the one kind of
+		// bind a reading of the declared property keys cannot see. That reading was how
+		// `bindAndReport` answered until 2026-09-04, and the press reported it had bound
+		// nothing and skipped the redraw that would show the button it had just switched on.
+		// It answers off `runReleaseInit`'s own writes now, which cannot miss a kind of option.
 		const { view } = mountRelease({ bindAll: true });
 		expect(view.config.get('releaseNotesFolder')).toBeUndefined();
 		expect(await bindAndReport(view)).toBe(true);

@@ -111,3 +111,27 @@ describe('the released date is a control only when there is one, or Mark as rele
 		expect(document.activeElement).toBe(view.viewEl.querySelector('.pbl-rel-close'));
 	});
 });
+
+describe('the capacity comparison', () => {
+	it('draws a bar filled to the committed share, and the numbers beside it', () => {
+		// scopeVault()'s members carry `effort` summing to 15; a capacity of 20 is 75%.
+		const { view } = releaseScreen({ capacity: 20 });
+		const fill = view.viewEl.querySelector<HTMLElement>('.pbl-rel-cap-fill')!;
+
+		expect(fill.style.getPropertyValue('--pbl-rel-cap')).toBe('75%');
+		// RELEASE_CONFIG's own `capacityUnit` is `points`, not the brief's illustrative
+		// `pts` — the fixture's real unit, same rule `scopeVault()`'s own `effort` values
+		// follow above.
+		expect(view.viewEl.textContent).toContain('15 of 20 points committed');
+		expect(view.viewEl.textContent).toContain('5 left');
+	});
+
+	it('clamps the fill at 100% and marks the bar over capacity', () => {
+		const { view } = releaseScreen({ capacity: 10 });
+		const barEl = view.viewEl.querySelector<HTMLElement>('.pbl-rel-cap')!;
+
+		expect(barEl.classList.contains('pbl-rel-cap-over')).toBe(true);
+		expect(barEl.querySelector<HTMLElement>('.pbl-rel-cap-fill')!.style.getPropertyValue('--pbl-rel-cap')).toBe('100%');
+		expect(view.viewEl.textContent).toContain('5 over');
+	});
+});

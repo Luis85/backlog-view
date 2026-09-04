@@ -1,10 +1,14 @@
 import { setTooltip } from 'obsidian';
+import type { ReleaseView } from './releaseView';
 import { formatNumber, t } from '../../i18n/t';
 import { ReleaseCriterion, ReleaseReadiness, clearingWorkflows } from '../../domain/releaseReadiness';
 import { WorkflowKind } from '../../domain/board';
 import { exactDifference, toNumber } from '../../domain/decimal';
 import { ReleaseSettings } from '../../domain/releaseOptions';
+import { ReleaseRow } from '../../domain/releases';
 import { BacklogSettings } from '../../domain/settings';
+import { drawFixNote, editCapacityUnit, editRiskValues } from './readinessFix';
+import { editReleaseCapacity } from './releaseEdits';
 
 /**
  * The readiness chip row, and the figures that join the summary strip beside the bar
@@ -34,7 +38,15 @@ const CRITERION_NAME: Record<ReleaseCriterion['key'], () => string> = {
 	risk: () => t('release.scope.readinessRisk'),
 };
 
+/** Exported for `scopeToolbar.ts`'s own clear-filter control, which names the narrowed
+ *  criterion in its sentence and must read the identical table this row draws its chips
+ *  from — a second copy here would be a second opinion about what a criterion is called. */
+export function criterionName(key: ReleaseCriterion['key']): string {
+	return CRITERION_NAME[key]();
+}
+
 export function drawReadiness(
+	view: ReleaseView,
 	headerEl: HTMLElement,
 	readiness: ReleaseReadiness,
 	settings: ReleaseSettings,
@@ -50,11 +62,21 @@ export function drawReadiness(
 	if (readiness.members === 0) return;
 	const rowEl = headerEl.createDiv({ cls: 'pbl-rel-ready' });
 	const unconfigured = readiness.criteria.filter((c) => c.verdict === 'unconfigured');
-	if (unconfigured.length === readiness.criteria.length) {
-		drawCollapsed(rowEl, unconfigured);
-		return;
+	if (unconfigured.length === readiness.criteria.length) drawCollapsed(rowEl, unconfigured);
+	else for (const criterion of readiness.criteria) drawChip(view, rowEl, criterion, settings, planSettings);
+	// **Beside whichever shape drew the risk criterion**, collapsed or its own chip — the
+	// collapsed count already carries the risk criterion's own name into its
+	// `.pbl-sr-only` span (`drawCollapsed`), so this button is additional rather than a
+	// replacement either way. Drawn only where the KEY is bound: with no key at all there
+	// is no vocabulary here to write, and binding `riskProperty` is the fix that state
+	// needs first — this dialog cannot write a property, only the two lists beside it.
+	if (settings.riskKey !== '' && (settings.criticalRiskValues.length === 0 || settings.addressedRiskValues.length === 0)) {
+		// The PROBLEM, not the dialog's title. Every sibling red note on this strip states
+		// what is wrong ("Capacity is not configured"); "Which risk values matter" is a
+		// question, and a question drawn in error red tells the reader nothing about the state
+		// they are in. The dialog keeps its own heading.
+		drawFixNote(view, rowEl, t('release.scope.riskValuesUnset'), { kind: 'run', run: () => editRiskValues(view) }, 'pbl-rel-riskvalues-fix');
 	}
-	for (const criterion of readiness.criteria) drawChip(rowEl, criterion, settings, planSettings);
 }
 
 /**
@@ -97,19 +119,43 @@ function drawCollapsed(rowEl: HTMLElement, unconfigured: ReleaseCriterion[]): vo
  *
  * An unconfigured criterion gets NO provenance: there is no property to name, and a sentence
  * naming an empty one is the "unconfigured reads as nothing" defect this increment is about.
+ *
+ * **A `<button>` rather than a `<div>` exactly where narrowing would show something** (Task
+ * 11): `outstandingPaths` is the SAME field the count came from (Task 9's own guarantee), so
+ * testing it here can never disagree with the chip's own text — a satisfied, empty or
+ * unconfigured criterion has nothing to narrow TO (the whole tree, or nothing at all), and a
+ * control offering either is a control that lies. `pbl-state-static` is therefore dropped
+ * from a narrowable chip's own classes: that class is what makes every OTHER chip here inert
+ * to hover and focus, and a real control needs neither withheld from it.
  */
 function drawChip(
+	view: ReleaseView,
 	rowEl: HTMLElement,
 	criterion: ReleaseCriterion,
 	settings: ReleaseSettings,
 	planSettings: BacklogSettings,
 ): void {
 	const name = CRITERION_NAME[criterion.key]();
-	const chipEl = rowEl.createDiv({
-		cls: `pbl-state-chip pbl-state-static pbl-rel-crit pbl-rel-crit-${verdictClass(criterion.verdict)}`,
-		text: chipText(criterion, name),
-	});
+	const narrowable = criterion.outstandingPaths !== null && criterion.outstandingPaths.length > 0;
+	const cls = `pbl-state-chip pbl-rel-crit pbl-rel-crit-${verdictClass(criterion.verdict)}`;
+	const text = chipText(criterion, name);
+	const chipEl: HTMLElement = narrowable
+		? rowEl.createEl('button', {
+				cls,
+				text,
+				attr: { type: 'button', 'aria-pressed': String(view.criterionFilter === criterion.key) },
+			})
+		: rowEl.createDiv({ cls, text });
+	// A class rather than baked into the string above: the linked lint rule that catches a
+	// SENTENCE built from a ternary between two literals reaches this too, and its own
+	// remedy for a class name is exactly this.
+	if (!narrowable) chipEl.addClass('pbl-state-static');
 	chipEl.dataset.criterion = criterion.key;
+	if (narrowable) {
+		chipEl.addEventListener('click', () => {
+			view.setCriterionFilter(view.criterionFilter === criterion.key ? null : criterion.key);
+		});
+	}
 	const provenance = criterion.verdict === 'unconfigured' ? '' : criterionProvenance(criterion.key, settings, planSettings);
 	setTooltip(chipEl, provenance === '' ? name : `${name}. ${provenance}`);
 	// The verdict first, then what produced it. Only `satisfied` needs saying: every other
@@ -216,14 +262,20 @@ function verdictClass(verdict: ReleaseCriterion['verdict']): string {
 }
 
 /** The effort figures, then the capacity comparison beside them. ONE call site for the
- *  second, so it cannot be forgotten on one of the first's three exits. */
+ *  second, so it cannot be forgotten on one of the first's three exits. `view` is threaded
+ *  through to the red states that name an unbound key of their own or open a dialog — see
+ *  `readinessFix.ts` — and reaches no further than the branch that draws one. `release` is
+ *  threaded the same way, for the capacity dialog and the unreadable capacity's own `open`
+ *  remedy, both of which need the release note itself rather than only its settings. */
 export function drawReadinessFigures(
+	view: ReleaseView,
 	sumEl: HTMLElement,
 	readiness: ReleaseReadiness,
 	settings: ReleaseSettings,
+	release: ReleaseRow,
 ): void {
-	drawEffortFigures(sumEl, readiness, settings);
-	drawCapacity(sumEl, readiness, settings);
+	drawEffortFigures(view, sumEl, readiness, settings);
+	drawCapacity(view, sumEl, readiness, settings, release);
 }
 
 /**
@@ -235,6 +287,7 @@ export function drawReadinessFigures(
  * `2 unestimated` beside `Effort is not configured` contradicts itself.
  */
 function drawEffortFigures(
+	view: ReleaseView,
 	sumEl: HTMLElement,
 	readiness: ReleaseReadiness,
 	settings: ReleaseSettings,
@@ -254,8 +307,10 @@ function drawEffortFigures(
 		return;
 	}
 	if (total === null) {
-		// The estimate key itself is unbound, so none of the three figures answers.
-		sumEl.createSpan({ cls: 'pbl-rel-unreadable', text: t('release.scope.effortUnconfigured') });
+		// The estimate key itself is unbound, so none of the three figures answers — and
+		// the property is `estimateProperty`, this screen's own option, so the note draws
+		// as the button that binds it (`readinessFix.ts`).
+		drawFixNote(view, sumEl, t('release.scope.effortUnconfigured'), { kind: 'bind', option: 'estimateProperty' });
 		return;
 	}
 	// A release whose every member is unestimated has nothing to sum, which is a different
@@ -338,11 +393,17 @@ function drawEffort(sumEl: HTMLElement, total: number, done: number | null, unit
  * `estimated` criterion are one walk in `releaseReadiness.ts`; a second sum in the renderer
  * is the drift that module exists to prevent.
  */
-function drawCapacity(sumEl: HTMLElement, readiness: ReleaseReadiness, settings: ReleaseSettings): void {
+function drawCapacity(
+	view: ReleaseView,
+	sumEl: HTMLElement,
+	readiness: ReleaseReadiness,
+	settings: ReleaseSettings,
+	release: ReleaseRow,
+): void {
 	// The SAME count `drawEffortFigures` reads, computed once and passed to both, so the two
 	// can never disagree about whether this release has been estimated at all.
 	const estimatedMembers = readiness.criteria.find((criterion) => criterion.key === 'estimated')?.cleared ?? 0;
-	drawCapacityFigures(sumEl, readiness, settings, estimatedMembers);
+	drawCapacityFigures({ view, release }, sumEl, readiness, settings, estimatedMembers);
 	// **Outside the comparison, and drawn once.** The double count is a count of ESTIMATES:
 	// it does not read the capacity, it does not read the unit, and it answers on every path
 	// where the comparison cannot be drawn at all. Inside those branches it was suppressed
@@ -366,6 +427,7 @@ function drawCapacity(sumEl: HTMLElement, readiness: ReleaseReadiness, settings:
 }
 
 function drawCapacityFigures(
+	ctx: { view: ReleaseView; release: ReleaseRow },
 	sumEl: HTMLElement,
 	readiness: ReleaseReadiness,
 	settings: ReleaseSettings,
@@ -374,9 +436,26 @@ function drawCapacityFigures(
 	const capacity = readiness.capacity;
 	// The capacity's own state is named even with no commitment to compare it against —
 	// extension 2b's "both halves are named" — but a comparison needs both numbers.
-	if (capacity.unconfigured) note(sumEl, t('release.scope.capacityUnconfigured'));
-	else if (capacity.invalid) note(sumEl, t('release.scope.capacityUnreadable'));
-	else if (capacity.value === null) note(sumEl, t('release.scope.capacityAbsent'));
+	// Unconfigured names `capacityProperty`, this screen's own option, so the note draws
+	// as the button that binds it (`readinessFix.ts`). The other two are read-only refusals
+	// about a bound key's own content, and both are buttons now too (Task 3): unreadable
+	// opens the note — a dialog cannot tell the reader's "leave it empty" from "it already
+	// is" on a value it never offered to type — and absent opens the number dialog itself,
+	// carrying its own selector (`pbl-rel-capacity-fix`) so the dialog's focus restore can
+	// find the exact button that opened it among the strip's other fix buttons.
+	if (capacity.unconfigured) {
+		drawFixNote(ctx.view, sumEl, t('release.scope.capacityUnconfigured'), { kind: 'bind', option: 'capacityProperty' });
+	} else if (capacity.invalid) {
+		drawFixNote(ctx.view, sumEl, t('release.scope.capacityUnreadable'), { kind: 'open', file: ctx.release.item.file });
+	} else if (capacity.value === null) {
+		drawFixNote(
+			ctx.view,
+			sumEl,
+			t('release.scope.capacityAbsent'),
+			{ kind: 'run', run: () => editReleaseCapacity(ctx.view, ctx.release, null) },
+			'pbl-rel-capacity-fix',
+		);
+	}
 	// **The unit is checked BEFORE the commitment, and that order is the requirement.**
 	// Extension 3a makes an unset unit a missing MAPPING, reported like an unbound key — so
 	// it is reported whether or not there is a commitment to label. Behind the commitment
@@ -390,7 +469,14 @@ function drawCapacityFigures(
 		// unconditionally it put THREE refusals on the strip for two unbound keys, beside the
 		// effort's own, on every vault that has never configured this: `drawCollapsed`'s rule
 		// one screen up, read here.
-		if (settings.capacityKey !== '') note(sumEl, t('release.scope.capacityNoUnit'));
+		//
+		// A missing MAPPING rather than a note to open or a property to bind — the unit is a
+		// `.base` option with no key of its own — so its remedy is the dialog that writes it
+		// (`readinessFix.ts`), carrying its own selector for the reason the capacity fix's
+		// does: a dialog's focus restore needs the exact button that opened it.
+		if (settings.capacityKey !== '') {
+			drawFixNote(ctx.view, sumEl, t('release.scope.capacityNoUnit'), { kind: 'run', run: () => editCapacityUnit(ctx.view) }, 'pbl-rel-unit-fix');
+		}
 		return;
 	}
 	// **The EXACT commitment, and it is the only null this branch asks about.** It is null in
@@ -484,6 +570,19 @@ function drawCapacityFigures(
 		note(sumEl, t('release.scope.capacityPctOverflow'));
 		return;
 	}
+	// **The bar is the comparison; the sentence is the numbers.** Eight sibling spans of
+	// jargon is what this replaced, and the reason is that a ratio is the one thing a reader
+	// takes in without reading — the summary strip's own progress bar, one line up, making
+	// the identical trade.
+	//
+	// **The arithmetic does not move.** `over` is still `exactDifference` over the exact
+	// commitment, `pct` is still divided before it is multiplied, and both were decided
+	// above: this branch draws them and derives nothing.
+	const barEl = sumEl.createDiv({ cls: 'pbl-rel-cap' + (over > 0 ? ' pbl-rel-cap-over' : '') });
+	// CLAMPED, because a bar wider than its track is a layout bug rather than a reading: past
+	// 100% the number beside it is what says how far over, and the class is what says that at
+	// a glance.
+	barEl.createDiv({ cls: 'pbl-rel-cap-fill' }).setCssProps({ '--pbl-rel-cap': `${Math.min(100, pct)}%` });
 	figure(
 		sumEl,
 		over >= 0

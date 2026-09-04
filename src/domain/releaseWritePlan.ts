@@ -4,6 +4,7 @@ import { ReleaseSettings } from './releaseOptions';
 import { CivilDate, sameValue } from './noteFields';
 import { formatCivil } from './timeline';
 import { RELEASE_TYPE } from './typeVocabulary';
+import { estimateValue } from './releaseReadiness';
 
 /**
  * What editing a release's own fields WOULD write — the release view's planner, and the
@@ -37,12 +38,19 @@ import { RELEASE_TYPE } from './typeVocabulary';
  * - the value is what the note already holds, so there is nothing to change;
  * - the value is being cleared from a note that carries nothing under that key.
  *
+ * **A NUMBER is a value here as much as a string is**, and this widened rather than
+ * stringifying: `PropertySet.value` is already `unknown` and `setOwn` writes what it is
+ * given, so the two numeric fields (the capacity and a member's effort) land as the numbers
+ * every other producer of those properties writes. Widened to `string | number | null` and
+ * no further — an unknown here would take the compiler off every call site for the sake of
+ * a shape no planner has.
+ *
  * `value: null` REMOVES the key rather than blanking it — `PropertySet`'s own contract,
  * and the rule [[Releases as their own type]] 3b makes necessary here: an empty string is
  * UNREADABLE to this view's own reader, so a cleared field written as `''` would come back
  * as somebody's mistake rather than as an unset field.
  */
-function fieldWrite(file: TFile, role: ReleaseField, key: string, value: string | null): ReleaseWrite[] {
+function fieldWrite(file: TFile, role: ReleaseField, key: string, value: string | number | null): ReleaseWrite[] {
 	// `requiresType` on every write this module plans: these three fields belong to a
 	// RELEASE, and the note may have been retyped between the menu opening and the pick —
 	// a window nothing upstream can see. See `PropertyWrite.requiresType` for what the
@@ -58,7 +66,7 @@ function fieldWrite(file: TFile, role: ReleaseField, key: string, value: string 
  * under a single role would compare the date key against the status key and refuse every
  * release. See `reconfiguredKey`.
  */
-export type ReleaseField = 'status' | 'description' | 'released';
+export type ReleaseField = 'status' | 'description' | 'released' | 'capacity' | 'effort' | 'risk';
 
 /** One key to set, carrying the FIELD it was planned for. `expects` is `PropertySet`'s
  *  own field — `applyPropertyWrites` is what reads it, so it lives with the type that
@@ -145,6 +153,90 @@ export function releaseDescriptionWrites(
 }
 
 /**
+ * What the release declares it can take, typed into the header's own dialog.
+ *
+ * **Judged by `estimateValue`, the reader that COUNTS it** — the same predicate
+ * `capacityFigure` applies (`domain/releaseReadiness.ts`), so a value this dialog accepts
+ * is a value the strip beside it will compare. `40 pts` and a negative are refused here
+ * because they are refused there: a control that wrote a capacity its own figure then
+ * reported as unreadable would be manufacturing the red state it exists to clear.
+ *
+ * A refusal plans NOTHING rather than throwing, and it is the SECOND line of defence
+ * rather than the first: `editReleaseCapacity` (`view/release/releaseEdits.ts`) now gives
+ * `ValuePromptModal` a `validate` built on this same `estimateValue`, so an unreadable
+ * entry is refused IN THE DIALOG — a reason under the field, the typing kept, the modal
+ * still open — before it ever reaches this planner. This function still refuses one on its
+ * own, because it is exported and reachable from anywhere a caller hands it a raw string,
+ * and a planner that trusted its one caller's dialog would silently swallow the day a
+ * second caller forgot to.
+ *
+ * The no-op test is NUMERIC, never textual: `40` and `40.0` are one capacity, and a
+ * string comparison would rewrite the note for a spelling nobody sees. Same trade the
+ * released date makes by comparing against `formatCivil`.
+ *
+ * **And what LANDS is the number, never the string that was typed.** `setOwn` coerces
+ * nothing, so returning `trimmed` would put `capacity: "40"` on a note beside the numbers a
+ * hand-authored vault and the estimation view both write — one property, two types, and an
+ * Obsidian Bases numeric filter or sort silently drops whichever half it cannot read. The
+ * plugin's own figures survive either way (`estimateValue` parses a string too), which is
+ * exactly why nothing on this screen would have shown it.
+ */
+export function releaseCapacityWrites(file: TFile, key: string, current: number | null, entry: string): ReleaseWrite[] {
+	const trimmed = entry.trim();
+	if (trimmed === '') return current === null ? [] : fieldWrite(file, 'capacity', key, null);
+	const value = estimateValue(trimmed);
+	if (value === null) return [];
+	if (current !== null && current === value) return [];
+	return fieldWrite(file, 'capacity', key, value);
+}
+
+/**
+ * A member's effort, planned from the release screen — the first write this view makes to
+ * a note that is not the release it is showing.
+ *
+ * **No `requiresType`.** The three release planners above pin `RELEASE_TYPE` because their
+ * note is a release and a retype between the menu and the pick is a window nothing
+ * upstream can see. A member is ordinary work of any type on either ladder, so there is no
+ * one name to pin — and the gate's own refusal is what stands here instead: a batch naming
+ * a note the base did not return is refused whole, which is the guarantee that actually
+ * matters for a row drawn from the base's own results.
+ *
+ * `current` is the RAW frontmatter value, because that is what the row carries and what
+ * the criterion beside it reads. Judged by `estimateValue` for {@link
+ * releaseCapacityWrites}'s own reason: a value this control accepts must be a value the
+ * figure beside it will sum, or the chip would manufacture the red state it exists to
+ * clear. What LANDS is the number for that function's other reason — one property must not
+ * end up half numbers and half strings.
+ */
+export function memberEffortWrites(file: TFile, key: string, current: unknown, entry: string): ReleaseWrite[] {
+	const trimmed = entry.trim();
+	const held = estimateValue(current);
+	if (trimmed === '') return held === null ? [] : memberWrite(file, 'effort', key, null);
+	const value = estimateValue(trimmed);
+	if (value === null) return [];
+	if (held !== null && held === value) return [];
+	return memberWrite(file, 'effort', key, value);
+}
+
+/**
+ * A member's risk level: the picked value, or null to take the key off.
+ *
+ * `sameValue` for the no-op, case-insensitively — the rule every pick in this plugin
+ * keeps, and the reason the menu's checkmark asks this planner rather than comparing
+ * beside it.
+ */
+export function memberRiskWrites(file: TFile, key: string, current: string | null, pick: string | null): ReleaseWrite[] {
+	if (pick === null && current === null) return [];
+	if (pick !== null && current !== null && sameValue(current, pick)) return [];
+	return memberWrite(file, 'risk', key, pick);
+}
+
+/** {@link fieldWrite} without the release's type pin — see {@link memberEffortWrites}. */
+function memberWrite(file: TFile, role: ReleaseField, key: string, value: string | number | null): ReleaseWrite[] {
+	return key === '' ? [] : [{ file, sets: [{ key, value, role }] }];
+}
+
+/**
  * Whether a batch names a key the CURRENT settings no longer give this view to edit — the
  * question `ReleaseView.applyRelease` asks before it hands anything to the gate.
  *
@@ -180,12 +272,14 @@ export function releaseDescriptionWrites(
  * Both are right; this one is loud.
  *
  * Answers the offending KEY rather than a flag, because the refusal names it: a reader told
- * only that something was wrong has to guess which of three editors to reopen.
+ * only that something was wrong has to guess which editor to reopen.
+ *
+ * **Takes the whole `ReleaseSettings` bag, not the three keys this function used to name.**
+ * Every existing caller already holds `this.settings` and passes it whole, so the widening
+ * costs nothing at a call site — it is what lets a fourth role (`capacity`) join `ROLE_KEYS`
+ * without a second parameter shape to keep in step with the first.
  */
-export function reconfiguredKey(
-	settings: { statusKey: string; descriptionKey: string; releasedDateKey: string },
-	writes: ReleaseWrite[],
-): string | null {
+export function reconfiguredKey(settings: ReleaseSettings, writes: ReleaseWrite[]): string | null {
 	for (const write of writes)
 		for (const set of write.sets) if (set.key !== settings[ROLE_KEYS[set.role]]) return set.key;
 	return null;
@@ -195,6 +289,9 @@ const ROLE_KEYS = {
 	status: 'statusKey',
 	description: 'descriptionKey',
 	released: 'releasedDateKey',
+	capacity: 'capacityKey',
+	effort: 'estimateKey',
+	risk: 'riskKey',
 } as const;
 
 /**
