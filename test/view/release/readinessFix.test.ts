@@ -2,7 +2,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import { en } from '../../../src/i18n/en';
 import { drawFixNote } from '../../../src/view/release/readinessFix';
-import { Notice, TFile } from '../../helpers/obsidian-mock';
+import { Modal, Notice, TFile } from '../../helpers/obsidian-mock';
 import { button, makeReleaseView, mountRelease, RELEASE_CONFIG, releaseScreen, scopeVault } from '../../helpers/release';
 import { flush, submitPrompt, useViewHarness } from '../../helpers/view';
 
@@ -145,6 +145,45 @@ describe('the capacity figure’s own fix buttons', () => {
 
 		expect(vault.opened.map((o) => o.path)).toContain('0.9.md');
 		// No dialog opened, and no write happened — a plain navigation.
+		expect(vault.writeLog).toEqual([]);
+	});
+
+	/**
+	 * **The finding this pins**: `editReleaseCapacity` used to hand `40 pts` straight to
+	 * `releaseCapacityWrites`, which correctly plans nothing for a value its own figure
+	 * would not count — and the dialog closed anyway, on a confirm that recorded nothing
+	 * and said nothing. The fix is `ValuePromptModal`'s own `validate`, asked with the same
+	 * `estimateValue` the strip counts a capacity with, so the reader sees why nothing was
+	 * kept instead of a closed dialog and an unchanged strip.
+	 */
+	it('refuses a capacity its own figure would not count, in the dialog, and writes nothing', async () => {
+		const { view, vault } = releaseScreen({ capacity: undefined });
+		button(view, '.pbl-rel-capacity-fix').click();
+		await flush();
+		submitPrompt({ title: '40 pts' });
+		await flush();
+
+		// Still open — a refused submit does not close the modal, unlike a successful one.
+		const modal = Modal.lastOpened;
+		expect(modal).not.toBeNull();
+		expect(modal!.contentEl.querySelector('.pbl-modal-error')?.textContent).toBe(en['release.scope.capacityInvalid']);
+		// The reader's typing is still there, not cleared out from under them.
+		expect(modal!.contentEl.querySelector('input')?.value).toBe('40 pts');
+		expect(vault.fm('0.9.md').capacity).toBeUndefined();
+		expect(vault.writeLog).toEqual([]);
+	});
+
+	it('refuses a negative capacity the same way', async () => {
+		const { view, vault } = releaseScreen({ capacity: undefined });
+		button(view, '.pbl-rel-capacity-fix').click();
+		await flush();
+		submitPrompt({ title: '-1' });
+		await flush();
+
+		expect(Modal.lastOpened?.contentEl.querySelector('.pbl-modal-error')?.textContent).toBe(
+			en['release.scope.capacityInvalid'],
+		);
+		expect(vault.fm('0.9.md').capacity).toBeUndefined();
 		expect(vault.writeLog).toEqual([]);
 	});
 });

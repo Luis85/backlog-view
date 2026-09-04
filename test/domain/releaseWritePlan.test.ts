@@ -155,16 +155,22 @@ describe('releaseCapacityWrites', () => {
 });
 
 describe('the keys this view may write', () => {
-	const settings = releaseSettingsWith({ statusKey: 'status', descriptionKey: 'summary', releasedDateKey: 'released' });
+	const settings = releaseSettingsWith({
+		statusKey: 'status',
+		descriptionKey: 'summary',
+		releasedDateKey: 'released',
+		capacityKey: 'capacity',
+	});
 	const write = (role: ReleaseField, key: string): ReleaseWrite[] => [
 		{ file: file, sets: [{ key, value: 'x', role }], requiresType: 'Release' },
 	];
 
-	it('accepts each of the three roles the release screen edits', () => {
+	it('accepts each of the four roles the release screen edits', () => {
 		const roles: [ReleaseField, string][] = [
 			['status', 'status'],
 			['description', 'summary'],
 			['released', 'released'],
+			['capacity', 'capacity'],
 		];
 		for (const [role, key] of roles) expect(reconfiguredKey(settings, write(role, key))).toBeNull();
 		expect(reconfiguredKey(settings, [])).toBeNull();
@@ -178,6 +184,16 @@ describe('the keys this view may write', () => {
 		const swapped = { ...settings, statusKey: 'summary', descriptionKey: 'status' };
 		expect(reconfiguredKey(swapped, write('status', 'status'))).toBe('status');
 		expect(reconfiguredKey(swapped, write('description', 'summary'))).toBe('summary');
+	});
+
+	it('refuses the capacity key too, once it has swapped with another role — the widened union', () => {
+		// The same corruption, asked of the role widening `reconfiguredKey` cost nothing at
+		// its one call site: the capacity dialog captured `capacity`, the reader swapped the
+		// capacity and released-date options while it was open, and `capacity` is now the
+		// RELEASED key. Submitting it would put the typed number on the release's date.
+		const swapped = { ...settings, capacityKey: 'released', releasedDateKey: 'capacity' };
+		expect(reconfiguredKey(swapped, write('capacity', 'capacity'))).toBe('capacity');
+		expect(reconfiguredKey(swapped, write('released', 'released'))).toBe('released');
 	});
 
 	it('refuses a key the settings no longer name — the captured key of a re-pointed option', () => {

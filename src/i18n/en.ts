@@ -2300,6 +2300,11 @@ export const en = {
 	'release.scope.capacityTitle': 'Capacity for {name}',
 	'release.scope.capacityPlaceholder': 'A number, in the unit this view is configured with',
 	'release.scope.capacitySave': 'Set capacity',
+	/** The dialog's own refusal — `estimateValue`'s predicate, spelled for a reader typing
+	 *  into a box rather than reading a figure: `40 pts` and `-1` are the two shapes it
+	 *  refuses, and this is what tells the reader why nothing was recorded, in the dialog,
+	 *  before the undo slot would have been spent on nothing. */
+	'release.scope.capacityInvalid': 'Enter a number of 0 or more',
 	'release.scope.doubleCount': {
 		one: '{count} member may double count',
 		other: '{count} members may double count',

@@ -154,9 +154,14 @@ export function releaseDescriptionWrites(
  * because they are refused there: a control that wrote a capacity its own figure then
  * reported as unreadable would be manufacturing the red state it exists to clear.
  *
- * A refusal plans NOTHING rather than throwing — the dialog validates before it submits
- * (`SchedulePromptModal`'s `validate`), so this is the second half of one rule and not a
- * silent swallow.
+ * A refusal plans NOTHING rather than throwing, and it is the SECOND line of defence
+ * rather than the first: `editReleaseCapacity` (`view/release/releaseEdits.ts`) now gives
+ * `ValuePromptModal` a `validate` built on this same `estimateValue`, so an unreadable
+ * entry is refused IN THE DIALOG — a reason under the field, the typing kept, the modal
+ * still open — before it ever reaches this planner. This function still refuses one on its
+ * own, because it is exported and reachable from anywhere a caller hands it a raw string,
+ * and a planner that trusted its one caller's dialog would silently swallow the day a
+ * second caller forgot to.
  *
  * The no-op test is NUMERIC, never textual: `40` and `40.0` are one capacity, and a
  * string comparison would rewrite the note for a spelling nobody sees. Same trade the

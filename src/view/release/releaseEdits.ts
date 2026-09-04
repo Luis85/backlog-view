@@ -10,6 +10,7 @@ import {
 	ReleaseWrite,
 } from '../../domain/releaseWritePlan';
 import { formatCivil } from '../../domain/timeline';
+import { estimateValue } from '../../domain/releaseReadiness';
 import { SchedulePromptModal, ValuePromptModal } from '../../ui/prompts';
 import { showMenuForClick } from '../interactions/menu';
 import { openTextPrompt } from '../../ui/textPrompt';
@@ -239,6 +240,12 @@ export function editReleaseReleased(view: ReleaseView, release: ReleaseRow): voi
  * An UNREADABLE capacity reaches this function's callers as `null`, exactly as an absent one
  * does — and that is why this dialog is offered only for the absent case: a reader who
  * opened it on an unreadable value could not tell "leave it empty" from "it already is".
+ *
+ * **A non-blank entry the strip could not count is refused HERE, in the dialog, not
+ * silently dropped by the planner.** `validate` asks `estimateValue` — the same reader
+ * `capacityFigure` counts a capacity with — so `40 pts` and a negative stay open with a
+ * reason under the field and the reader's typing in place, rather than closing on a
+ * confirm that wrote nothing and spent no undo slot but told the reader nothing either.
  */
 export function editReleaseCapacity(view: ReleaseView, release: ReleaseRow, capacity: number | null): void {
 	const key = view.settings.capacityKey;
@@ -248,6 +255,7 @@ export function editReleaseCapacity(view: ReleaseView, release: ReleaseRow, capa
 		placeholder: t('release.scope.capacityPlaceholder'),
 		ctaLabel: t('release.scope.capacitySave'),
 		known: [],
+		validate: (entry) => (estimateValue(entry) === null ? t('release.scope.capacityInvalid') : null),
 		onClosed: () => focusControl(view, CAPACITY_FIX, OPEN_BUTTON),
 		onSubmit: (value) =>
 			void save(view, releaseCapacityWrites(release.item.file, key, capacity, value), CAPACITY_FIX, OPEN_BUTTON),
