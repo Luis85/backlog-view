@@ -64,6 +64,9 @@ See [RELEASING.md](RELEASING.md) for how this file is kept in step with a releas
   to pick that person.
 - Switching the picked person in my work scrolls to what's next in their tree, instead of
   parking at the top.
+- A release's scope screen can set a member's effort and risk directly, from its own chip
+  or from the row menu — the first fields this view edits on a note other than the release
+  it is showing.
 
 ### Changed
 

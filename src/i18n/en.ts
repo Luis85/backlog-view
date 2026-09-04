@@ -2452,6 +2452,20 @@ export const en = {
 	 */
 	'release.scope.effortLabel': 'Effort',
 	'release.scope.riskLabel': 'Risk',
+	/**
+	 * The chip's own dialog (Task 8) — a plain number, judged by the same reader the
+	 * capacity dialog is (`estimateValue`), so a value this control accepts is a value the
+	 * header's own effort figure will sum.
+	 */
+	'release.scope.effortTitle': 'Effort for {name}',
+	'release.scope.effortPlaceholder': 'A number',
+	'release.scope.effortSave': 'Set effort',
+	/** The row menu's own two entries — the chip's own name repeated as an action, rather
+	 *  than the value it currently holds, which is what a MENU entry names everywhere else
+	 *  in this plugin (`menu.setRisk`, `menu.setPriority`). */
+	'release.scope.setEffort': 'Set effort',
+	'release.scope.setRisk': 'Set risk',
+	'release.scope.clearRisk': 'Clear risk',
 
 	/** `src/ui/newReleaseDialog.ts` — a plain-data leaf that knows nothing of property
 	 *  keys, so every one of its labels is its own key rather than a reuse of the index

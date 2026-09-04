@@ -129,3 +129,16 @@ span beside the count — three chips saying nothing three times is noise on exa
 that most needs signal, a first run where ✨ has bound the keys and nobody has written the
 risk vocabularies yet. The names ride the chip itself rather than the tooltip alone because
 the chip is a static, unfocusable `div`, which a tooltip reaches by pointer and nobody else.
+
+**Two of the three criteria's own keys stopped being read-only on 2026-09-04 (Task 8 of
+[[Release readiness]]), and the guarantee above is unchanged by it.** "Evaluating them
+writes nothing" is a claim about the CHECKLIST — the three verdict chips this note
+describes, still a pure read over `releaseReadiness`'s own walk. It was never a claim
+about the member's own properties, and two of those now have a write path: the scope
+tree's per-row Effort and Risk chips (`src/view/release/scopeChips.ts`, drawn read-only in
+Task 7) open a dialog and a menu respectively, planned by `memberEffortWrites` and
+`memberRiskWrites` (`src/domain/releaseWritePlan.ts`) and applied through
+`ReleaseView.applyRelease` — the same gate the release note's own status and description
+already went through. A member's effort or risk set this way is what the NEXT evaluation
+of this checklist reads; nothing here recomputes a verdict as a side effect of the write,
+because the redraw that follows every batch does that already.

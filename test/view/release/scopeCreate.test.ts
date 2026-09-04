@@ -146,14 +146,17 @@ describe('creating a child from a release scope row', () => {
 		expect(Notice.messages).toEqual([en['rank.parentGone']]);
 	});
 
-	it('offers one New entry per type the row may hold, and nothing that edits the row', () => {
+	it('offers one New entry per type the row may hold, and nothing that edits its hierarchy, state or placement', () => {
 		const { view } = mountFoldScope({ pick: 'Releases/0.8.md' });
 		// An `Epic` on the plan's ladder: its child rung is `Feature`, plus the extra types
-		// that hang from one. Whatever `childTypeChoices` answers, EVERY entry is a create —
-		// the whole of what this screen may do to a note that already exists is nothing.
+		// that hang from one. Whatever `childTypeChoices` answers, every one of THOSE
+		// entries is a create — `Set effort` and `Set risk` (Task 8) are the one narrower
+		// edit this screen now offers a MEMBER, and this fixture's config binds an estimate
+		// key, so `Passwordless sign-in.md` carries one too.
 		const menu = openMenu(view, 'Passwordless sign-in.md');
-		expect(menu.items.length).toBeGreaterThan(0);
-		expect(titles(menu).every((title) => title.startsWith('New '))).toBe(true);
+		const all = titles(menu);
+		expect(all.filter((title) => title.startsWith('New ')).length).toBeGreaterThan(0);
+		expect(all.filter((title) => !title.startsWith('New '))).toEqual(['Set effort']);
 	});
 
 	it('creates the child under the row, in this release, with a rank past its siblings', async () => {

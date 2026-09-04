@@ -1,13 +1,19 @@
-import { App, setTooltip } from 'obsidian';
+import { App, Menu, setTooltip } from 'obsidian';
+import type { ReleaseView } from './releaseView';
 import { t } from '../../i18n/t';
 import { ownValue, readString } from '../../domain/noteFields';
 import { estimateValue } from '../../domain/releaseReadiness';
 import { ReleaseSettings } from '../../domain/releaseOptions';
 import { ScopeRow } from '../../domain/scopeRows';
+import { memberEffortWrites, memberRiskWrites, ReleaseWrite } from '../../domain/releaseWritePlan';
+import { ValuePromptModal } from '../../ui/prompts';
+import { showMenuAtElement, showMenuForClick } from '../interactions/menu';
+import { TreeDraw } from '../scopeKeys';
 
 /**
  * The two values a member can be given from the release screen — its effort and its risk —
- * drawn as the tree's own chip and, in Task 8, opening the same writes the row menu does.
+ * drawn as the tree's own chip and, since Task 8, writing through the same two functions
+ * both the chip's click and the row menu call.
  *
  * **A CONTEXT row draws the cells and neither chip.** An excluded ancestor is scaffolding:
  * it is in no denominator and is never a write target, so a control on it would offer a
@@ -22,8 +28,12 @@ import { ScopeRow } from '../../domain/scopeRows';
  * the `App` and read `getFileCache(...)?.frontmatter`, the same door `releaseReadiness.ts`'s
  * `estimateOf` reads through, so this can never disagree with the figures the header sums.
  *
- * This task DRAWS and wires nothing: both buttons carry no click listener, and their
- * keyboard path (the row menu) is Task 8's.
+ * **One method per field, two inputs each** — the chip and the row menu — the root guide's
+ * "one move, N inputs" for this screen: `editMemberEffort` and `showMemberRiskMenu` are the
+ * whole of what either gesture does, so a chip's click and the row menu's own entry cannot
+ * come to plan a different write. The menu entries are not garnish: both chips are
+ * `tabindex="-1"` and the tree is one tab stop, so without them the two fields would be
+ * pointer-only.
  */
 export function drawReadinessChips(app: App, rowEl: HTMLElement, row: ScopeRow, settings: ReleaseSettings, riskChoices: string[]): void {
 	drawChip(rowEl, 'pbl-rel-effortcol', {
@@ -85,4 +95,158 @@ function effortText(app: App, row: ScopeRow, settings: ReleaseSettings): string 
 function riskText(app: App, row: ScopeRow, settings: ReleaseSettings): string | null {
 	const raw: unknown = ownValue(app.metadataCache.getFileCache(row.item.file)?.frontmatter, settings.riskKey);
 	return readString(raw);
+}
+
+/**
+ * The effort dialog — the chip's own click and the row menu's `Set effort` both call this
+ * and nothing else, so neither can come to plan a different write.
+ *
+ * **The KEY is captured here, with the value it belongs to, and never read again at submit**
+ * (the root guide's capture-before-the-await). `applyRelease` re-asks `reconfiguredKey`
+ * against the settings as they are AT APPLY TIME, so a `.base` re-pointed while the dialog
+ * is open refuses the write rather than landing it on another property.
+ *
+ * Not exported: both inputs that call it — the chip's own click (`wireReadinessChips`) and
+ * the row menu's `Set effort` (`addReadinessItems`) — live in this same file.
+ */
+function editMemberEffort(view: ReleaseView, row: ScopeRow): void {
+	const key = view.settings.estimateKey;
+	const current: unknown = ownValue(view.app.metadataCache.getFileCache(row.item.file)?.frontmatter, key);
+	new ValuePromptModal(view.app, {
+		title: t('release.scope.effortTitle', { name: row.item.title }),
+		fieldName: key,
+		placeholder: t('release.scope.effortPlaceholder'),
+		ctaLabel: t('release.scope.effortSave'),
+		known: [],
+		onClosed: () => focusChip(view, row, 'effort'),
+		onSubmit: (value) => void applyAndRefocus(view, memberEffortWrites(row.item.file, key, current, value), row, 'effort'),
+	}).open();
+}
+
+/**
+ * The risk menu — the chip's own click hands it a `MouseEvent` (`showMenuForClick`'s own
+ * anchor), the row menu's `Set risk` entry hands it that entry's own row element instead
+ * (`showMenuAtElement`'s), because a `Menu` built by `MenuItem.onClick` has no pointer of
+ * its own to anchor at. One function either way, so the two inputs cannot offer different
+ * values or disagree about which is checked.
+ *
+ * **The checkmark is asked of the PLAN** — an entry is checked exactly when picking it
+ * would write nothing — never a comparison written beside the plan. `Clear risk` is offered
+ * only where the note carries a readable value, the presence gate every removal in this
+ * plugin uses (`releaseEdits.ts`'s own `Clear status`): an action that would write nothing
+ * is not an action.
+ *
+ * Not exported, `editMemberEffort`'s own reason: both callers live in this file.
+ */
+function showMemberRiskMenu(view: ReleaseView, anchor: MouseEvent | HTMLElement, row: ScopeRow, riskChoices: string[]): void {
+	const key = view.settings.riskKey;
+	const current = riskText(view.app, row, view.settings);
+	const menu = new Menu();
+	for (const choice of riskChoices) {
+		const writes = memberRiskWrites(row.item.file, key, current, choice);
+		menu.addItem((mi) =>
+			mi
+				.setTitle(choice)
+				.setChecked(writes.length === 0)
+				.onClick(() => void applyAndRefocus(view, writes, row, 'risk')),
+		);
+	}
+	if (current !== null) {
+		menu.addSeparator();
+		menu.addItem((mi) =>
+			mi
+				.setTitle(t('release.scope.clearRisk'))
+				.setIcon('eraser')
+				.onClick(() => void applyAndRefocus(view, memberRiskWrites(row.item.file, key, current, null), row, 'risk')),
+		);
+	}
+	if (anchor instanceof HTMLElement) showMenuAtElement(menu, anchor);
+	else showMenuForClick(menu, anchor);
+}
+
+/**
+ * The row menu's own two entries — `scopeCreate.ts`'s `scopeMenu` calls this after its type
+ * entries and returns the built menu when EITHER half added something. Withheld whole on a
+ * CONTEXT row, which is what keeps a catalog row (always context here — it can never be a
+ * release member) from offering either without a second check for it.
+ *
+ * `rowEl` is `showMemberRiskMenu`'s own anchor for the `Set risk` entry — a `MenuItem`'s
+ * `onClick` carries no event to anchor a second menu at, so the row's own element is what
+ * the entry opens against instead.
+ */
+export function addReadinessItems(view: ReleaseView, menu: Menu, row: ScopeRow, riskChoices: string[], rowEl: HTMLElement): boolean {
+	if (row.context) return false;
+	let added = false;
+	if (view.settings.estimateKey !== '') {
+		added = true;
+		menu.addItem((mi) =>
+			mi
+				.setTitle(t('release.scope.setEffort'))
+				.setIcon('ruler')
+				.onClick(() => editMemberEffort(view, row)),
+		);
+	}
+	if (view.settings.riskKey !== '' && riskChoices.length > 0) {
+		added = true;
+		menu.addItem((mi) =>
+			mi
+				.setTitle(t('release.scope.setRisk'))
+				.setIcon('shield-alert')
+				.onClick(() => showMemberRiskMenu(view, rowEl, row, riskChoices)),
+		);
+	}
+	return added;
+}
+
+/**
+ * The chip's own delegated listener — ONE on `treeEl`, never per row
+ * (`src/view/CLAUDE.md`: a data update rebuilds rows without rebuilding listeners, so a
+ * captured item goes stale). The row is resolved by the enclosing `.pbl-row`'s `data-path`
+ * against `draw.rows`, never captured from the render that drew it.
+ *
+ * **Must not also open the note.** `wireRowOpen` (`scopeRow.ts`) already refuses to open a
+ * note for a click that began on ANY button inside the row — this chip included, since
+ * `drawChip` draws a real `<button>` — so nothing here has to repeat that guard.
+ *
+ * `settings` is read once per click rather than trusted from the closure alone: a chip only
+ * exists on screen because its field was configured when the tree was drawn, but the guard
+ * costs nothing and keeps this listener honest about the same gate `drawReadinessChips`
+ * draws by.
+ */
+export function wireReadinessChips(view: ReleaseView, draw: TreeDraw, settings: ReleaseSettings, riskChoices: string[]): void {
+	draw.treeEl.addEventListener('click', (evt) => {
+		const chipEl = evt.target instanceof Element ? evt.target.closest<HTMLElement>('.pbl-state-chip') : null;
+		if (!chipEl) return;
+		const field = chipEl.dataset.field;
+		if (field !== 'effort' && field !== 'risk') return;
+		if (field === 'effort' && settings.estimateKey === '') return;
+		if (field === 'risk' && settings.riskKey === '') return;
+		const path = chipEl.closest('.pbl-row')?.getAttribute('data-path');
+		const row = draw.rows.find((r) => r.item.file.path === path);
+		if (!row) return;
+		if (field === 'effort') editMemberEffort(view, row);
+		else showMemberRiskMenu(view, evt, row, riskChoices);
+	});
+}
+
+/** Apply the batch and put focus back on the chip that opened it — `releaseEdits.ts`'s own
+ *  `save`, over a per-ROW control rather than one per screen. */
+async function applyAndRefocus(view: ReleaseView, writes: ReleaseWrite[], row: ScopeRow, field: 'effort' | 'risk'): Promise<void> {
+	await view.applyRelease(writes);
+	focusChip(view, row, field);
+}
+
+/**
+ * The chip that opened the write, looked up FRESH after the await — never captured, since
+ * the write's own redraw replaces every element it drew. `releaseEdits.ts`'s `focusControl`
+ * is the shape this follows; there is one control per SCREEN there and one per ROW here, so
+ * the lookup matches on the row's own `data-path` plus the field rather than on a class
+ * alone.
+ */
+function focusChip(view: ReleaseView, row: ScopeRow, field: 'effort' | 'risk'): void {
+	const path = row.item.file.path;
+	const chip = Array.from(view.viewEl.querySelectorAll<HTMLElement>('.pbl-state-chip')).find(
+		(el) => el.dataset.field === field && el.closest('.pbl-row')?.getAttribute('data-path') === path,
+	);
+	chip?.focus({ preventScroll: true });
 }

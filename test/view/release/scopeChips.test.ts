@@ -1,10 +1,24 @@
 // @vitest-environment jsdom
 import { describe, expect, it } from 'vitest';
+import { Menu } from '../../helpers/obsidian-mock';
 import { releaseScreen, row, RELEASE_CONFIG, scopeVault } from '../../helpers/release';
-import { useViewHarness } from '../../helpers/view';
+import { flush, submitPrompt, useViewHarness } from '../../helpers/view';
 import { FakeVault } from '../../helpers/vault';
 
 useViewHarness();
+
+/** Right-click a row and hand back the menu it opened — `scopeCreate.test.ts`'s own
+ *  `openMenu`, over the same real listener the readiness entries join. */
+function openMenu(view: { viewEl: HTMLElement }, path: string): Menu {
+	Menu.forget();
+	const rowEl = row(view, path);
+	rowEl.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, cancelable: true }));
+	if (!Menu.lastShown) throw new Error(`no menu opened on ${path}`);
+	return Menu.lastShown;
+}
+
+const titles = (menu: Menu): string[] => menu.items.map((item) => item.titleText);
+const checkedTitles = (menu: Menu): string[] => menu.items.filter((item) => item.checked).map((item) => item.titleText);
 
 /**
  * A member carrying `effort` and one carrying none — `scopeVault()`'s own `M1.md`/`M2.md`
@@ -82,5 +96,95 @@ describe('the readiness chips', () => {
 			expect(chip.tagName).toBe('BUTTON');
 			expect(chip.getAttribute('tabindex')).toBe('-1');
 		}
+	});
+});
+
+/**
+ * A member carrying a risk and one carrying none — `scopeVault()`'s own `M1.md`/`M2.md`
+ * carry no risk value at all ("draws no risk chip where there is no value to offer" above
+ * states that as the fixture's own invariant), so this file's own small vault is what
+ * supplies the readiness suite a value to check and a value to offer no clear on.
+ */
+function riskVault(): FakeVault {
+	const vault = new FakeVault();
+	vault.addFile('M1.md', { frontmatter: { type: 'PBI', order: 1, release: '[[0.9]]', risk: 'High' } });
+	vault.addFile('M2.md', { frontmatter: { type: 'PBI', order: 2, release: '[[0.9]]' } });
+	return vault;
+}
+
+describe('writing a member’s readiness values', () => {
+	describe('effort', () => {
+		it('writes what the chip’s dialog was given', async () => {
+			const { view, vault } = releaseScreen({});
+			row(view, 'M2.md').querySelector<HTMLElement>('.pbl-rel-effortcol .pbl-state-chip')!.click();
+			await flush();
+			submitPrompt('8');
+			await flush();
+
+			expect(vault.fm('M2.md').effort).toBe('8');
+		});
+
+		it('is reachable from the row menu too, through the same method', async () => {
+			const { view, vault } = releaseScreen({});
+			const menu = openMenu(view, 'M2.md');
+			menu.item('Set effort')!.click();
+			submitPrompt('8');
+			await flush();
+
+			expect(vault.fm('M2.md').effort).toBe('8');
+		});
+	});
+
+	describe('risk', () => {
+		it('checks the entry that would write nothing', () => {
+			const { view } = releaseScreen({}, riskVault());
+			row(view, 'M1.md').querySelector<HTMLElement>('.pbl-rel-riskcol .pbl-state-chip')!.click();
+
+			// `M1.md` carries `risk: High` (`riskVault`, above) — the one value observed, so
+			// it is also the whole of `riskChoices` and the one entry the plan writes
+			// nothing for.
+			expect(checkedTitles(Menu.lastShown!)).toEqual(['High']);
+		});
+
+		it('offers no clear on a member carrying nothing', () => {
+			const { view } = releaseScreen({}, riskVault());
+			row(view, 'M2.md').querySelector<HTMLElement>('.pbl-rel-riskcol .pbl-state-chip')!.click();
+
+			expect(titles(Menu.lastShown!)).not.toContain('Clear risk');
+		});
+
+		it('clears the key on a member that carries one', async () => {
+			const { view, vault } = releaseScreen({}, riskVault());
+			row(view, 'M1.md').querySelector<HTMLElement>('.pbl-rel-riskcol .pbl-state-chip')!.click();
+			Menu.lastShown!.item('Clear risk')!.click();
+			await flush();
+
+			expect(vault.fm('M1.md').risk).toBeUndefined();
+		});
+
+		it('writes what the row menu’s entry picks, through the same method the chip uses', async () => {
+			const { view, vault } = releaseScreen({}, riskVault());
+			const rowMenu = openMenu(view, 'M2.md');
+			rowMenu.item('Set risk')!.click();
+			// `Set risk` opens a SECOND menu — the identical one the chip opens — since a row
+			// menu entry carries no pointer of its own to anchor a submenu at.
+			Menu.lastShown!.item('High')!.click();
+			await flush();
+
+			expect(vault.fm('M2.md').risk).toBe('High');
+		});
+	});
+});
+
+describe('a context row’s menu', () => {
+	it('has no readiness entries, and no chips either', () => {
+		const { view } = releaseScreen({}, contextVault());
+
+		expect(row(view, 'E.md').querySelector('.pbl-rel-effortcol .pbl-state-chip')).toBeNull();
+		expect(row(view, 'E.md').querySelector('.pbl-rel-riskcol .pbl-state-chip')).toBeNull();
+
+		const menu = openMenu(view, 'E.md');
+		expect(titles(menu)).not.toContain('Set effort');
+		expect(titles(menu)).not.toContain('Set risk');
 	});
 });

@@ -10,21 +10,26 @@ import { flush, key, useViewHarness } from '../helpers/view';
 useViewHarness();
 
 /**
- * **The claim this file checks has been narrowed twice.** It was *this view writes
+ * **The claim this file checks has been narrowed three times.** It was *this view writes
  * nothing*; Task 5 of "releases own their creation" made it *creates notes and its own
- * config, never edits a note that already exists*; and
- * [[Editing a release from its own screen]] (2026-08-29) made it **creates release notes
- * and its own config, edits the RELEASE NOTE it is showing, and writes nothing else** — a
- * status pick and a description are edits to a note that already exists, and they were
- * asked for.
+ * config, never edits a note that already exists*; [[Editing a release from its own
+ * screen]] (2026-08-29) made it *creates release notes and its own config, edits the
+ * release note it is showing, and writes nothing else* — a status pick and a description
+ * are edits to a note that already exists, and they were asked for; and Task 8
+ * (2026-09-04) made it **creates notes and its own config, edits the release note it is
+ * showing, edits a member's readiness values, and writes nothing else** — the scope
+ * tree's own effort and risk chips are the second kind of note this view edits.
  *
  * So what this file states is no longer a ban on the edit path. It is the narrower,
  * still-load-bearing half of it: **none of the ordinary gestures below writes anything.**
  * Opening a release, walking its rows, right-clicking one, going back — the whole of what
- * a reader does that is not an edit — reaches no writer and no creator. The two gestures
- * that DO write are driven in `test/view/release/releaseEdits.test.ts`, which asserts what
- * they write and, more to the point, what they do not: the release note alone, never a
- * member.
+ * a reader does that is not an edit — reaches no writer and no creator; the gesture script
+ * presses neither a readiness chip nor its row menu entry, so this file says nothing
+ * about them either way. The two gestures that write the RELEASE note are driven in
+ * `test/view/release/releaseEdits.test.ts`, which asserts what they write and, more to the
+ * point, what they do not: the release note alone, never a member. The two that write a
+ * MEMBER's readiness values are driven in `test/view/release/scopeChips.test.ts`, the
+ * identical asymmetry one note over.
  *
  * That makes `applyPropertyWrites` a spy on a PERMITTED call here, which is exactly the
  * reading the docblock below already insisted on for every assertion in this file: these

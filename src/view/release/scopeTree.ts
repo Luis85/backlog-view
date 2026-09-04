@@ -252,8 +252,12 @@ function drawRow(view: ReleaseView, release: ReleaseRow, treeEl: HTMLElement, ro
  * Unconfigured whole on no risk key, matching `drawReadinessChips`'s own gate: a walk over
  * every member's frontmatter for a key this view never reads would be work spent to answer
  * a question the chip has already refused.
+ *
+ * **Exported since Task 8.** `renderScope.ts` needs the identical list to wire the risk
+ * chip's menu and the row menu's `Set risk` entry — the same vocabulary the tree was drawn
+ * against, not a second walk that could answer differently.
  */
-function computeRiskChoices(view: ReleaseView, rows: ScopeRow[]): string[] {
+export function computeRiskChoices(view: ReleaseView, rows: ScopeRow[]): string[] {
 	const settings = view.settings;
 	if (settings.riskKey === '') return [];
 	const values = new Set<string>();

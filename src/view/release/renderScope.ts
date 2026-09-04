@@ -8,11 +8,12 @@ import { BacklogSettings } from '../../domain/settings';
 import { WorkflowKind, workflowStateInfo } from '../../domain/board';
 import { guidanceShell } from '../render/emptyStates';
 import { renderReleaseInit } from './initControl';
-import { drawScopeTree, effectiveHideDone } from './scopeTree';
+import { computeRiskChoices, drawScopeTree, effectiveHideDone } from './scopeTree';
 import { rowsAfterHideDone } from '../../domain/scopeRows';
 import { drawScopeToolbar } from './scopeToolbar';
 import { wireScopeKeys } from '../scopeKeys';
 import { wireScopeCreate } from './scopeCreate';
+import { wireReadinessChips } from './scopeChips';
 import { drawReleaseActions } from './releaseClose';
 import { drawReadiness, drawReadinessFigures } from './renderReadiness';
 import { releaseReadiness, ReleaseReadiness } from '../../domain/releaseReadiness';
@@ -39,13 +40,15 @@ import { RELEASE_FOLD } from '../viewState';
  * the second step, handing it `RELEASE_FOLD` and this release's own path as its `scope`.
  * One-directional edges from here rather than a cycle between the two tree modules.
  *
- * **Nothing here writes a note, and one thing this WIRES does.** Nothing in this module
+ * **Nothing here writes a note, and two things this WIRES do.** Nothing in this module
  * touches the vault: the back control sets view state, a row's click opens a note
  * (`scopeTree.ts`), and the `noMembership` empty state's own ✨ ({@link renderReleaseInit})
  * only binds this view's own config — see that function for why it writes no note either.
- * The third wiring step below, `wireScopeCreate` (`scopeCreate.ts`), is the exception and
- * the only one: it CREATES a note from a row's menu, which is the one write this screen
- * offers and still not an edit of a note that already exists.
+ * The third wiring step below, `wireScopeCreate` (`scopeCreate.ts`), CREATES a note from a
+ * row's menu — the one write this screen offered until Task 8, and still not an edit of a
+ * note that already exists. The fourth, `wireReadinessChips` (`scopeChips.ts`), is the
+ * exception to THAT: a chip's click or its row menu entry edits a MEMBER's own effort or
+ * risk, the first note this screen edits that is not the release it is showing.
  *
  * `release` is a parameter rather than `scope.release` read here, because the caller has
  * already ruled on it — a screen is chosen by whether the pick still names a release, and
@@ -105,11 +108,17 @@ export function renderScope(
 	}
 	const draw = drawScopeTree(view, release, scope.rows);
 	wireScopeKeys(view, draw.treeEl, { prefix: RELEASE_FOLD, path: release.path }, draw);
+	// The risk vocabulary the tree was DRAWN against — `drawScopeTree`'s own walk, computed
+	// once and handed to both wiring steps below rather than re-derived by either, so a
+	// chip's menu and the row menu's `Set risk` can never offer a different list.
+	const riskChoices = computeRiskChoices(view, rowsAfterHideDone(scope.rows, hideDone));
 	// The third step, for `wireScopeKeys`' own reason: this module already holds the draw
 	// and the settings, so the row menu is wired from here rather than by `scopeTree.ts`
-	// importing a writer back. It is the one write this screen offers, and it creates a
-	// note rather than editing one — see `scopeCreate.ts`.
-	wireScopeCreate(view, release, planSettings, draw);
+	// importing a writer back.
+	wireScopeCreate(view, release, planSettings, draw, riskChoices);
+	// The fourth step, since Task 8: the readiness chips' own click, which is the second
+	// write this screen offers — a member's effort and risk, never the release note.
+	wireReadinessChips(view, draw, view.settings, riskChoices);
 }
 
 /**
