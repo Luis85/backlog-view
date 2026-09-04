@@ -105,6 +105,20 @@ button.pbl-twisty-leaf {
 	min-inline-size: 22px;
 }
 
+/* The effort and risk chips, drawn between the state chip and the rollup (`scopeChips.ts`).
+   Fixed widths, not the state cell's shrink-to-content rule: that cell holds at most one
+   chip whose own value varies wildly in length, while these two sit in a straight column of
+   their own and must line up down the tree — a cell that grew or shrank with its chip would
+   walk the rollup after it sideways on every other row. The dashed "unset" look is
+   `.pbl-state-chip.pbl-state-unset` (`styles/columns.css`), reused rather than restated. */
+.pbl-rel-effortcol,
+.pbl-rel-riskcol {
+	flex: 0 0 auto;
+	display: flex;
+	justify-content: flex-end;
+	inline-size: 64px;
+}
+
 /* The scope screen's own toolbar (`scopeToolbar.ts`), between the header and the scroller
    so it never scrolls away — drawn and looked at in the harness before this rule existed,
    the same way this file's own header records for the rest of it. `.pbl-rel-spacer` is

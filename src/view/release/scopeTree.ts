@@ -3,10 +3,12 @@ import type { ReleaseView } from './releaseView';
 import { t } from '../../i18n/t';
 import { ReleaseRow } from '../../domain/releases';
 import { childRows, rowsAfterHideDone, ScopeRow, siblingPlaces, visibleRows } from '../../domain/scopeRows';
+import { riskValuesOf } from '../../domain/releaseReadiness';
 import { drawIcon } from '../render/icons';
 import { foldedPaths, scopeFlag, setAllFolds, setScopeFlag, toggleFold } from '../scopeFolds';
 import { TreeDraw } from '../scopeKeys';
 import { drawScopeBadge, drawScopeStateChip, wireRowOpen } from '../scopeRow';
+import { drawReadinessChips } from './scopeChips';
 import { RELEASE_FOLD } from '../viewState';
 import { uniqueElementId } from '../selection';
 
@@ -143,6 +145,12 @@ export function drawScopeTree(view: ReleaseView, release: ReleaseRow, rows: Scop
 	// reached by lookup, never by scanning the DOM for it, and `scopeKeys.ts`'s own
 	// selection moves on every arrow key rather than once per render.
 	const rowEls = new Map<string, HTMLElement>();
+	// Computed ONCE here, never per row: a per-row union would re-walk the members on every
+	// row drawn. Over `afterHide` (hide-done applied, folding not) rather than `visible`, so
+	// a folded-away member's risk value still keeps the column offered on the rows left on
+	// screen — a column that could vanish as a side effect of a collapse would be exactly
+	// the columns-shift-per-row hazard the tree's own layout rule refuses.
+	const riskChoices = computeRiskChoices(view, afterHide);
 	// The walk hands back each row joined to its own place, rather than a parallel array this
 	// loop would index into — an index lookup would need a fallback for a case that cannot
 	// happen, which is the unreachable branch this module's own header argues against.
@@ -154,6 +162,7 @@ export function drawScopeTree(view: ReleaseView, release: ReleaseRow, rows: Scop
 				count,
 				hasKids: withKids.has(row.item.file.path),
 				open: !folded.has(row.item.file.path),
+				riskChoices,
 			}),
 		);
 	}
@@ -171,6 +180,11 @@ interface RowPlace {
 	count: number;
 	hasKids: boolean;
 	open: boolean;
+	/** The risk vocabulary this draw offers a chip against — one array, shared by every row,
+	 *  computed once in `drawScopeTree` rather than re-walked per row. Carried here rather
+	 *  than as a sixth `drawRow` parameter: that function is already at the `max-params`
+	 *  budget, which is `RowPlace`'s own reason for existing. */
+	riskChoices: string[];
 }
 
 /** Returns the row's own element — `drawScopeTree`'s way of building its path → element
@@ -224,8 +238,32 @@ function drawRow(view: ReleaseView, release: ReleaseRow, treeEl: HTMLElement, ro
 	rowEl.createDiv({ cls: 'pbl-row-spacer' });
 
 	drawScopeStateChip(rowEl, row, 'pbl-rel-statecol');
+	drawReadinessChips(view.app, rowEl, row, view.settings, place.riskChoices);
 	drawRollup(rowEl, row, release);
 	return rowEl;
+}
+
+/**
+ * The union `drawReadinessChips` gates the risk column's OFFER on: what this vault has
+ * declared critical or addressed, plus whatever value the members themselves actually
+ * carry — the same "declared or observed" shape the roadmap's own horizon vocabulary
+ * keeps, so a value nobody named in the options is still enough to draw the column.
+ *
+ * Unconfigured whole on no risk key, matching `drawReadinessChips`'s own gate: a walk over
+ * every member's frontmatter for a key this view never reads would be work spent to answer
+ * a question the chip has already refused.
+ */
+function computeRiskChoices(view: ReleaseView, rows: ScopeRow[]): string[] {
+	const settings = view.settings;
+	if (settings.riskKey === '') return [];
+	const values = new Set<string>();
+	for (const value of settings.criticalRiskValues) values.add(value);
+	for (const value of settings.addressedRiskValues) values.add(value);
+	for (const row of rows) {
+		if (row.context) continue;
+		for (const value of riskValuesOf(view.app, row.item, settings).values) values.add(value);
+	}
+	return [...values];
 }
 
 /**

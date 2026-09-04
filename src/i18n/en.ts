@@ -2444,6 +2444,14 @@ export const en = {
 	 * already reuses that key for its own stated reason.
 	 */
 	'release.scope.rollup': '{done}/{total}',
+	/**
+	 * The two readiness values a member row can carry, drawn as its own chip beside the
+	 * state one (`scopeChips.ts`) — never re-spelled from `release.option.estimate` /
+	 * `release.option.risk`, which name the PROPERTY in the options panel ("Estimate
+	 * property", "Risk property") rather than the value a reader sees on a row.
+	 */
+	'release.scope.effortLabel': 'Effort',
+	'release.scope.riskLabel': 'Risk',
 
 	/** `src/ui/newReleaseDialog.ts` — a plain-data leaf that knows nothing of property
 	 *  keys, so every one of its labels is its own key rather than a reuse of the index

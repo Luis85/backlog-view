@@ -234,3 +234,16 @@ names. The context marker reuses
 `.pbl-outside-marker`'s STYLING and none of its sentence: that one says a row is outside the
 base's filter, which is false of every row here, since `releaseScope` skips an `outsideFilter`
 ancestor outright rather than keeping it as context.
+
+**The row's trailing strip gained two more cells beside the state chip** ([[Release
+readiness]]): `src/view/release/scopeChips.ts`'s `drawReadinessChips` draws
+`.pbl-rel-effortcol` and `.pbl-rel-riskcol`, each holding a `.pbl-state-chip` button reading
+the member's own effort and risk value — dashed where the property is bound and the note is
+silent, drawn but empty on a context row (the columnar-layout rule above applies to these two
+exactly as it does to the state chip), and absent whole where the property is unbound, or,
+for risk, where neither `criticalRiskValues`, `addressedRiskValues` nor any member's own
+value gives it anything to offer (`computeRiskChoices` in `scopeTree.ts`, built once per draw
+rather than per row). `scopeTree.ts` calls it after `drawScopeStateChip` and before the
+rollup, so the strip reads state, effort, risk, then the count. Both chips are drawn only —
+`tabindex="-1"`, no listener — until the row menu gives them a keyboard path and a write to
+open.

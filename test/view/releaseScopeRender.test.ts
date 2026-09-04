@@ -52,14 +52,20 @@ describe("a release's scope on screen", () => {
 	});
 
 	it('gives no row in the tree a state chip or a count', () => {
-		// This view binds no item state property at all, so a chip on a row could only ever
-		// be a number or a value derived from something the screen cannot read. The release's
-		// OWN status is a chip in the header, which is why this asks the tree rather than the
-		// container — an assertion over the whole screen would pass with the header's chip
-		// gone.
+		// Neither `F1.md` nor `F2.md` carries a status value, so `ownWorkflowReading` reads
+		// null for both and `drawScopeStateChip` draws nothing — the STATE cell stays empty
+		// whatever `stateProperty` is bound to. The release's OWN status is a chip in the
+		// header, which is why this asks the tree rather than the container — an assertion
+		// over the whole screen would pass with the header's chip gone.
+		//
+		// Scoped to `.pbl-rel-statecol` rather than every `.pbl-state-chip` in the tree since
+		// Task 7 (`scopeChips.ts`): F1 and F2 both draw a dashed, unset EFFORT chip — the
+		// same reused shell — because `estimateProperty` is bound and neither carries a
+		// value, which is a different column answering a different question from the one
+		// this test is about.
 		const { containerEl } = openScope();
 		const tree = containerEl.querySelector('.pbl-tree') as HTMLElement;
-		expect(tree.querySelectorAll('.pbl-state-chip')).toHaveLength(0);
+		expect(tree.querySelectorAll('.pbl-rel-statecol .pbl-state-chip')).toHaveLength(0);
 		expect(tree.querySelectorAll('.pbl-count')).toHaveLength(0);
 		// Named `.pbl-rel-status` rather than counting every `.pbl-state-chip` in the header:
 		// the readiness row draws that same chip shell too (2026-09-02), so a bare count here
