@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, expect, it } from 'vitest';
-import { button, refreshRelease, releaseScreen, row } from '../../helpers/release';
+import { button, refreshRelease, RELEASE_CONFIG, releaseScreen, row } from '../../helpers/release';
 import { useViewHarness } from '../../helpers/view';
 import { FakeVault } from '../../helpers/vault';
 import type { ReleaseView } from '../../../src/view/release/releaseView';
@@ -124,6 +124,28 @@ describe('drilling into a criterion', () => {
 		// more render.
 		expect(view.viewEl.querySelector('.pbl-rel-alldone')).not.toBeNull();
 		expect(row(view, 'M.md', { optional: true })).toBeNull();
+	});
+
+	/**
+	 * The risk vocabulary is computed over the WHOLE scope, never over the rows a narrowing
+	 * left standing. With neither list declared it is the observed values alone, so drilling
+	 * into another criterion would otherwise take the Risk chip off the rows still on screen
+	 * — a column that appears and vanishes as a side effect of a filter, which is the
+	 * columns-shift-per-row hazard the tree's own layout rule refuses.
+	 */
+	it('keeps the risk chip on a narrowed row, computing the vocabulary over the unnarrowed scope', () => {
+		const vault = new FakeVault();
+		vault.addFile('M1.md', { frontmatter: { type: 'PBI', release: '[[0.9]]', effort: 9, risk: 'High' } });
+		vault.addFile('M2.md', { frontmatter: { type: 'PBI', release: '[[0.9]]' } });
+		const config: Record<string, unknown> = { ...RELEASE_CONFIG, criticalRiskValues: '', addressedRiskValues: '' };
+		const { view } = releaseScreen({}, vault, config);
+		expect(row(view, 'M2.md').querySelector('.pbl-rel-riskcol .pbl-state-chip')).not.toBeNull();
+
+		// `M1.md` — the one member carrying a risk value — is exactly what the narrowing drops.
+		chip(view, 'estimated').click();
+
+		expect(row(view, 'M1.md', { optional: true })).toBeNull();
+		expect(row(view, 'M2.md').querySelector('.pbl-rel-riskcol .pbl-state-chip')).not.toBeNull();
 	});
 
 	it('offers no narrowing on a satisfied criterion', () => {

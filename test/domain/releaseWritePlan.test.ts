@@ -119,8 +119,11 @@ describe('releaseCapacityWrites', () => {
 	const file = { path: 'R.md' } as TFile;
 
 	it('writes the number the reader typed', () => {
+		// The NUMBER, never the string that was typed: the estimation view writes numbers and
+		// a hand-authored vault holds numbers, so a `'40'` here would leave one property
+		// mixed-typed and drop these notes out of any numeric Bases filter or sort.
 		expect(releaseCapacityWrites(file, 'capacity', null, ' 40 ')).toEqual([
-			{ file, sets: [{ key: 'capacity', value: '40', role: 'capacity' }], requiresType: 'Release' },
+			{ file, sets: [{ key: 'capacity', value: 40, role: 'capacity' }], requiresType: 'Release' },
 		]);
 	});
 
@@ -135,7 +138,7 @@ describe('releaseCapacityWrites', () => {
 		// `plans nothing for the value the note already holds` above never changes an
 		// existing capacity, only re-confirms or clears one.
 		expect(releaseCapacityWrites(file, 'capacity', 40, '55')).toEqual([
-			{ file, sets: [{ key: 'capacity', value: '55', role: 'capacity' }], requiresType: 'Release' },
+			{ file, sets: [{ key: 'capacity', value: 55, role: 'capacity' }], requiresType: 'Release' },
 		]);
 	});
 
@@ -220,8 +223,9 @@ describe('memberEffortWrites', () => {
 	const file = { path: 'M1.md' } as TFile;
 
 	it('writes the number, refuses what the criterion would not count, and clears on empty', () => {
+		// The NUMBER — `releaseCapacityWrites`' own reason, one planner over.
 		expect(memberEffortWrites(file, 'effort', null, '5')).toEqual([
-			{ file, sets: [{ key: 'effort', value: '5', role: 'effort' }] },
+			{ file, sets: [{ key: 'effort', value: 5, role: 'effort' }] },
 		]);
 		expect(memberEffortWrites(file, 'effort', null, '5 pts')).toEqual([]);
 		expect(memberEffortWrites(file, 'effort', null, '-2')).toEqual([]);

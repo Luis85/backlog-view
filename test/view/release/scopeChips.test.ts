@@ -121,7 +121,7 @@ describe('writing a member’s readiness values', () => {
 			submitPrompt('8');
 			await flush();
 
-			expect(vault.fm('M2.md').effort).toBe('8');
+			expect(vault.fm('M2.md').effort).toBe(8);
 		});
 
 		it('is reachable from the row menu too, through the same method', async () => {
@@ -131,7 +131,27 @@ describe('writing a member’s readiness values', () => {
 			submitPrompt('8');
 			await flush();
 
-			expect(vault.fm('M2.md').effort).toBe('8');
+			expect(vault.fm('M2.md').effort).toBe(8);
+		});
+
+		/**
+		 * The KEY is captured before the await and the VALUE is not: the member is re-read at
+		 * submit, `scopeCreate.ts`'s own rule for a prompt that outlives the model that opened
+		 * it. Without it, a note that moved while the dialog was open makes the reader's
+		 * retype of the value they SAW plan nothing at all — a silent drop of the one edit
+		 * they made.
+		 */
+		it('reads the member’s value at submit, never at open', async () => {
+			const { view, vault } = releaseScreen({}, effortVault());
+			row(view, 'M1.md').querySelector<HTMLElement>('.pbl-rel-effortcol .pbl-state-chip')!.click();
+			await flush();
+			// Out of band, while the dialog is open: the note moves off the 5 on screen.
+			vault.setFrontmatter('M1.md', { type: 'PBI', order: 1, release: '[[0.9]]', effort: 8 });
+			// The reader retypes the value they were shown.
+			submitPrompt('5');
+			await flush();
+
+			expect(vault.fm('M1.md').effort).toBe(5);
 		});
 	});
 
@@ -199,5 +219,43 @@ describe('a context row’s menu', () => {
 		const menu = openMenu(view, 'E.md');
 		expect(titles(menu)).not.toContain('Set effort');
 		expect(titles(menu)).not.toContain('Set risk');
+	});
+});
+
+/**
+ * The rule asked at the FORBIDDEN THING rather than at the two places that withhold the
+ * control. `scopeRows` walks THROUGH an `outsideFilter` ancestor rather than keeping it, so
+ * every row this tree draws is a base result and `ReleaseView`'s own gate predicate can
+ * never refuse one: a context row here is a NON-MEMBER, which is a fact the gate has no
+ * question about. So the refusal lives in `applyAndRefocus`, the one funnel both fields and
+ * both inputs pass through, and this drives a control no render produces — planted by hand,
+ * because a check that only holds for the paths somebody thought of is exactly the check
+ * the next path breaks.
+ */
+describe('a write aimed at a context row', () => {
+	/** Plant the chip `drawReadinessChips` refuses to draw, in the cell it does draw. */
+	function plantChip(view: { viewEl: HTMLElement }, path: string, field: 'effort' | 'risk'): HTMLElement {
+		const cell = row(view, path).querySelector<HTMLElement>(`.pbl-rel-${field}col`)!;
+		const chip = cell.createEl('button', { cls: 'pbl-state-chip', attr: { type: 'button' } });
+		chip.dataset.field = field;
+		return chip;
+	}
+
+	it('is refused, effort and risk alike, however the control got there', async () => {
+		const vault = contextVault();
+		vault.setFrontmatter('C.md', { type: 'PBI', order: 1, release: '[[0.9]]', parent: 'E', risk: 'High' });
+		const { view, vault: v } = releaseScreen({}, vault);
+
+		plantChip(view, 'E.md', 'effort').click();
+		await flush();
+		submitPrompt('8');
+		await flush();
+
+		plantChip(view, 'E.md', 'risk').click();
+		Menu.lastShown!.item('High')!.click();
+		await flush();
+
+		expect(v.fm('E.md').effort).toBeUndefined();
+		expect(v.fm('E.md').risk).toBeUndefined();
 	});
 });

@@ -120,7 +120,10 @@ export function renderScope(
 	}
 	// `filtered` was resolved right after `readiness`, above — see `criterionRows`' own
 	// docblock, below, for what it narrows to and when it clears.
-	const draw = drawScopeTree(view, release, filtered);
+	// `scope.rows` beside `filtered`: the tree DRAWS the narrowed set and derives its risk
+	// vocabulary from the whole scope — see `drawScopeTree`'s own `riskChoices` line for why
+	// a column must not appear and vanish with a filter.
+	const draw = drawScopeTree(view, release, filtered, scope.rows);
 	wireScopeKeys(view, draw.treeEl, { prefix: RELEASE_FOLD, path: release.path }, draw);
 	// The third step, for `wireScopeKeys`' own reason: this module already holds the draw
 	// and the settings, so the row menu is wired from here rather than by `scopeTree.ts`

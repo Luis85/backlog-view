@@ -2345,6 +2345,15 @@ export const en = {
 	'release.scope.riskValuesAddressed': 'Addressed values',
 	'release.scope.riskValuesHint': 'Comma-separated. The criterion needs both.',
 	'release.scope.riskValuesSave': 'Set risk values',
+	/** The dialog's own refusal. A criterion with either list empty is unconfigured exactly
+	 *  as if neither were, so a submit that leaves one blank writes two empty options and
+	 *  lands the reader back on the identical red note — the dead end this screen's fix
+	 *  buttons exist to remove, reached through the button meant to clear it. */
+	'release.scope.riskValuesRequired': 'Enter at least one value in each list',
+	/** The red note beside the chip row, which is NOT the dialog's title: every other red
+	 *  note on this screen states a problem, and a question in error red says what is wrong
+	 *  to nobody. The dialog it opens keeps `riskValuesTitle` as its own heading. */
+	'release.scope.riskValuesUnset': 'Risk values are not set',
 
 	/**
 	 * The summary strip's own label for the progress figure, read into
@@ -2464,6 +2473,17 @@ export const en = {
 	 */
 	'release.scope.effortLabel': 'Effort',
 	'release.scope.riskLabel': 'Risk',
+	/**
+	 * Each chip's accessible name, a whole sentence PER FIELD rather than `chip.set` /
+	 * `chip.change` with one of the two labels above spliced in. Those two take the COLUMN's
+	 * display name — the user's own word for a property, data this catalog never touches —
+	 * and feeding them catalog text builds a message out of two catalog pieces, which no
+	 * locale that inflects the noun after the verb can spell. The sentence is the unit.
+	 */
+	'release.scope.effortChipSet': 'Set effort',
+	'release.scope.effortChipChange': 'Change effort (currently {value})',
+	'release.scope.riskChipSet': 'Set risk',
+	'release.scope.riskChipChange': 'Change risk (currently {value})',
 	/**
 	 * The chip's own dialog (Task 8) — a plain number, judged by the same reader the
 	 * capacity dialog is (`estimateValue`), so a value this control accepts is a value the

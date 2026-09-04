@@ -15,10 +15,18 @@ import { TreeDraw } from '../scopeKeys';
  * drawn as the tree's own chip and, since Task 8, writing through the same two functions
  * both the chip's click and the row menu call.
  *
- * **A CONTEXT row draws the cells and neither chip.** An excluded ancestor is scaffolding:
- * it is in no denominator and is never a write target, so a control on it would offer a
- * write the gate refuses whole. The empty cell stays, because every column a row can draw
- * is drawn on every row or the columns after it shift per row (`src/view/CLAUDE.md`).
+ * **A CONTEXT row draws the cells and neither chip.** It is in no denominator and is never
+ * a write target: it renders, it parents, and that is all. The empty cell stays, because
+ * every column a row can draw is drawn on every row or the columns after it shift per row
+ * (`src/view/CLAUDE.md`).
+ *
+ * **The gate is NOT the backstop behind that, and reading it as one was a hole.** A context
+ * row on THIS screen is a non-member, not a note the base excluded — `scopeRows` walks
+ * THROUGH an `outsideFilter` ancestor rather than keeping it — so every row this tree draws
+ * is a base result and `ReleaseView`'s own `outsideFilter` predicate can never refuse one.
+ * The check is therefore at the forbidden thing instead: {@link applyAndRefocus}, the one
+ * funnel both fields and both inputs pass through, refuses a context row itself, so the two
+ * gates below decide what is DRAWN and a third input written next year is still refused.
  *
  * **An unset value draws a DASHED chip rather than nothing**, which is the tree's own rule
  * for risk and priority (`src/view/CLAUDE.md`'s label-chip section): absence here is an
@@ -82,9 +90,19 @@ function drawChip(rowEl: HTMLElement, columnClass: string, spec: ChipSpec): void
 	chipEl.setAttribute('aria-label', chipName(spec));
 }
 
-/** The action and the value it holds — the tree's own two chip names, both halves DATA. */
+/**
+ * The action and the value it holds, as a whole sentence per FIELD.
+ *
+ * Never `chip.set`/`chip.change` with the label above spliced in: that pair's `{label}` is
+ * the COLUMN's display name — the user's own word, data — and handing it catalog text
+ * assembles a message out of two catalog pieces, which is the one thing the i18n rule
+ * ("the sentence is the unit") exists to refuse. Four keys is what that costs.
+ */
 function chipName(spec: ChipSpec): string {
-	return spec.value === null ? t('chip.set', { label: spec.label }) : t('chip.change', { label: spec.label, value: spec.value });
+	if (spec.field === 'effort') {
+		return spec.value === null ? t('release.scope.effortChipSet') : t('release.scope.effortChipChange', { value: spec.value });
+	}
+	return spec.value === null ? t('release.scope.riskChipSet') : t('release.scope.riskChipChange', { value: spec.value });
 }
 
 function effortText(app: App, row: ScopeRow, settings: ReleaseSettings): string | null {
@@ -102,17 +120,21 @@ function riskText(app: App, row: ScopeRow, settings: ReleaseSettings): string | 
  * The effort dialog — the chip's own click and the row menu's `Set effort` both call this
  * and nothing else, so neither can come to plan a different write.
  *
- * **The KEY is captured here, with the value it belongs to, and never read again at submit**
- * (the root guide's capture-before-the-await). `applyRelease` re-asks `reconfiguredKey`
- * against the settings as they are AT APPLY TIME, so a `.base` re-pointed while the dialog
- * is open refuses the write rather than landing it on another property.
+ * **The KEY is captured here; the VALUE is read at SUBMIT**, and the two are opposite halves
+ * of one rule rather than an inconsistency. The capture-before-the-await rule is about the
+ * vocabulary that NAMES the write — a `.base` re-pointed while the dialog is open must not
+ * land the reader's text on a property they never saw, which `applyRelease` then re-asks
+ * through `reconfiguredKey` against the settings as they are at apply time. The member's own
+ * value is the opposite question: the prompt outlives the model that opened it
+ * (`scopeCreate.ts` re-reads its release for the same reason), so a note that moved while the
+ * box was open would otherwise make a retype of the value on screen plan NOTHING — the
+ * reader's one edit dropped in silence.
  *
  * Not exported: both inputs that call it — the chip's own click (`wireReadinessChips`) and
  * the row menu's `Set effort` (`addReadinessItems`) — live in this same file.
  */
 function editMemberEffort(view: ReleaseView, row: ScopeRow): void {
 	const key = view.settings.estimateKey;
-	const current: unknown = ownValue(view.app.metadataCache.getFileCache(row.item.file)?.frontmatter, key);
 	new ValuePromptModal(view.app, {
 		title: t('release.scope.effortTitle', { name: row.item.title }),
 		fieldName: key,
@@ -120,7 +142,14 @@ function editMemberEffort(view: ReleaseView, row: ScopeRow): void {
 		ctaLabel: t('release.scope.effortSave'),
 		known: [],
 		onClosed: () => focusChip(view, row, 'effort'),
-		onSubmit: (value) => void applyAndRefocus(view, memberEffortWrites(row.item.file, key, current, value), row, 'effort'),
+		// The member re-read HERE rather than above — see this function's own header.
+		onSubmit: (value) =>
+			void applyAndRefocus(
+				view,
+				memberEffortWrites(row.item.file, key, ownValue(view.app.metadataCache.getFileCache(row.item.file)?.frontmatter, key), value),
+				row,
+				'effort',
+			),
 	}).open();
 }
 
@@ -140,6 +169,13 @@ function editMemberEffort(view: ReleaseView, row: ScopeRow): void {
  * only where the note carries a readable value, the presence gate every removal in this
  * plugin uses (`releaseEdits.ts`'s own `Clear status`): an action that would write nothing
  * is not an action.
+ *
+ * **`current` is read when the menu is BUILT, and that is deliberate** — the opposite half
+ * of {@link editMemberEffort}'s own correction. Both entries and checkmarks are decided from
+ * one reading, so re-reading per pick would let the offer and the plan disagree about the
+ * same note; and a menu's lifetime is a click, not a reader typing into a box, so the window
+ * a stale value could survive is as narrow as every other menu in this plugin already lives
+ * with.
  */
 function addMemberRiskItems(view: ReleaseView, menu: Menu, row: ScopeRow, riskChoices: string[]): void {
 	const key = view.settings.riskKey;
@@ -245,9 +281,23 @@ export function wireReadinessChips(view: ReleaseView, draw: TreeDraw, settings: 
 	});
 }
 
-/** Apply the batch and put focus back on the chip that opened it — `releaseEdits.ts`'s own
- *  `save`, over a per-ROW control rather than one per screen. */
+/**
+ * Apply the batch and put focus back on the chip that opened it — `releaseEdits.ts`'s own
+ * `save`, over a per-ROW control rather than one per screen.
+ *
+ * **And refuse a CONTEXT row here, which is the whole of what keeps a member write off
+ * one.** This is the single funnel every input for either field passes through, so the rule
+ * is stated at the write rather than at the two places that withhold a control — the check
+ * that holds for a path not yet written, which is what the module header's own paragraph on
+ * the gate explains this cannot borrow from `ReleaseView`. Unreachable from the screen as it
+ * stands, so it says so to the console rather than to the reader: a Notice would be a
+ * sentence nobody can produce.
+ */
 async function applyAndRefocus(view: ReleaseView, writes: ReleaseWrite[], row: ScopeRow, field: 'effort' | 'risk'): Promise<void> {
+	if (row.context) {
+		console.error('Product Backlog: refused a readiness write aimed at a context row', row.item.file.path);
+		return;
+	}
 	await view.applyRelease(writes);
 	focusChip(view, row, field);
 }

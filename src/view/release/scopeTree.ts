@@ -138,12 +138,17 @@ export interface ScopeTreeDraw extends TreeDraw {
  * imports both tree modules) wires the keyboard as a second step, which is what keeps the
  * two release-tree modules a DAG rather than a cycle `npm run analyze` refuses.
  *
+ * `rows` is what this DRAWS — narrowed by an active criterion filter — and `unnarrowed` is
+ * the release's whole scope. Two lists rather than one because the risk vocabulary is a fact
+ * about the RELEASE and not about the rows a filter left standing: see the `riskChoices`
+ * line below.
+ *
  * Returns `ScopeTreeDraw`, not the bare `TreeDraw`: `wireScopeKeys` only asks for the
  * shared shape and is handed the wider object structurally, while `renderScope.ts` reads
  * `draw.riskChoices` straight off it for `wireScopeCreate` and `wireReadinessChips` —
  * computed exactly ONCE, here, rather than a second call re-walking the same rows.
  */
-export function drawScopeTree(view: ReleaseView, release: ReleaseRow, rows: ScopeRow[]): ScopeTreeDraw {
+export function drawScopeTree(view: ReleaseView, release: ReleaseRow, rows: ScopeRow[], unnarrowed: ScopeRow[]): ScopeTreeDraw {
 	// Named by the release, so a reader arriving at the tree hears which one it is. The
 	// name is vault content rather than text — it goes nowhere near the catalog.
 	// `tabindex="0"` makes the CONTAINER the tab stop — a composite widget's own rule
@@ -162,7 +167,8 @@ export function drawScopeTree(view: ReleaseView, release: ReleaseRow, rows: Scop
 	// control on `release.done.unconfigured` and the tree must withhold its EFFECT on the
 	// same gate, or a reader who turned hiding on for a release where progress works opens
 	// one where it does not and finds rows gone with nothing on screen to bring them back.
-	const afterHide = rowsAfterHideDone(rows, effectiveHideDone(view, release));
+	const hideDone = effectiveHideDone(view, release);
+	const afterHide = rowsAfterHideDone(rows, hideDone);
 	const withKids = childRows(afterHide);
 	const visible = visibleRows(afterHide, folded);
 	// Built WHILE drawing rather than queried from `treeEl` afterwards — the cost rule
@@ -171,11 +177,14 @@ export function drawScopeTree(view: ReleaseView, release: ReleaseRow, rows: Scop
 	// selection moves on every arrow key rather than once per render.
 	const rowEls = new Map<string, HTMLElement>();
 	// Computed ONCE here, never per row: a per-row union would re-walk the members on every
-	// row drawn. Over `afterHide` (hide-done applied, folding not) rather than `visible`, so
-	// a folded-away member's risk value still keeps the column offered on the rows left on
-	// screen — a column that could vanish as a side effect of a collapse would be exactly
-	// the columns-shift-per-row hazard the tree's own layout rule refuses.
-	const riskChoices = computeRiskChoices(view, afterHide);
+	// row drawn. Over the UNNARROWED scope with hide-done applied — never `rows`, which since
+	// Task 11 is whatever a criterion filter left standing, and never `visible`, which a fold
+	// has thinned. Either would let the Risk column vanish from the rows still on screen as a
+	// side effect of a filter or a collapse, which is exactly the columns-shift-per-row hazard
+	// the tree's own layout rule refuses. (A narrowing suspends hide-done, so the two terms
+	// never both apply — `effectiveHideDone`'s own third conjunct — and this still asks both
+	// rather than resting on that.)
+	const riskChoices = computeRiskChoices(view, rowsAfterHideDone(unnarrowed, hideDone));
 	// The walk hands back each row joined to its own place, rather than a parallel array this
 	// loop would index into — an index lookup would need a fallback for a case that cannot
 	// happen, which is the unreachable branch this module's own header argues against.
@@ -277,6 +286,9 @@ function drawRow(view: ReleaseView, release: ReleaseRow, treeEl: HTMLElement, ro
  * Unconfigured whole on no risk key, matching `drawReadinessChips`'s own gate: a walk over
  * every member's frontmatter for a key this view never reads would be work spent to answer
  * a question the chip has already refused.
+ *
+ * A CONTEXT row supplies nothing — the context-row rule's own "never a source of vocabulary",
+ * the same answer `observedStates` and `readinessFix.ts`'s own observed-values hint give.
  *
  * Not exported: `drawScopeTree` is the one caller, and hands the result out on
  * `ScopeTreeDraw.riskChoices` rather than a second module re-deriving it (Task 8 review

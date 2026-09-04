@@ -38,12 +38,19 @@ import { estimateValue } from './releaseReadiness';
  * - the value is what the note already holds, so there is nothing to change;
  * - the value is being cleared from a note that carries nothing under that key.
  *
+ * **A NUMBER is a value here as much as a string is**, and this widened rather than
+ * stringifying: `PropertySet.value` is already `unknown` and `setOwn` writes what it is
+ * given, so the two numeric fields (the capacity and a member's effort) land as the numbers
+ * every other producer of those properties writes. Widened to `string | number | null` and
+ * no further — an unknown here would take the compiler off every call site for the sake of
+ * a shape no planner has.
+ *
  * `value: null` REMOVES the key rather than blanking it — `PropertySet`'s own contract,
  * and the rule [[Releases as their own type]] 3b makes necessary here: an empty string is
  * UNREADABLE to this view's own reader, so a cleared field written as `''` would come back
  * as somebody's mistake rather than as an unset field.
  */
-function fieldWrite(file: TFile, role: ReleaseField, key: string, value: string | null): ReleaseWrite[] {
+function fieldWrite(file: TFile, role: ReleaseField, key: string, value: string | number | null): ReleaseWrite[] {
 	// `requiresType` on every write this module plans: these three fields belong to a
 	// RELEASE, and the note may have been retyped between the menu opening and the pick —
 	// a window nothing upstream can see. See `PropertyWrite.requiresType` for what the
@@ -166,6 +173,13 @@ export function releaseDescriptionWrites(
  * The no-op test is NUMERIC, never textual: `40` and `40.0` are one capacity, and a
  * string comparison would rewrite the note for a spelling nobody sees. Same trade the
  * released date makes by comparing against `formatCivil`.
+ *
+ * **And what LANDS is the number, never the string that was typed.** `setOwn` coerces
+ * nothing, so returning `trimmed` would put `capacity: "40"` on a note beside the numbers a
+ * hand-authored vault and the estimation view both write — one property, two types, and an
+ * Obsidian Bases numeric filter or sort silently drops whichever half it cannot read. The
+ * plugin's own figures survive either way (`estimateValue` parses a string too), which is
+ * exactly why nothing on this screen would have shown it.
  */
 export function releaseCapacityWrites(file: TFile, key: string, current: number | null, entry: string): ReleaseWrite[] {
 	const trimmed = entry.trim();
@@ -173,7 +187,7 @@ export function releaseCapacityWrites(file: TFile, key: string, current: number 
 	const value = estimateValue(trimmed);
 	if (value === null) return [];
 	if (current !== null && current === value) return [];
-	return fieldWrite(file, 'capacity', key, trimmed);
+	return fieldWrite(file, 'capacity', key, value);
 }
 
 /**
@@ -191,7 +205,8 @@ export function releaseCapacityWrites(file: TFile, key: string, current: number 
  * the criterion beside it reads. Judged by `estimateValue` for {@link
  * releaseCapacityWrites}'s own reason: a value this control accepts must be a value the
  * figure beside it will sum, or the chip would manufacture the red state it exists to
- * clear.
+ * clear. What LANDS is the number for that function's other reason — one property must not
+ * end up half numbers and half strings.
  */
 export function memberEffortWrites(file: TFile, key: string, current: unknown, entry: string): ReleaseWrite[] {
 	const trimmed = entry.trim();
@@ -200,7 +215,7 @@ export function memberEffortWrites(file: TFile, key: string, current: unknown, e
 	const value = estimateValue(trimmed);
 	if (value === null) return [];
 	if (held !== null && held === value) return [];
-	return memberWrite(file, 'effort', key, trimmed);
+	return memberWrite(file, 'effort', key, value);
 }
 
 /**
@@ -217,7 +232,7 @@ export function memberRiskWrites(file: TFile, key: string, current: string | nul
 }
 
 /** {@link fieldWrite} without the release's type pin — see {@link memberEffortWrites}. */
-function memberWrite(file: TFile, role: ReleaseField, key: string, value: string | null): ReleaseWrite[] {
+function memberWrite(file: TFile, role: ReleaseField, key: string, value: string | number | null): ReleaseWrite[] {
 	return key === '' ? [] : [{ file, sets: [{ key, value, role }] }];
 }
 
