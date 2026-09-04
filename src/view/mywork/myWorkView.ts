@@ -12,8 +12,9 @@ import { ItemWrite } from '../../domain/writePlan';
 import { applyWrites } from '../../storage/frontmatter';
 import { loadViewState, updateViewPrefs } from '../../storage/viewStateStore';
 import { resolveViewIdentity } from '../../storage/viewIdentity';
-import { guidanceShell } from '../render/emptyStates';
+import { guidanceShell, renderLoadingState } from '../render/emptyStates';
 import { OpenContext, OpenController } from '../openTarget';
+import type { TreeDraw } from '../scopeKeys';
 import { drawMyWorkTree } from './renderTree';
 import { drawMyWorkToolbar } from './toolbar';
 
@@ -22,17 +23,29 @@ export const MY_WORK_VIEW_TYPE = 'product-my-work';
 /**
  * The classes a redraw's own controls carry — `ReleaseView.render()`'s own
  * `FOCUS_HANDLE_CLASSES` mechanism (`view/release/releaseView.ts`), over this view's own
- * vocabulary. `pbl-mw-tree` (Task 6) and Task 8's own four toolbar controls — the
- * person picker and the collapse-all/expand-all/hide-done trio (`toolbar.ts`) — are what
- * this view draws today. `ReleaseView`'s own list grew the same way, one control at a
- * time, and three separate fixes for a lost focus shipped on that branch before the list
- * did.
+ * vocabulary. `pbl-mw-tree` (Task 6), Task 8's own four toolbar controls — the person
+ * picker and the collapse-all/expand-all/hide-done trio (`toolbar.ts`) — and `pbl-mw-solo`
+ * (`drawSoloPress`, below) are what this view draws today. `ReleaseView`'s own list grew
+ * the same way, one control at a time, and three separate fixes for a lost focus shipped
+ * on that branch before the list did; `pbl-mw-solo` is this view's own version of the
+ * identical miss (whole-branch review, Important 1) — a real tab stop this enumeration
+ * left out, so a keyboard reader who activated it was thrown onto `document.body` by the
+ * redraw the press itself triggers, because `focusedHandle()` (below) found no class of
+ * theirs in this list to remember.
  *
  * No `data-path` tiebreak, unlike `ReleaseView`'s: nothing this view draws repeats one
- * handle class per item (there is one tree, one picker, one of each toolbar button), so a
- * bare class is already a unique answer.
+ * handle class per item (there is one tree, one picker, one of each toolbar button, and
+ * `pbl-mw-solo` draws at most once, for a roster of exactly one), so a bare class is
+ * already a unique answer.
  */
-const FOCUS_HANDLE_CLASSES = ['pbl-mw-tree', 'pbl-mw-person', 'pbl-mw-collapse', 'pbl-mw-expand', 'pbl-mw-hidedone'];
+const FOCUS_HANDLE_CLASSES = [
+	'pbl-mw-tree',
+	'pbl-mw-person',
+	'pbl-mw-collapse',
+	'pbl-mw-expand',
+	'pbl-mw-hidedone',
+	'pbl-mw-solo',
+];
 
 export class MyWorkView extends BasesView {
 	type = MY_WORK_VIEW_TYPE;
@@ -47,7 +60,16 @@ export class MyWorkView extends BasesView {
 	private drawnPerson: string | null = null;
 	planSettings: BacklogSettings = defaultSettings();
 	activeRowFile: TFile | null = null;
+	/** The drawn row carrying the Next marker, published by `drawMyWorkTree` — what a
+	 *  person switch scrolls to instead of the top. Null in every state that draws no
+	 *  tree, and on a tree where every row is finished. */
+	nextRowEl: HTMLElement | null = null;
 	treeHadFocus = false;
+	/** The last draw's own row index, kept so `syncOpenRow` can mark a row without
+	 *  querying the tree — `TREE_SCAN`'s own ban, and the reason `wireScopeKeys` takes
+	 *  this index rather than building one. Null in every state that draws no tree. */
+	private treeDraw: TreeDraw | null = null;
+	private watchedApp = false;
 	readonly opener = new OpenController();
 	readonly gate: WriteGate<ItemWrite>;
 
@@ -60,7 +82,10 @@ export class MyWorkView extends BasesView {
 		// control there has no button to land on, and an element removed from the document
 		// resets focus to `document.body` unless something else claims it first.
 		this.viewEl = containerEl.createDiv({ cls: 'pbl-view pbl-mw-view', attr: { tabindex: '-1' } });
-		this.viewEl.setText(t('mywork.loading'));
+		// The shared state, not a bare line of text: `renderLoadingState` carries the
+		// spinner, `role="status"` and `aria-live="polite"` that make this announce rather
+		// than sit there, and it costs no catalog key of this view's own.
+		renderLoadingState(this.viewEl);
 		this.settings = resolveMyWorkSettings({ get: () => undefined, getAsPropertyId: () => null } as never);
 		this.gate = new WriteGate<ItemWrite>(
 			{
@@ -80,6 +105,7 @@ export class MyWorkView extends BasesView {
 	}
 
 	onDataUpdated(): void {
+		this.watchApp();
 		if (this.gate.deferUpdate()) return;
 		this.refresh();
 	}
@@ -88,6 +114,38 @@ export class MyWorkView extends BasesView {
 		this.settings = resolveMyWorkSettings(this.config);
 		this.restorePick();
 		this.render();
+	}
+
+	/**
+	 * What this view subscribes to on the APP, wired on the first data update rather
+	 * than in the constructor — `backlogView.ts`'s own `watchApp` and its reason: a Bases
+	 * view is handed its `app` afterwards, so there is nothing to subscribe to yet when it
+	 * is built. `registerEvent` takes it off with the view.
+	 *
+	 * `file-open` is the only one this view needs. A note opened from a link, the graph or
+	 * another pane changes which row is the one the reader is looking at, and NOTHING else
+	 * tells this view that: opening a note is not a data update, so no render follows one.
+	 */
+	private watchApp(): void {
+		if (this.watchedApp) return;
+		this.watchedApp = true;
+		this.registerEvent(this.app.workspace.on('file-open', () => this.syncOpenRow()));
+	}
+
+	/**
+	 * Mark the row whose note the workspace has open, through the last draw's own index.
+	 *
+	 * A class of its own, never `.pbl-selected`: the selection is the row the KEYBOARD is
+	 * on, and this is the note the WORKSPACE has open. Reusing the selection would move a
+	 * reader's cursor because a note opened somewhere else, and `wireScopeKeys` would then
+	 * be reading a selection it did not set.
+	 *
+	 * Called from the listener AND from the end of `render()`, because a redraw builds
+	 * fresh elements that carry no class of ours.
+	 */
+	private syncOpenRow(): void {
+		const openPath = this.app.workspace.getActiveFile()?.path ?? null;
+		for (const [path, el] of this.treeDraw?.rowEls ?? []) el.toggleClass('pbl-mw-open', path === openPath);
 	}
 
 	openContext(): OpenContext {
@@ -156,14 +214,41 @@ export class MyWorkView extends BasesView {
 		const previousTop = this.drawnPerson === this.pickedPerson ? (treeEl?.scrollTop ?? 0) : 0;
 		const focusHandle = this.focusedHandle();
 		this.viewEl.empty();
+		this.treeDraw = null;
+		// Nulled beside it for the identical reason: `drawMyWorkTree` is the only writer,
+		// and a draw that returns before building the tree (an empty state) never reaches
+		// the line that would refresh this — so left alone across such a draw, this would
+		// go on pointing at a DETACHED row from the tree `empty()` just removed.
+		this.nextRowEl = null;
 		this.draw();
-		this.drawnPerson = this.pickedPerson;
 		const drawnEl = this.viewEl.querySelector('.pbl-mw-tree');
-		// Clamped to the FRESH `scrollHeight`, `releaseView.ts`'s own rule: a redraw with
-		// fewer rows — an item reassigned away, hide-done switched on — must not park the
-		// pane below its own last row.
-		if (drawnEl !== null) drawnEl.scrollTop = Math.min(previousTop, drawnEl.scrollHeight);
+		// The cast undoes a real TS 6.0.3 gap rather than restating the field's own type:
+		// `this.nextRowEl = null;` above narrows the property to the literal `null`, and
+		// unlike a local variable's narrowing, TS does not widen it back across the
+		// `this.draw()` call in between — even though `draw()` reaches `drawMyWorkTree`,
+		// which writes this very field. Left uncast, the `!== null` check below narrows an
+		// already-`null` type to `never` and the compiler refuses `.scrollIntoView` on it.
+		const nextRowEl = this.nextRowEl as HTMLElement | null;
+		// A person SWITCH has no offset to restore — `previousTop` is 0 for one, because
+		// an offset belongs to the person it was scrolled in — so the question there is
+		// not "where was this tree" but "where does this reader need to be". The answer
+		// this view exists to give is the Next row, which in a long tree is below the
+		// fold. A same-person redraw restores the offset exactly as before: a reader who
+		// scrolled somewhere on purpose must not be dragged back by a data update.
+		//
+		// Read against `this.drawnPerson` BEFORE the reassignment below overwrites it —
+		// which is why that assignment moved down here from right after `this.draw()`.
+		if (drawnEl !== null && this.drawnPerson !== this.pickedPerson && nextRowEl !== null) {
+			nextRowEl.scrollIntoView({ block: 'nearest' });
+		} else if (drawnEl !== null) {
+			// Clamped to the FRESH `scrollHeight`, `releaseView.ts`'s own rule: a redraw
+			// with fewer rows — an item reassigned away, hide-done switched on — must not
+			// park the pane below its own last row.
+			drawnEl.scrollTop = Math.min(previousTop, drawnEl.scrollHeight);
+		}
+		this.drawnPerson = this.pickedPerson;
 		this.restoreFocus(focusHandle);
+		this.syncOpenRow();
 	}
 
 	/** Draw whichever state applies, over the current `settings`/`data` — the four
@@ -225,10 +310,38 @@ export class MyWorkView extends BasesView {
 		// and produces no `BacklogItem`, so a picked person's path is never a key in
 		// `byPath` and that guard would send every valid pick to the no-pick state.
 		if (this.pickedPerson === null || !pickedResource(this.model, this.pickedPerson)) {
-			guidanceShell(this.viewEl, 'user-round-search', t('mywork.empty.noPick.title'), t('mywork.empty.noPick.hint'));
+			const shellEl = guidanceShell(
+				this.viewEl,
+				'user-round-search',
+				t('mywork.empty.noPick.title'),
+				t('mywork.empty.noPick.hint'),
+			);
+			this.drawSoloPress(shellEl);
 			return;
 		}
-		drawMyWorkTree(this, this.viewEl);
+		this.treeDraw = drawMyWorkTree(this, this.viewEl);
+	}
+
+	/**
+	 * A roster of ONE has one answer, and this is the press that gives it — appended to
+	 * the no-pick guidance rather than drawn instead of it, so the picker above stays the
+	 * way to a different answer.
+	 *
+	 * **Never an auto-pick**, and that is the decision rather than the lazy half of one:
+	 * `pick(null)` stores nothing, so "never picked" and "deliberately cleared" are the
+	 * same stored state. An auto-pick would undo a clear on the next data update, and
+	 * telling the two apart costs a second stored value — the shape ADR 0011 already
+	 * charges for. One press buys the same "one person, no ceremony" with no new state.
+	 */
+	private drawSoloPress(shellEl: HTMLElement): void {
+		const roster = this.model?.resources ?? [];
+		if (roster.length !== 1) return;
+		const only = roster[0];
+		const btn = shellEl.createEl('button', {
+			cls: 'mod-cta pbl-mw-solo',
+			text: t('mywork.empty.noPick.cta', { name: only.title }),
+		});
+		btn.addEventListener('click', () => this.pick(only.file.path));
 	}
 
 	/**

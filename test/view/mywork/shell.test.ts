@@ -1,9 +1,18 @@
 // @vitest-environment jsdom
 import { describe, expect, it } from 'vitest';
 import { MyWorkView } from '../../../src/view/mywork/myWorkView';
+import { WriteLock } from '../../../src/view/writeLock';
 import { makeMyWorkView, myWorkVault } from '../../helpers/mywork';
+import { t } from '../../../src/i18n/t';
 
 describe('the my-work view', () => {
+	it('shows the shared loading state before the first data update', () => {
+		const containerEl = document.createElement('div');
+		const view = new MyWorkView({} as never, containerEl, new WriteLock());
+
+		expect(view.viewEl.querySelector('.pbl-loading')).not.toBeNull();
+	});
+
 	it('says the assignee property is unbound rather than drawing an empty pane', () => {
 		const { view }: { view: MyWorkView } = makeMyWorkView(myWorkVault(), { assigneeProperty: '' });
 		expect(view.viewEl.querySelector('.pbl-empty-title')).not.toBeNull();
@@ -35,6 +44,27 @@ describe('the my-work view', () => {
 		view.pick('People/Ada.md');
 		view.onDataUpdated();
 		expect(view.pickedPerson).toBe('People/Ada.md');
+	});
+
+	it('offers a press for a roster of one, and picks that person with it', () => {
+		const vault = myWorkVault();
+		// The fixture ships two people; a roster of ONE is what this press is for.
+		vault.files.delete('People/Bo.md');
+		vault.frontmatter.delete('People/Bo.md');
+		const { view } = makeMyWorkView(vault);
+
+		const btn = view.viewEl.querySelector<HTMLElement>('.pbl-mw-solo');
+		expect(btn?.textContent).toBe(t('mywork.empty.noPick.cta', { name: 'Ada' }));
+
+		btn?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+
+		expect(view.pickedPerson).toBe('People/Ada.md');
+	});
+
+	it('draws no such press when the roster holds more than one person', () => {
+		const { view } = makeMyWorkView(myWorkVault());
+
+		expect(view.viewEl.querySelector('.pbl-mw-solo')).toBeNull();
 	});
 });
 

@@ -112,7 +112,7 @@ export function wireScopeKeys(
 	// The one element currently marked, cleared by reference rather than by a fresh scan
 	// of every row — the same reason `rowEls` replaces a `querySelector` per lookup.
 	let selectedEl: HTMLElement | null = null;
-	const show = (): void => {
+	const show = (scroll = true): void => {
 		// `rows` is never empty — the top-level row can never be hidden by a fold — and
 		// `rowEls` is built from that same array, so both reads below always hit.
 		const row = rows[active];
@@ -134,13 +134,21 @@ export function wireScopeKeys(
 		treeEl.setAttribute('aria-activedescendant', el.id);
 		host.activeRowFile = row.item.file;
 		// `content-visibility: auto` on a row means a skipped row has no layout box, so a
-		// row reached by the keyboard has to be scrolled to rather than assumed visible.
-		el.scrollIntoView({ block: 'nearest' });
+		// row reached by the KEYBOARD has to be scrolled to rather than assumed visible —
+		// every caller but the pointer's own `mousedown` below leaves `scroll` at its
+		// default. The pointer path passes `false`: the reader is already pointing at the
+		// row, so there is nothing this scroll needs to bring into view, and leaving it in
+		// used to run it BETWEEN `mousedown` and `mouseup` (whole-branch review, Important
+		// 2) — synchronous, on a partially clipped row, moving that row's own controls out
+		// from under a cursor that never moved, so the `click` the browser fires on the two
+		// events' nearest common ancestor landed on the row instead of the button it was
+		// pressed on.
+		if (scroll) el.scrollIntoView({ block: 'nearest' });
 	};
-	const moveTo = (next: number): void => {
+	const moveTo = (next: number, scroll = true): void => {
 		if (next < 0 || next >= rows.length) return;
 		active = next;
-		show();
+		show(scroll);
 	};
 	treeEl.addEventListener('keydown', (evt) => {
 		const row = rows[active];
@@ -198,7 +206,52 @@ export function wireScopeKeys(
 		}
 		evt.preventDefault();
 	});
-	treeEl.addEventListener('focus', show);
+	/**
+	 * The POINTER's own route into the same roving selection — `render/rows.ts`'s
+	 * `host.selectItem(item, false)` on the backlog tree's own click, owed here and
+	 * missing from BOTH scope trees until now: a click opened one note and marked
+	 * another.
+	 *
+	 * `mousedown` rather than `click`, and that is the whole of the fix rather than an
+	 * incidental choice. Clicking a row focuses `treeEl` — the tree is one tab stop, so
+	 * the browser gives focus to the nearest focusable ancestor — and the `focus`
+	 * listener below runs `show()` over whatever `active` still names, which is row 0
+	 * until a key has moved it. Focus lands BETWEEN `mousedown` and `click`, so a
+	 * correction wired on `click` arrives after the wrong row has been painted and
+	 * `scrollIntoView` has taken the pane back to the top.
+	 *
+	 * **`show()`'s own `scrollIntoView` is passed `false` on this path, and that is a
+	 * correction rather than the original design** (whole-branch review, Important 2):
+	 * this listener used to leave the scroll in place, on the claim that `nearest` moves
+	 * nothing for a row already fully in view and that a row clicked while half cut off is
+	 * one the reader meant to act on. That claim was true of the SCROLL and blind to what
+	 * it does to the CLICK behind it — `mousedown` and `mouseup` land wherever the pointer
+	 * sits, but the browser fires `click` on their nearest common ancestor, and a
+	 * synchronous scroll between the two can carry a partially clipped row's own controls
+	 * out from under a cursor that has not moved, landing the `click` on the row instead of
+	 * the button it was pressed on. The reader is already pointing at the row, so there was
+	 * never anything here for the scroll to bring into view.
+	 *
+	 * A `mousedown` on a control INSIDE the row (the disclosure, the row menu button) is
+	 * deliberately not excluded — both act on that row, so marking it is right.
+	 */
+	treeEl.addEventListener('mousedown', (evt) => {
+		// Asserted rather than tested, `renderTree.ts`'s own reason for the identical
+		// lookup: this listener is on `treeEl`, so a dispatched event always reports an
+		// element under it.
+		const rowEl = (evt.target as Element).closest('.pbl-row');
+		const at = rows.findIndex((r) => rowEls.get(r.item.file.path) === rowEl);
+		// No `-1` guard: `moveTo` already returns on an out-of-range index — a click on the
+		// tree's own padding, between rows, marks nothing on its own, without a branch here
+		// no test could tell apart from calling straight through (whole-branch review,
+		// Minor 8).
+		moveTo(at, false);
+	});
+	// Wrapped rather than passed directly: `show`'s own `scroll` parameter would otherwise
+	// receive the `FocusEvent` `addEventListener` hands its callback, which happens to be
+	// truthy and so happens to behave — but happening to work is not the same claim as
+	// "focus always scrolls", and this is the one caller that means literally that.
+	treeEl.addEventListener('focus', () => show());
 	// The active row SURVIVES the re-render, and the tree takes focus back when it was the
 	// thing focused before. A fold calls `host.render()`, which `empty()`s `viewEl` —
 	// detaching the focused tree and building this controller again from scratch. Without
