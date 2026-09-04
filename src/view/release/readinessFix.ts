@@ -163,7 +163,13 @@ export function editRiskValues(view: ReleaseView): void {
 			},
 		],
 		cta: t('release.scope.riskValuesSave'),
-		validate: () => null,
+		// **Both lists, or neither.** A criterion with one of them empty is unconfigured
+		// exactly as if neither were, so a submit that leaves one blank writes `''` twice and
+		// puts the reader back on the identical red note with nothing said — the dead end
+		// every fix button on this strip exists to remove, reached through the press meant to
+		// clear it. Refused in the dialog, where the typing is still there to correct.
+		validate: (values) =>
+			values.critical === '' || values.addressed === '' ? t('release.scope.riskValuesRequired') : null,
 		onClosed: () => focusControl(view, RISKVALUES_FIX, OPEN_BUTTON),
 		onSubmit: (values) => {
 			view.config.set('criticalRiskValues', values.critical);
@@ -180,11 +186,17 @@ export function editRiskValues(view: ReleaseView): void {
  * reused so a raw value is parsed exactly once. This dialog is what decides which of them
  * count as critical or addressed, so the same list is offered as a hint on BOTH fields
  * rather than sorted into either.
+ *
+ * **`model.results`, never `model.items`.** Vocabulary is the context-row rule's own named
+ * case: an excluded note is never a source of anything derived from the Base's results, the
+ * reason `observedStates` skips one and the reason `computeRiskChoices` (`scopeTree.ts`)
+ * does. This walked `items` until 2026-09-04, which left two readers of "what risk values
+ * does this vault carry" disagreeing about exactly those rows.
  */
 function observedRiskValues(view: ReleaseView): string {
 	if (view.model === null || view.settings.riskKey === '') return '';
 	const seen: string[] = [];
-	for (const item of view.model.items) {
+	for (const item of view.model.results) {
 		for (const value of riskValuesOf(view.app, item, view.settings).values) {
 			if (!seen.some((known) => sameValue(known, value))) seen.push(value);
 		}

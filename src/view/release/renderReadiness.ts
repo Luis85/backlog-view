@@ -71,7 +71,11 @@ export function drawReadiness(
 	// is no vocabulary here to write, and binding `riskProperty` is the fix that state
 	// needs first — this dialog cannot write a property, only the two lists beside it.
 	if (settings.riskKey !== '' && (settings.criticalRiskValues.length === 0 || settings.addressedRiskValues.length === 0)) {
-		drawFixNote(view, rowEl, t('release.scope.riskValuesTitle'), { kind: 'run', run: () => editRiskValues(view) }, 'pbl-rel-riskvalues-fix');
+		// The PROBLEM, not the dialog's title. Every sibling red note on this strip states
+		// what is wrong ("Capacity is not configured"); "Which risk values matter" is a
+		// question, and a question drawn in error red tells the reader nothing about the state
+		// they are in. The dialog keeps its own heading.
+		drawFixNote(view, rowEl, t('release.scope.riskValuesUnset'), { kind: 'run', run: () => editRiskValues(view) }, 'pbl-rel-riskvalues-fix');
 	}
 }
 

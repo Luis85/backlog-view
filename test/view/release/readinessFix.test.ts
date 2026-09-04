@@ -123,7 +123,9 @@ describe('the capacity figure’s own fix buttons', () => {
 		submitPrompt({ title: '40' });
 		await flush();
 
-		expect(vault.fm('0.9.md').capacity).toBe('40');
+		// A NUMBER on the note, never the string that was typed — `releaseCapacityWrites`'
+		// own rule, read at the writer this dialog reaches.
+		expect(vault.fm('0.9.md').capacity).toBe(40);
 	});
 
 	it('lands on the header’s Open button once the fix button that opened it is gone', async () => {
@@ -222,6 +224,32 @@ describe('the risk vocabularies', () => {
 
 		expect(view.config.get('criticalRiskValues')).toBe('High, Critical');
 		expect(view.config.get('addressedRiskValues')).toBe('Mitigated');
+	});
+
+	/**
+	 * **The dead end this whole branch exists to remove**, met inside the dialog that clears
+	 * it: a criterion needs BOTH lists (`releaseReadiness.ts`'s own rule), so a submit that
+	 * leaves either empty writes `''` twice and lands the reader back on the identical red
+	 * note with nothing said. `Refusable` is already wired, so the refusal is the dialog's.
+	 */
+	it('refuses a submit that would leave the criterion exactly as unconfigured as it found it', async () => {
+		const config: Record<string, unknown> = { ...RELEASE_CONFIG, criticalRiskValues: '', addressedRiskValues: '' };
+		const { view, config: viewConfig } = releaseScreen({}, scopeVault(), config);
+		button(view, '.pbl-rel-riskvalues-fix').click();
+		await flush();
+		submitPrompt({ critical: '', addressed: '' });
+		await flush();
+
+		expect(Modal.lastOpened?.contentEl.querySelector('.pbl-modal-error')?.textContent).toBe(
+			en['release.scope.riskValuesRequired'],
+		);
+		expect(viewConfig.setCalls.map((c) => c.key)).not.toContain('criticalRiskValues');
+
+		// One list alone is the same state: the criterion is unconfigured either way, so the
+		// half-filled submit is refused with the same reason rather than written.
+		submitPrompt({ critical: 'High', addressed: '' });
+		await flush();
+		expect(viewConfig.setCalls.map((c) => c.key)).not.toContain('addressedRiskValues');
 	});
 
 	it('hints at the vault’s own observed values on both fields, deduplicated case-insensitively', async () => {

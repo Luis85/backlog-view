@@ -1,11 +1,10 @@
 import { Notice, setIcon } from 'obsidian';
 import type { ReleaseView } from './releaseView';
 import { t } from '../../i18n/t';
-import { BasesViewConfig } from 'obsidian';
-import { declaredPropertyKeys, ReleaseSettings } from '../../domain/releaseOptions';
+import { ReleaseSettings } from '../../domain/releaseOptions';
 import { createRelease } from '../../storage/createNote';
 import { NewReleaseResult, openNewReleaseDialog, ReleaseFieldId } from '../../ui/newReleaseDialog';
-import { RELEASE_SUGGESTED_VALUES, runReleaseInit } from './init';
+import { runReleaseInit } from './init';
 
 /**
  * The `New release` control, and the one function behind it.
@@ -44,21 +43,16 @@ export function renderNewRelease(view: ReleaseView, parentEl: HTMLElement): void
  * with nothing after it would otherwise look dead.
  */
 export async function bindAndReport(view: ReleaseView, only?: string[]): Promise<boolean> {
-	// Read from the LIVE config, never from `view.settings`: that field is a snapshot from
-	// the last data update, so an option bound since then reads as unset here and the press
-	// reports a configuration change it did not make — `init.ts`'s own documented trap, met
-	// on the reading side rather than the binding one. Both ends of the comparison ask the
-	// same config, so the difference can only be what {@link runReleaseInit} set.
-	const before = boundKeys(view.config);
-	// Run unconditionally rather than asking first which options are unset. `runReleaseInit`
-	// already puts that question to the live config (`adoptCandidates`), binds only what
-	// nobody has touched, leaves a cleared option alone and does nothing at all when
-	// everything is bound — a second reading of the same question here could only ever come
-	// to disagree with it. `only` narrows WHICH candidates it binds and never widens what
-	// this function reports: a filtered press still counts as bound exactly when the config
-	// actually changed.
-	await runReleaseInit(view, only);
-	return boundKeys(view.config) !== before;
+	// **`runReleaseInit`'s OWN answer, passed straight through.** Run unconditionally rather
+	// than asking first which options are unset: it already puts that question to the live
+	// config (`adoptCandidates`), binds only what nobody has touched, leaves a cleared option
+	// alone and does nothing at all when everything is bound — and it decides "did anything
+	// change" from the writes it actually made, which is the one place that can be decided.
+	// A before/after read of the config here was a second answer to the same question, which
+	// is what that function's own header warns against; it stood until 2026-09-04, agreeing
+	// with the return it was discarding. `only` narrows WHICH candidates are bound and never
+	// widens what this reports.
+	return runReleaseInit(view, only);
 }
 
 /**
@@ -113,24 +107,6 @@ async function newRelease(view: ReleaseView): Promise<void> {
  */
 function focusNewRelease(view: ReleaseView): void {
 	view.viewEl.querySelector<HTMLButtonElement>('.pbl-rel-new')?.focus({ preventScroll: true });
-}
-
-/**
- * Every option a press could change, as one comparable string.
- *
- * **Not `declaredPropertyKeys` alone**, which filters to `type === 'property'` and so
- * cannot see the three the closing actions need — a folder, a value list and a dropdown.
- * This is the same defect the paragraph above records for `stateProperty`, met a second
- * time from the other side: there a declared key was missing from a hand-written list,
- * here a bound option is of a kind the list's own filter drops. A press whose only work
- * is binding the notes folder would otherwise compare equal, report that it bound
- * nothing, and skip the redraw that draws `Generate release notes`.
- */
-function boundKeys(config: BasesViewConfig): string {
-	const others = RELEASE_SUGGESTED_VALUES.map(
-		({ option }) => `${option}=${String((config.get(option) as string | undefined) ?? '')}`,
-	);
-	return [...declaredPropertyKeys(config), ...others].join('\n');
 }
 
 /**

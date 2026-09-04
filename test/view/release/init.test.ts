@@ -362,10 +362,11 @@ describe('the press binds the options that are not properties', () => {
 
 describe('the press reports binding a non-property option', () => {
 	it('sees a folder bind that no property key reflects', async () => {
-		// Every PROPERTY already bound, so the only work left is the folder. `boundKeys`
-		// reads `declaredPropertyKeys`, which filters to property options — so before this
-		// fix the comparison was equal and the press reported it had bound nothing, then
-		// skipped the redraw that would show the button it had just switched on.
+		// Every PROPERTY already bound, so the only work left is the folder — the one kind of
+		// bind a reading of the declared property keys cannot see. That reading was how
+		// `bindAndReport` answered until 2026-09-04, and the press reported it had bound
+		// nothing and skipped the redraw that would show the button it had just switched on.
+		// It answers off `runReleaseInit`'s own writes now, which cannot miss a kind of option.
 		const { view } = mountRelease({ bindAll: true });
 		expect(view.config.get('releaseNotesFolder')).toBeUndefined();
 		expect(await bindAndReport(view)).toBe(true);

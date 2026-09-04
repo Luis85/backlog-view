@@ -263,10 +263,12 @@ export function adoptableReleaseKeys(config: BasesViewConfig, candidates: Adopti
  * today — it exists for a fourth kind of caller, a red note on the scope screen that
  * binds the ONE option its own sentence names, and every candidate otherwise.
  *
- * The return is whether anything was actually written, decided from the writes
- * themselves rather than from a before/after read of the config: `boundKeys` in
- * `newRelease.ts` exists because `declaredPropertyKeys` alone cannot see a bound
- * folder, and asking that same question here a second way would be two answers to it.
+ * The return is whether anything was actually written, decided from the writes themselves
+ * rather than from a before/after read of the config — and it is what `bindAndReport`
+ * (`newRelease.ts`) hands its own callers, since 2026-09-04. It asked the config a second
+ * way until then, which is exactly the two-answers-to-one-question this paragraph warned
+ * against: the two agreed, and one of them was reading a config to learn what the other had
+ * just written.
  *
  * `runEstimationInit` states an ORDER as a rule: decide the bindings, gate on the model
  * they would produce, and only then write — because a batch that changed the
