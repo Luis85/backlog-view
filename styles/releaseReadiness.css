@@ -2,7 +2,12 @@
    whole chip; this partial adds only the three verdict colours and the row's own layout.
 
    `max-width: none` overrides the chip's own 140px cap, which exists for a property column
-   and would clip a sentence here. */
+   and would clip a sentence here. **Both selectors, since Task 11** — a narrowable chip is
+   a real `<button>`, and `button.pbl-state-chip` (0,1,1) beats a bare `.pbl-rel-crit` (0,1,0)
+   whatever the import order, the identical trap `button.pbl-rel-status`'s own comment names
+   one screen over. Measured in the harness: without the second selector a long sentence
+   ("Estimated: 1 of 3 outstanding") clipped to the 140px cap and read centred by Obsidian's
+   own bare `button` rule, which shows as truncated from BOTH ends rather than one. */
 .pbl-rel-ready {
 	display: flex;
 	flex-wrap: wrap;
@@ -11,7 +16,8 @@
 	padding-block-start: var(--size-4-2);
 }
 
-.pbl-rel-crit {
+.pbl-rel-crit,
+button.pbl-rel-crit {
 	max-width: none;
 }
 
@@ -36,4 +42,25 @@
    not compete with a real verdict beside it. */
 .pbl-rel-crit-unset {
 	font-style: italic;
+}
+
+/* A drilled-down chip — the one criterion narrowing the tree right now (Task 11). Styled
+   off the ATTRIBUTE `drawChip` already writes rather than a second class, so the pressed
+   look can never drift from what a screen reader is actually told. `.pbl-rel-toggle-on`
+   (`releaseScopeTree.css`) makes the identical trade for the hide-done toggle, one control
+   over — same accent fill, so a reader learns the look once. Two classes at (0,2,0) each,
+   so the attribute wins over the verdict colour beside it: a narrowed chip reads as
+   pressed regardless of which criterion it is.
+
+   **The `:hover` twin is load-bearing, not decoration.** `columns.css`'s own
+   `.pbl-state-chip:not(.pbl-state-static):hover` is (0,3,0), over this rule's own (0,2,0) —
+   so a pointer left resting on the chip it just pressed (which is where a click leaves it)
+   read the ORDINARY hover tint instead of the pressed accent, found in the harness. Tied
+   at (0,3,0) here and won on source order, `index.css`'s own reason this partial imports
+   after `columns.css`. */
+.pbl-rel-crit[aria-pressed='true'],
+.pbl-rel-crit[aria-pressed='true']:hover {
+	color: var(--text-on-accent);
+	background-color: var(--interactive-accent);
+	border-color: var(--interactive-accent);
 }

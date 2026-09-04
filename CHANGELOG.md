@@ -28,6 +28,9 @@ See [RELEASING.md](RELEASING.md) for how this file is kept in step with a releas
 
 - The toolbar's **Expand all** and **Collapse all** now fold and open the resource bands on
   the roadmap's resources axis, so a long roster is one press rather than one chevron each.
+- A release's readiness chips now narrow the scope tree: pressing an unsatisfied criterion
+  shows only the members failing it (and the ancestors holding them in place), so the list
+  can be worked to zero and the toolbar's own control clears the narrowing again.
 - Putting an item in a release now dates it: the release's own target date becomes the
   item's due and today becomes its start, so the work draws on the roadmap's dated axis.
   Neither is written over a date the item already holds, and neither lands where it would

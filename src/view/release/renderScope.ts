@@ -9,7 +9,7 @@ import { WorkflowKind, workflowStateInfo } from '../../domain/board';
 import { guidanceShell } from '../render/emptyStates';
 import { renderReleaseInit } from './initControl';
 import { drawScopeTree, effectiveHideDone } from './scopeTree';
-import { rowsAfterHideDone } from '../../domain/scopeRows';
+import { rowsAfterHideDone, rowsForPaths, ScopeRow } from '../../domain/scopeRows';
 import { drawScopeToolbar } from './scopeToolbar';
 import { wireScopeKeys } from '../scopeKeys';
 import { wireScopeCreate } from './scopeCreate';
@@ -68,7 +68,10 @@ export function renderScope(
 	planSettings: BacklogSettings,
 	index: ReleaseIndex,
 ): void {
-	drawHeader(view, scope, release, planSettings, index);
+	// `drawHeader` computes the readiness walk for its own chips and figures and hands it
+	// back — never a second call here, `domain/releaseReadiness.ts`'s own "one walk, one
+	// predicate per number" rule read at this call site too.
+	const readiness = drawHeader(view, scope, release, planSettings, index);
 	// Both empty states sit BELOW the header, so the back control survives either. A
 	// release nobody can read the scope of must not also be a dead end.
 	if (view.settings.membershipKey === '') {
@@ -106,7 +109,9 @@ export function renderScope(
 		drawAllDoneState(view.viewEl, scope.members);
 		return;
 	}
-	const draw = drawScopeTree(view, release, scope.rows);
+	// See `criterionRows`' own docblock, below, for what this narrows to and when it clears.
+	const filtered = criterionRows(view, scope.rows, readiness);
+	const draw = drawScopeTree(view, release, filtered);
 	wireScopeKeys(view, draw.treeEl, { prefix: RELEASE_FOLD, path: release.path }, draw);
 	// The third step, for `wireScopeKeys`' own reason: this module already holds the draw
 	// and the settings, so the row menu is wired from here rather than by `scopeTree.ts`
@@ -155,6 +160,11 @@ function drawAllDoneState(viewEl: HTMLElement, count: number): void {
  * It said two — the hline and `.pbl-rel-summary` — until 2026-08-30, when the summary
  * moved INSIDE the footline and the actions joined it there, so `.pbl-rel-summary` is no
  * longer a child of the header at all.
+ *
+ * **Returns the readiness it computes**, since Task 11: `renderScope` needs the identical
+ * walk to resolve the criterion filter before it draws the tree, and a second call there
+ * would be the second opinion `domain/releaseReadiness.ts` exists to prevent — returned
+ * rather than taken as a sixth parameter, which `max-params` (5) already refuses.
  */
 function drawHeader(
 	view: ReleaseView,
@@ -162,7 +172,7 @@ function drawHeader(
 	release: ReleaseRow,
 	planSettings: BacklogSettings,
 	index: ReleaseIndex,
-): void {
+): ReleaseReadiness {
 	const headerEl = view.viewEl.createDiv({ cls: 'pbl-rel-header' });
 	const hlineEl = headerEl.createDiv({ cls: 'pbl-rel-hline' });
 
@@ -213,6 +223,26 @@ function drawHeader(
 	drawSummary(footEl, release, scope.members, readiness, { view, plan: planSettings, release: view.settings });
 	drawReleaseActions(view, footEl, release, scope, planSettings);
 	drawReadiness(view, headerEl, readiness, view.settings, planSettings);
+	return readiness;
+}
+
+/**
+ * `view.criterionFilter` resolved against the readiness `drawHeader` just computed, never a
+ * remembered list of paths: a member that stopped failing (or a config change) between one
+ * render and the next must narrow to what is true NOW.
+ *
+ * A satisfied — or now-unconfigured — criterion has nothing left to show, so this clears
+ * the filter itself, as a plain field assignment: `view.setCriterionFilter` would re-render
+ * from inside a render already under way, which is exactly the rule its own docblock states.
+ */
+function criterionRows(view: ReleaseView, rows: ScopeRow[], readiness: ReleaseReadiness): ScopeRow[] {
+	if (view.criterionFilter === null) return rows;
+	const paths = readiness.criteria.find((c) => c.key === view.criterionFilter)?.outstandingPaths ?? null;
+	if (paths === null || paths.length === 0) {
+		view.criterionFilter = null;
+		return rows;
+	}
+	return rowsForPaths(rows, new Set(paths));
 }
 
 /**

@@ -38,6 +38,13 @@ const CRITERION_NAME: Record<ReleaseCriterion['key'], () => string> = {
 	risk: () => t('release.scope.readinessRisk'),
 };
 
+/** Exported for `scopeToolbar.ts`'s own clear-filter control, which names the narrowed
+ *  criterion in its sentence and must read the identical table this row draws its chips
+ *  from — a second copy here would be a second opinion about what a criterion is called. */
+export function criterionName(key: ReleaseCriterion['key']): string {
+	return CRITERION_NAME[key]();
+}
+
 export function drawReadiness(
 	view: ReleaseView,
 	headerEl: HTMLElement,
@@ -56,7 +63,7 @@ export function drawReadiness(
 	const rowEl = headerEl.createDiv({ cls: 'pbl-rel-ready' });
 	const unconfigured = readiness.criteria.filter((c) => c.verdict === 'unconfigured');
 	if (unconfigured.length === readiness.criteria.length) drawCollapsed(rowEl, unconfigured);
-	else for (const criterion of readiness.criteria) drawChip(rowEl, criterion, settings, planSettings);
+	else for (const criterion of readiness.criteria) drawChip(view, rowEl, criterion, settings, planSettings);
 	// **Beside whichever shape drew the risk criterion**, collapsed or its own chip — the
 	// collapsed count already carries the risk criterion's own name into its
 	// `.pbl-sr-only` span (`drawCollapsed`), so this button is additional rather than a
@@ -108,19 +115,43 @@ function drawCollapsed(rowEl: HTMLElement, unconfigured: ReleaseCriterion[]): vo
  *
  * An unconfigured criterion gets NO provenance: there is no property to name, and a sentence
  * naming an empty one is the "unconfigured reads as nothing" defect this increment is about.
+ *
+ * **A `<button>` rather than a `<div>` exactly where narrowing would show something** (Task
+ * 11): `outstandingPaths` is the SAME field the count came from (Task 9's own guarantee), so
+ * testing it here can never disagree with the chip's own text — a satisfied, empty or
+ * unconfigured criterion has nothing to narrow TO (the whole tree, or nothing at all), and a
+ * control offering either is a control that lies. `pbl-state-static` is therefore dropped
+ * from a narrowable chip's own classes: that class is what makes every OTHER chip here inert
+ * to hover and focus, and a real control needs neither withheld from it.
  */
 function drawChip(
+	view: ReleaseView,
 	rowEl: HTMLElement,
 	criterion: ReleaseCriterion,
 	settings: ReleaseSettings,
 	planSettings: BacklogSettings,
 ): void {
 	const name = CRITERION_NAME[criterion.key]();
-	const chipEl = rowEl.createDiv({
-		cls: `pbl-state-chip pbl-state-static pbl-rel-crit pbl-rel-crit-${verdictClass(criterion.verdict)}`,
-		text: chipText(criterion, name),
-	});
+	const narrowable = criterion.outstandingPaths !== null && criterion.outstandingPaths.length > 0;
+	const cls = `pbl-state-chip pbl-rel-crit pbl-rel-crit-${verdictClass(criterion.verdict)}`;
+	const text = chipText(criterion, name);
+	const chipEl: HTMLElement = narrowable
+		? rowEl.createEl('button', {
+				cls,
+				text,
+				attr: { type: 'button', 'aria-pressed': String(view.criterionFilter === criterion.key) },
+			})
+		: rowEl.createDiv({ cls, text });
+	// A class rather than baked into the string above: the linked lint rule that catches a
+	// SENTENCE built from a ternary between two literals reaches this too, and its own
+	// remedy for a class name is exactly this.
+	if (!narrowable) chipEl.addClass('pbl-state-static');
 	chipEl.dataset.criterion = criterion.key;
+	if (narrowable) {
+		chipEl.addEventListener('click', () => {
+			view.setCriterionFilter(view.criterionFilter === criterion.key ? null : criterion.key);
+		});
+	}
 	const provenance = criterion.verdict === 'unconfigured' ? '' : criterionProvenance(criterion.key, settings, planSettings);
 	setTooltip(chipEl, provenance === '' ? name : `${name}. ${provenance}`);
 	// The verdict first, then what produced it. Only `satisfied` needs saying: every other

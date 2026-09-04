@@ -2209,6 +2209,18 @@ export const en = {
 		one: 'Readiness: {count} criterion not configured',
 		other: 'Readiness: {count} criteria not configured',
 	},
+	/**
+	 * The toolbar's own sentence for an active drill-down (Task 11) — its tooltip and
+	 * accessible name, since the visible button carries the shorter `filterClear` below.
+	 * `{criterion}` is the criterion's own name, taken as a parameter from the same table
+	 * the chip reads (`criterionName`), never re-spelled: two sentences naming a criterion
+	 * two different ways is the drift every other provenance sentence in this file refuses.
+	 */
+	'release.scope.filterOn': 'Showing only what is outstanding for {criterion}',
+	/** The clear control's own visible text — short, since the criterion is already said in
+	 *  `filterOn` beside it and a reader does not need it twice to press the one button on
+	 *  screen that clears a narrowing. */
+	'release.scope.filterClear': 'Show every row again',
 	/** The estimate progress: ONE figure with its denominator inside it, never a sum and a
 	 *  second percentage competing with the items bar beside it. `{done}` and `{total}` reach
 	 *  this pre-formatted with `formatNumber(value, true)`: both are sums of estimates

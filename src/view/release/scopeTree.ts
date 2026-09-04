@@ -99,9 +99,16 @@ export function hideDoneOn(view: ReleaseView): boolean {
  * flag anyway on that release hides rows with no control left on screen to bring them
  * back. One function so the tree's own hiding and the all-done check below can never
  * answer this differently about the same release.
+ *
+ * **A third conjunct, since Task 11: `view.criterionFilter === null`.** The PREFERENCE is
+ * untouched — a reader who turned hiding on keeps it on once the narrowing clears — and
+ * only its EFFECT pauses while a criterion is narrowed. A member can be DONE and still be
+ * outstanding on a criterion (a finished item nobody estimated), so hiding it while the
+ * reader is being shown exactly the rows failing that criterion is the dead end this whole
+ * feature exists to remove.
  */
 export function effectiveHideDone(view: ReleaseView, release: ReleaseRow): boolean {
-	return hideDoneOn(view) && !release.done.unconfigured;
+	return hideDoneOn(view) && !release.done.unconfigured && view.criterionFilter === null;
 }
 
 /** Flip the toggle and redraw — `view/scopeFolds.ts`'s own `setScopeFlag`. */

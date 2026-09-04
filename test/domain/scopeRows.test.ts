@@ -88,4 +88,19 @@ describe('rowsForPaths', () => {
 		const kept = rowsForPaths(rows, new Set(['P1.md']));
 		expect(kept.map((r) => r.depth)).toEqual([0, 1, 2]);
 	});
+
+	// Every caller in Task 11 hands this a set of many paths at once — the readiness
+	// criteria's own `outstandingPaths` — while every test above drove it with one. Both
+	// gaps left by Task 10, pinned here since they now hold behaviour a caller depends on.
+	it('keeps every named row when several are named at once, sharing their ancestors', () => {
+		const rows = rowsFixture();
+		const kept = rowsForPaths(rows, new Set(['P1.md', 'P2.md']));
+		expect(kept.map((r) => r.item.file.path)).toEqual(['E.md', 'F.md', 'P1.md', 'P2.md']);
+	});
+
+	it('does not duplicate an ancestor that is itself named', () => {
+		const rows = rowsFixture();
+		const kept = rowsForPaths(rows, new Set(['F.md', 'P1.md']));
+		expect(kept.map((r) => r.item.file.path)).toEqual(['E.md', 'F.md', 'P1.md']);
+	});
 });

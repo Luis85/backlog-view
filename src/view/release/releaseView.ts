@@ -7,6 +7,7 @@ import { t } from '../../i18n/t';
 import { BacklogModel, buildModel } from '../../domain/model';
 import { ReleaseSettings, resolveReleaseSettings } from '../../domain/releaseOptions';
 import { releaseIndex, releaseScope } from '../../domain/releases';
+import { ReleaseCriterion } from '../../domain/releaseReadiness';
 import { todayCivil } from '../../domain/noteFields';
 import { resolveSettings } from '../../domain/settingsResolve';
 import { membershipCollision, releaseNoteProblems } from '../../domain/settingsConsistency';
@@ -144,6 +145,18 @@ export class ReleaseView extends BasesView {
 	 *  beside `previousTop` and for the identical reason: a detached element answers
 	 *  nothing, so this has to be read before the teardown rather than after it. */
 	treeHadFocus = false;
+	/**
+	 * Which criterion the scope tree is narrowed to, or null for the whole tree.
+	 *
+	 * **Session state, deliberately** — a plain field, never the view-state store and never
+	 * the `.base`. Opening a release must not restore a narrowing nobody remembers asking
+	 * for; the shelf search takes the identical decision for the identical reason
+	 * (`src/view/CLAUDE.md`).
+	 *
+	 * Cleared by `pick`, beside `activeRowFile`: a filter is a statement about ONE release's
+	 * rows, and carrying it to the next screen would narrow a tree the reader never narrowed.
+	 */
+	criterionFilter: ReleaseCriterion['key'] | null = null;
 
 	/**
 	 * The gate every edit passes, over the plugin-wide lock this view is handed. There is
@@ -314,8 +327,20 @@ export class ReleaseView extends BasesView {
 	pick(path: string | null): void {
 		this.pickedPath = path;
 		this.activeRowFile = null;
+		this.criterionFilter = null;
 		const id = resolveViewIdentity(this.app, this.viewEl, this.config.name ?? '');
 		if (id) updateViewPrefs(this.app, id, { release: path ?? undefined });
+		this.render();
+	}
+
+	/**
+	 * Narrow the scope tree to one criterion's outstanding rows, or clear the narrowing.
+	 *
+	 * Re-renders itself: no config was set and no Bases refresh is coming —
+	 * `setProjection`'s own rule, one view over (`src/view/CLAUDE.md`).
+	 */
+	setCriterionFilter(key: ReleaseCriterion['key'] | null): void {
+		this.criterionFilter = key;
 		this.render();
 	}
 

@@ -1,9 +1,11 @@
+import { setTooltip } from 'obsidian';
 import type { ReleaseView } from './releaseView';
 import { t } from '../../i18n/t';
 import { ReleaseRow } from '../../domain/releases';
 import { ScopeRow } from '../../domain/scopeRows';
 import { hideDoneOn, setAllReleaseFolds, setHideDone } from './scopeTree';
 import { scopeIconButton } from '../scopeToolbarButton';
+import { criterionName } from './renderReadiness';
 
 /**
  * The scope screen's own toolbar — above the scroller, so it never scrolls away.
@@ -31,6 +33,9 @@ export function drawScopeToolbar(view: ReleaseView, parentEl: HTMLElement, relea
 		view.render();
 	});
 	barEl.createDiv({ cls: 'pbl-rel-spacer' });
+	// Drawn before the hide-done gate below, and unconditionally on it: a criterion filter
+	// narrows whether or not this release even HAS a done workflow to hide.
+	drawFilterClear(view, barEl);
 	// A control that could hide rows the summary refuses to count would put two answers to
 	// "what is done here" on one screen — the disagreement `release.done`'s own single-row
 	// rule (`domain/releases.ts`) exists to prevent between the index and this screen; this
@@ -45,3 +50,23 @@ export function drawScopeToolbar(view: ReleaseView, parentEl: HTMLElement, relea
 	btn.addEventListener('click', () => setHideDone(view, !on));
 }
 
+/**
+ * The way back from a criterion drill-down — drawn only while one is active, so the
+ * toolbar carries no permanent extra control for a state most renders are not in.
+ *
+ * `criterionName` is `renderReadiness.ts`'s own table, read here rather than copied: the
+ * toolbar's sentence and the chip's own name can never come to call a criterion two
+ * different things.
+ */
+function drawFilterClear(view: ReleaseView, barEl: HTMLElement): void {
+	const criterion = view.criterionFilter;
+	if (criterion === null) return;
+	const label = t('release.scope.filterOn', { criterion: criterionName(criterion) });
+	const btn = barEl.createEl('button', {
+		cls: 'pbl-rel-toggle pbl-rel-toggle-on',
+		attr: { type: 'button', 'aria-label': label },
+		text: t('release.scope.filterClear'),
+	});
+	setTooltip(btn, label);
+	btn.addEventListener('click', () => view.setCriterionFilter(null));
+}

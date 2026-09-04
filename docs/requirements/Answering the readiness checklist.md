@@ -142,3 +142,21 @@ Task 7) open a dialog and a menu respectively, planned by `memberEffortWrites` a
 already went through. A member's effort or risk set this way is what the NEXT evaluation
 of this checklist reads; nothing here recomputes a verdict as a side effect of the write,
 because the redraw that follows every batch does that already.
+
+**A chip is a drill-down as well as a verdict, since 2026-09-04 (Task 11).** An unsatisfied
+criterion's chip is a real `<button>` — `outstandingPaths` (Task 9) is the same field the
+count came from, so the toggle can never disagree with the number beside it — carrying
+`aria-pressed` and narrowing the scope tree, through `rowsForPaths` (Task 10 of [[The scope
+of a release as a tree]]), to exactly the members failing that criterion and the ancestors
+holding them in place. A satisfied, empty or unconfigured criterion keeps the plain,
+unfocusable `div` it always drew: a control that filtered to the whole tree, or to nothing,
+would be a control that lies. The narrowing is `ReleaseView.criterionFilter` — session
+state, deliberately, never the view-state store and never the `.base`, for the shelf
+search's own reason (`src/view/CLAUDE.md`) — and it clears itself the moment the criterion
+it names is satisfied, on the next render: work the list to zero and the screen hands the
+release back. Hide-done yields to an active filter (its EFFECT only; the stored preference
+is untouched), because a member can be done and still be outstanding on a criterion, and
+hiding the row the reader is being shown to fix would be the dead end this whole feature
+exists to remove. Drawn in `src/view/release/renderReadiness.ts` (the chip),
+`src/view/release/renderScope.ts` (the narrowing, between the readiness walk and the tree)
+and `src/view/release/scopeToolbar.ts` (the toolbar's own way to clear it).
