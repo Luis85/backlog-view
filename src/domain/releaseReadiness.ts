@@ -39,6 +39,20 @@ export interface ReleaseCriterion {
 	 * as well as reported here.
 	 */
 	unreadable: number | null;
+	/**
+	 * The members behind {@link outstanding} — their paths, so a renderer can narrow to them.
+	 *
+	 * **Filled in the SAME loop, by the SAME predicate, that produced the count.** A second
+	 * pass asking which members fail is exactly the drift this module exists to prevent: a
+	 * chip reading `3 of 8 outstanding` that narrowed to two rows is worse than one that
+	 * narrowed to none. `outstandingPaths.length === outstanding` is therefore true by
+	 * construction, and `test/domain/releaseReadiness.test.ts` asserts it of every criterion
+	 * on every fixture rather than of one.
+	 *
+	 * Null exactly where {@link outstanding} is — an unconfigured criterion has no members to
+	 * name — so a reader that narrowed one has narrowed both.
+	 */
+	outstandingPaths: string[] | null;
 }
 
 export interface ReleaseReadiness {
@@ -109,7 +123,7 @@ function counted(value: number): ReleaseFigure<number> {
 const OVERFLOWED: ReleaseFigure<number> = { value: null, invalid: true, unconfigured: false };
 
 function unconfiguredCriterion(key: ReleaseCriterion['key']): ReleaseCriterion {
-	return { key, verdict: 'unconfigured', cleared: null, outstanding: null, unreadable: null };
+	return { key, verdict: 'unconfigured', cleared: null, outstanding: null, unreadable: null, outstandingPaths: null };
 }
 
 /**
@@ -355,6 +369,7 @@ function blockedCriterion(
 	let cleared = 0;
 	let outstanding = 0;
 	let unreadable = 0;
+	const outstandingPaths: string[] = [];
 	for (const item of members) {
 		// Counted ONCE per member however many entries it holds — the acceptance criterion.
 		// `dropped` is the entries the READER threw away before the model ever saw them:
@@ -373,20 +388,34 @@ function blockedCriterion(
 			(p) => workflowClears(ownWorkflowKind(p), planSettings) && !ownWorkflowReading(p).done,
 		);
 		if (broken || unread) unreadable += 1;
-		if (broken || unread || waiting) outstanding += 1;
-		else cleared += 1;
+		if (broken || unread || waiting) {
+			outstanding += 1;
+			outstandingPaths.push(item.file.path);
+		} else cleared += 1;
 	}
-	return { key: 'blocked', verdict: verdictOf(cleared, outstanding), cleared, outstanding, unreadable };
+	return { key: 'blocked', verdict: verdictOf(cleared, outstanding), cleared, outstanding, unreadable, outstandingPaths };
 }
 
 function estimateCriterion(app: App, members: BacklogItem[], settings: ReleaseSettings): ReleaseCriterion {
 	if (settings.estimateKey === '') return unconfiguredCriterion('estimated');
-	const cleared = members.filter((item) => isEstimated(estimateOf(app, item, settings))).length;
-	const outstanding = members.length - cleared;
+	let cleared = 0;
+	const outstandingPaths: string[] = [];
+	for (const item of members) {
+		if (isEstimated(estimateOf(app, item, settings))) cleared += 1;
+		else outstandingPaths.push(item.file.path);
+	}
+	const outstanding = outstandingPaths.length;
 	// `unreadable` is 0 rather than null: this criterion reads a QUANTITY, so a member with
 	// nothing where it looks is unestimated — a stated answer — rather than one the
 	// criterion could not read. The vocabulary criteria are where 5a has work to do.
-	return { key: 'estimated', verdict: verdictOf(cleared, outstanding), cleared, outstanding, unreadable: 0 };
+	return {
+		key: 'estimated',
+		verdict: verdictOf(cleared, outstanding),
+		cleared,
+		outstanding,
+		unreadable: 0,
+		outstandingPaths,
+	};
 }
 
 /**
@@ -548,12 +577,14 @@ function riskCriterion(app: App, members: BacklogItem[], settings: ReleaseSettin
 	let cleared = 0;
 	let outstanding = 0;
 	let unreadable = 0;
+	const outstandingPaths: string[] = [];
 	for (const item of members) {
 		const reading = riskValuesOf(app, item, settings);
 		if (reading.unreadable) {
 			// A value the reader cannot interpret is not an absent one — see the docblock.
 			unreadable += 1;
 			outstanding += 1;
+			outstandingPaths.push(item.file.path);
 			continue;
 		}
 		// Counted ONCE per member however many values it holds — the acceptance criterion.
@@ -563,10 +594,12 @@ function riskCriterion(app: App, members: BacklogItem[], settings: ReleaseSettin
 				settings.criticalRiskValues.some((critical) => sameValue(value, critical)) &&
 				!values.some((held) => settings.addressedRiskValues.some((ok) => sameValue(held, ok))),
 		);
-		if (exposed) outstanding += 1;
-		else cleared += 1;
+		if (exposed) {
+			outstanding += 1;
+			outstandingPaths.push(item.file.path);
+		} else cleared += 1;
 	}
-	return { key: 'risk', verdict: verdictOf(cleared, outstanding), cleared, outstanding, unreadable };
+	return { key: 'risk', verdict: verdictOf(cleared, outstanding), cleared, outstanding, unreadable, outstandingPaths };
 }
 
 /**
