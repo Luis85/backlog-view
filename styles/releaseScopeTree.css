@@ -1,0 +1,152 @@
+/* ==========================================================================
+   One release's MEMBER TREE, and the toolbar that drives it. `styles/releaseScope.css`
+   is the sibling partial for the screen's own header — the identity, the facts, the
+   write surfaces, the summary strip and the closing actions. The two split on
+   2026-09-04 at the seam that file's header had described from the day it was written
+   ("the header ... and the read-only tree of its members"), because it reached the
+   400-line cap `scripts/styles-assemble.mjs` enforces and the last line of headroom had
+   already been bought once by compressing a comment — which a review caught cutting a
+   load-bearing sentence. A split is what buys room; a shorter comment is what loses the
+   reason.
+
+   The toolbar comes with the tree rather than staying with the header: it is between the
+   two on screen, but everything it does — hide done, collapse, expand — is about the
+   member list below it, and its empty state (`.pbl-rel-alldone-icon`) is what the tree
+   draws instead of rows.
+
+   Position in `styles/index.css`'s import list is NOT load-bearing, and not because the
+   vocabulary is disjoint — four sites here re-target a class another partial writes:
+   `.pbl-rel-context .pbl-title` and `.pbl-rel-view .pbl-row` (`tree.css`'s own bare
+   classes), `.pbl-rel-context .pbl-badge` (`badges.css`'s) and
+   `.pbl-rel-alldone-icon.pbl-empty-filter-icon` (`toolbar.css`'s). Every one is a
+   compound selector at (0,2,0) against the single class it re-targets at (0,1,0), and
+   `.pbl-rel-view .pbl-row:hover` is (0,3,0) against `tree.css`'s (0,2,0) — so all five
+   win on specificity alone, whatever order the partials import in. `index.css`'s own
+   import-list comment carries the same arithmetic rather than this being the only place
+   it is stated.
+
+   `button.pbl-twisty` is the one rule here that is neither `.pbl-rel-*` nor a
+   re-target: no other partial declares that class at all.
+   ========================================================================== */
+
+/* Scaffolding, de-emphasised by colour rather than `opacity` over the row — see `styles/mywork.css`'s `.pbl-mw-context`. Changed together, 2026-09-03. */
+.pbl-rel-context .pbl-title {
+	color: var(--text-faint);
+}
+.pbl-rel-context .pbl-badge {
+	opacity: 0.7;
+}
+/* One release's scope reuses the tree's `.pbl-row` for its LAYOUT — the flex row, the
+   `--pbl-depth` indent, `content-visibility` — and inherits gestures with it that this
+   screen does not fully have: there is still no drag, which is why `user-select` is set
+   back to `auto` rather than left at the tree's own `none` (`styles/tree.css`). A screen
+   for reading must let a reader copy a title, and the tree earns its `none` by dragging
+   its rows — an UNSTATED property here does not "stay" at the browser default, it
+   resolves from whichever rule wins the cascade, and `.pbl-row`'s `none` is the one that
+   was winning: leaving the property off this rule silently carried the tree's own `none`
+   onto a screen with nothing to justify it, and a reader here could not select a title at
+   all. A row is a target again since Task 3 — it opens its note, and Task 4 adds
+   `aria-selected` — so the two refusals this file made when nothing on the screen was
+   clickable go with them.
+
+   Scoped by `.pbl-rel-view` so it cannot reach the backlog tree's own rows, and the hover
+   is set at `:hover` rather than at the bare class so the import ORDER still decides
+   nothing (see this file's header). */
+.pbl-rel-view .pbl-row {
+	cursor: pointer;
+	user-select: auto;
+}
+
+.pbl-rel-view .pbl-row:hover {
+	background-color: var(--background-modifier-hover);
+}
+
+/* The disclosure. It holds its gutter on a leaf so a level's titles share one x, and it
+   is `visibility` rather than `display` for exactly that: a leaf with no box would let
+   its title slide left of its siblings'. */
+button.pbl-twisty {
+	flex: 0 0 auto;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	inline-size: 18px;
+	block-size: 18px;
+	padding: 0;
+	margin: 0;
+	color: var(--text-faint);
+	background-color: transparent;
+	box-shadow: none;
+	border: none;
+	border-radius: var(--radius-s);
+	cursor: pointer;
+}
+
+button.pbl-twisty:hover {
+	color: var(--text-normal);
+	background-color: var(--background-modifier-hover);
+}
+
+button.pbl-twisty .svg-icon {
+	inline-size: 14px;
+	block-size: 14px;
+}
+
+button.pbl-twisty-leaf {
+	visibility: hidden;
+	cursor: default;
+}
+
+/* One cell for the chip, anchored at its end: shrinkable to the chip's own icon, never the
+   fixed 92px that truncated the value it reserved room for. `styles/mywork.css` says why. */
+.pbl-rel-statecol {
+	flex: 0 1 auto;
+	display: flex;
+	justify-content: flex-end;
+	min-inline-size: 22px;
+}
+
+/* The scope screen's own toolbar (`scopeToolbar.ts`), between the header and the scroller
+   so it never scrolls away — drawn and looked at in the harness before this rule existed,
+   the same way this file's own header records for the rest of it. `.pbl-rel-spacer` is
+   `release.css`'s own vocabulary, reused rather than duplicated. */
+.pbl-rel-toolbar {
+	flex: 0 0 auto;
+	display: flex;
+	align-items: center;
+	gap: var(--size-4-1);
+	padding: var(--size-4-1) var(--size-4-3);
+	border-bottom: 1px solid var(--background-modifier-border);
+}
+
+button.pbl-rel-toggle {
+	block-size: auto;
+	padding: var(--size-2-1) var(--size-4-2);
+	font-size: var(--font-ui-smaller);
+	color: var(--text-muted);
+	background-color: transparent;
+	box-shadow: none;
+	border: 1px solid var(--background-modifier-border);
+	border-radius: var(--radius-s);
+	cursor: pointer;
+}
+
+button.pbl-rel-toggle:hover {
+	background-color: var(--background-modifier-hover);
+}
+
+button.pbl-rel-toggle-on {
+	color: var(--text-on-accent);
+	background-color: var(--interactive-accent);
+	border-color: var(--interactive-accent);
+}
+
+/* Extension 4c: every root in the scope hid. The SHELL is `.pbl-empty-filter`
+   (`styles/toolbar.css`), reused whole rather than restated — `renderScope.ts`'s own
+   comment on why. Only the icon's colour is this screen's own: green, the same
+   `.pbl-complete` marks a finished rollup with (`columns.css`), never a second colour
+   opinion about what "done" looks like. The compound selector is what outranks
+   `.pbl-empty-filter-icon`'s own `--text-faint` at equal specificity otherwise lost to
+   source order. */
+.pbl-rel-alldone-icon.pbl-empty-filter-icon {
+	color: rgb(var(--color-green-rgb));
+}

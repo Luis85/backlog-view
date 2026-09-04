@@ -77,6 +77,28 @@ The scoping is the whole argument:
 - One platform runs it, where `verify` runs two. An advisory is a fact about the
   lockfile, which is the same on both; the matrix exists for path separators and line
   endings, which an audit does not have.
+- **Amended 2026-09-04 (the quick endpoint, and what `--omit=dev` has to do with it:
+  nothing).** On 2026-09-03 this job answered 400 `Invalid package tree` twice, from
+  `/-/npm/v1/security/audits/quick`, with npm's own notice that the endpoint is being
+  retired in favour of the bulk one. It recovered by itself. The obvious reading — that
+  pruning the dev tree is what sends the request to the retiring endpoint, so the fix is
+  to audit the whole tree and filter the result — was measured and is **wrong**, in both
+  directions: with `--loglevel=silly`, `npm audit --omit=dev` and a full-tree `npm audit`
+  each make exactly one request, to `/-/npm/v1/security/advisories/bulk`. The quick
+  endpoint is not a request npm chooses; it is arborist's **fallback**, reached only when
+  the bulk request throws (`@npmcli/arborist/lib/audit-report.js`, the inner `try`/`catch`
+  around the two `fetch` calls) and not disableable by any flag. So the 400 was the second
+  half of a failure that had already happened at the bulk endpoint, and auditing the full
+  tree would take the identical path to the identical fallback — at the cost of the filter
+  ADR 0019's permanently-red hazard is an argument against. **Nothing in this record
+  changed**: the scope is still `--omit=dev`, the floor is still `critical`, and the job is
+  still beside `check` rather than in it. What changed is one line of `.github/workflows/ci.yml`,
+  which now runs the audit twice — `npm run audit || (sleep 30 && npm run audit)` — because
+  the real defect this episode exposed is that a transient registry failure reds this job on
+  work that has nothing to do with the supply chain. The retry is in the workflow rather
+  than in `npm run audit`, so a human running that locally still gets the error rather than
+  a second wait. A retry cannot clear a real advisory, which is the property that keeps this
+  a gate.
 
 ## Alternatives
 
@@ -97,7 +119,11 @@ The scoping is the whole argument:
 
 ## Revisit when
 
-The audit job blocks a merge over something with no fix — that is the hazard ADR 0019
+The registry answers 400 from `/-/npm/v1/security/audits/quick` and the retry above does
+not clear it — that is the bulk endpoint failing for a reason other than a blip, and the
+fallback behind it is being retired, so what to check is whether `npm audit` still reaches
+the bulk endpoint at all rather than whether this job's flags are right. Or the audit job
+blocks a merge over something with no fix — that is the hazard ADR 0019
 named, arriving, and what to do about it is a decision about that dependency under ADR
 0018 rather than a decision about this job. Or a critical advisory reaches a vault
 through a runtime dependency and this job did not raise it, which would mean the scope

@@ -340,6 +340,13 @@ describe('the scope tree’s keyboard', () => {
 			proto.scrollIntoView = original;
 		}
 
+		// Not `toHaveLength(0)` alone: "nothing was scrolled" is also true of a mousedown
+		// listener that was deleted outright, so the assertion above passes for the wrong
+		// reason on its own. The selection MOVING is what proves the listener ran and chose
+		// not to scroll, rather than not running. (The neighbouring "marks the row a click
+		// lands on" test covers the deletion too — but a test that only stands up in a pair
+		// is one edit away from standing up in none.)
+		expect(active(view)).toBe('Passwordless sign-in.md');
 		expect(scrolled).toHaveLength(0);
 	});
 });
