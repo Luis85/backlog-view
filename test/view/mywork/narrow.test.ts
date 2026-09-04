@@ -122,7 +122,7 @@ describe('the narrow-pane rule, read from the stylesheet source', () => {
  * and shrinkable, it shows the value in full where there is room and ellipsises where
  * there is not, instead of clipping against the pane's edge.
  *
- * `user-select` is `releaseScope.css`'s own correction, owed here for the identical
+ * `user-select` is `releaseScopeTree.css`'s own correction, owed here for the identical
  * reason: `.pbl-row` earns its `none` in the backlog tree by DRAGGING its rows, and
  * neither scope tree drags anything. Left unstated the tree's `none` still won the
  * cascade, so a reader could not select a title to copy it — and `renderTree.ts`'s own

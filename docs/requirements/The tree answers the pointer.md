@@ -172,7 +172,9 @@ perform.
 - `styles/mywork.css` — `.pbl-mw-menu`'s reveal rule, the `@media (hover: hover)` narrow
   fallback, `.pbl-mw-open`, and `.pbl-mw-context`'s per-element emphasis (`.pbl-title`
   colour, `.pbl-badge` opacity) in place of the old whole-row `opacity`.
-- `styles/releaseScope.css` — `.pbl-rel-context`'s identical per-element emphasis; the
+- `styles/releaseScopeTree.css` — `.pbl-rel-context`'s identical per-element emphasis (in
+  `styles/releaseScope.css` when this was written; the two split at the 400-line cap on
+  2026-09-04 and the rule went with the tree); the
   release tree draws no menu button and no open-note marker, since neither of those
   question the release scope answers.
 

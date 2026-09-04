@@ -143,5 +143,12 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      # Run twice on failure, and the reason is not "networks are flaky": arborist falls
+      # back from the bulk advisory endpoint to `/-/npm/v1/security/audits/quick`, which
+      # npm is retiring and which answered 400 `Invalid package tree` twice on 2026-09-03
+      # — so ONE blip at the registry reds this job on work that has nothing to do with
+      # the supply chain. Here rather than in `npm run audit`, so a human running that
+      # locally gets the error instead of a second wait. A retry cannot clear a real
+      # advisory, which is what keeps this a gate. See ADR 0022's 2026-09-04 amendment.
       - name: Audit what ships
-        run: npm run audit
+        run: npm run audit || (sleep 30 && npm run audit)

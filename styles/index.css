@@ -138,20 +138,30 @@
    declare `display` on it — but this one AGREES with `view.css` (`flex`) rather than
    overriding it, so nothing here is decided by order either. */
 @import "./release.css";
-/* Position NOT load-bearing, but not because nothing here overlaps `release.css`.
-   `.pbl-row`/`.pbl-row:hover` (owned by `tree.css`), `.pbl-empty-filter-icon` (owned by
-   `toolbar.css`) and, since 2026-09-03, `.pbl-title` (`tree.css`'s) and `.pbl-badge`
-   (`badges.css`'s) ARE re-targeted here, and what decides those five sites is
-   SPECIFICITY, stated at each rule in this file: `.pbl-rel-view .pbl-row` is (0,2,0)
-   against `tree.css`'s bare `.pbl-row` at (0,1,0); `.pbl-rel-view .pbl-row:hover` is
-   (0,3,0) against `tree.css`'s `.pbl-row:hover` at (0,2,0);
-   `.pbl-rel-alldone-icon.pbl-empty-filter-icon` is (0,2,0) against `toolbar.css`'s
-   `.pbl-empty-filter-icon` at (0,1,0); and `.pbl-rel-context .pbl-title` /
-   `.pbl-rel-context .pbl-badge` are each (0,2,0) against the bare class each targets at
-   (0,1,0). All five win on specificity alone, so this partial's own import position is
-   not what makes any of them apply. `.pbl-rel-bar` and `.pbl-rel-spacer`, `release.css`'s
-   own vocabulary, are the ones this file only ever USES rather than redeclares. */
+/* Position NOT load-bearing, and not because nothing here overlaps another partial: two
+   sites re-target a class another file writes, and each wins on SPECIFICITY rather than on
+   order. `button.pbl-rel-status` is (0,1,1) and TIES `columns.css`'s own
+   `button.pbl-state-chip`, then wins on source order for the one property it contests
+   (`flex`) — the only site in this list where order still decides anything, and
+   `columns.css` is imported well above. `.pbl-rel-actions.pbl-rel-scope-actions` is
+   (0,2,0) against `release.css`'s bare `.pbl-rel-actions` at (0,1,0). The five sites this
+   note used to give the arithmetic for — `.pbl-rel-view .pbl-row` and its `:hover`,
+   `.pbl-rel-context .pbl-title` and `.pbl-rel-context .pbl-badge`, and the all-done icon
+   — moved to `releaseScopeTree.css` on 2026-09-04 with the rules themselves, and the note
+   below carries them. */
 @import "./releaseScope.css";
+/* Position NOT load-bearing. It came out of `releaseScope.css` at the 400-line cap and
+   holds the member tree and its toolbar — but unlike the other two cap splits in this
+   list, that is not the whole reason its position is free, because five of its rules DO
+   re-target a class another partial writes. All five win on specificity: `.pbl-rel-view
+   .pbl-row` and `.pbl-rel-context .pbl-title` are (0,2,0) against `tree.css`'s bare
+   `.pbl-row`/`.pbl-title` at (0,1,0); `.pbl-rel-context .pbl-badge` is (0,2,0) against
+   `badges.css`'s bare `.pbl-badge`; `.pbl-rel-alldone-icon.pbl-empty-filter-icon` is
+   (0,2,0) against `toolbar.css`'s `.pbl-empty-filter-icon`; and `.pbl-rel-view
+   .pbl-row:hover` is (0,3,0) against `tree.css`'s `.pbl-row:hover` at (0,2,0). Nothing
+   here and nothing in `releaseScope.css` declares a selector the other also declares, so
+   there is no order to keep between the two files themselves either. */
+@import "./releaseScopeTree.css";
 /* Position load-bearing in one direction only: `.pbl-rel-crit` sets `max-width` against
    `columns.css`'s `.pbl-state-chip` at the same (0,1,0) specificity, so this partial must
    come after that one — it does, `columns.css` being imported well above. Nothing in

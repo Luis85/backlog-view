@@ -2,6 +2,14 @@ import { describe, expect, it } from 'vitest';
 import { readFileSync } from 'node:fs';
 
 /**
+ * One release's screen is TWO partials since 2026-09-04, when `releaseScope.css` hit the
+ * 400-line cap and its member tree and toolbar went to `releaseScopeTree.css`. Each
+ * describe below reads the one partial its rules are in; the absence claims read both,
+ * for the reason stated there.
+ */
+const SCOPE_PARTIALS = ['styles/releaseScope.css', 'styles/releaseScopeTree.css'];
+
+/**
  * **This test is narrower than the claim it guards, and the narrow sentence is the honest
  * one.** No test here can compute a selector's specificity against Obsidian's own
  * stylesheet: `app.css` is not a dependency, jsdom computes no styles, and the browser
@@ -76,7 +84,7 @@ describe('the two other release buttons keep Obsidian’s chrome on purpose', ()
  * on this branch. The code is already right; this test is what stops it drifting back.
  */
 describe('the scope screen’s bare buttons do not paint as Obsidian buttons', () => {
-	const css = readFileSync('styles/releaseScope.css', 'utf8');
+	const css = readFileSync('styles/releaseScopeTree.css', 'utf8');
 
 	it('resets the disclosure’s chrome at `button.pbl-twisty`', () => {
 		const block = css.match(/button\.pbl-twisty\s*\{[^}]*\}/);
@@ -107,7 +115,11 @@ describe('the scope screen’s bare buttons do not paint as Obsidian buttons', (
  * re-auditing, not a silent drift either way.
  */
 describe('the scope toolbar’s icon buttons and the ✨ keep Obsidian’s chrome on purpose', () => {
-	const css = readFileSync('styles/releaseScope.css', 'utf8');
+	// BOTH scope partials, concatenated: these are ABSENCE claims, and an absence is only
+	// evidence if what is read is everywhere the rule could have been written. Reading one
+	// partial would have started passing for free the moment the split (2026-09-04) moved
+	// the toolbar to the other file.
+	const css = SCOPE_PARTIALS.map((file) => readFileSync(file, 'utf8')).join('\n');
 
 	it('leaves `.pbl-rel-collapse` and `.pbl-rel-expand` unqualified — both carry `clickable-icon`', () => {
 		expect(css).not.toMatch(/button\.pbl-rel-collapse\s*\{/);
@@ -214,8 +226,9 @@ describe('the scope header’s three write surfaces do not paint as Obsidian but
  * the chip cannot shrink past its icon, so a cell that could would clip the icon to a
  * sliver — which is what the my-work tree (whose cell was copied from this one) did at
  * 280px before this pass gave both the same floor. `styles/mywork.css` is where the whole
- * argument is written; this partial sits one line under the 400-line cap `npm run build`
- * enforces, so its own comment is the short form deliberately.
+ * argument is written; the partial holding this rule keeps the short form deliberately,
+ * and since 2026-09-04 that partial is `styles/releaseScopeTree.css` — the tree half of
+ * the split `releaseScope.css` took at that same 400-line cap.
  *
  * Comments are STRIPPED before matching — this file's rules are written beside paragraphs
  * quoting the declaration they replaced, and a `not.toMatch` otherwise reads the prose
@@ -223,7 +236,7 @@ describe('the scope header’s three write surfaces do not paint as Obsidian but
  * pass the moment it was written).
  */
 describe('the scope tree’s state column is sized by what it holds', () => {
-	const css = readFileSync('styles/releaseScope.css', 'utf8').replace(/\/\*[\s\S]*?\*\//g, '');
+	const css = readFileSync('styles/releaseScopeTree.css', 'utf8').replace(/\/\*[\s\S]*?\*\//g, '');
 
 	it('sizes it to its content, with a floor at the chip’s own icon', () => {
 		const block = /\.pbl-rel-statecol\s*\{([^}]*)\}/.exec(css)?.[1] ?? '';
