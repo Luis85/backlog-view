@@ -574,8 +574,11 @@ function riskCriterion(app: App, members: BacklogItem[], settings: ReleaseSettin
  * `undefined` and `null` are ABSENCE and read as no values with `unreadable` false; anything
  * else that yields no readable string — an object, a list of them, an empty string — is a
  * value somebody wrote that this reader cannot use.
+ *
+ * Exported for `readinessFix.ts`'s risk dialog, which reuses it to read the vault's own
+ * observed values for the placeholder rather than parsing the frontmatter a second way.
  */
-function riskValuesOf(
+export function riskValuesOf(
 	app: App,
 	item: BacklogItem,
 	settings: ReleaseSettings,

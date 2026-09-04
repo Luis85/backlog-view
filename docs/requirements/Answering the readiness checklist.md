@@ -109,6 +109,16 @@ which adds the three verdict colours and the row's own layout to the `.pbl-state
 draws a different thing from a different model, and nothing in it derives a number — every
 figure and every verdict is handed to it by the one walk above.
 
+**The risk criterion's own third fix button** (Task 4, beside `estimateProperty`'s and
+`capacityProperty`'s from Task 2) is `editRiskValues` in `src/view/release/readinessFix.ts`,
+drawn beside the chip row exactly when `riskProperty` IS bound and one of the two
+vocabularies is empty — with the key itself unbound there is no vocabulary to write yet.
+It opens `src/ui/twoFieldPrompt.ts`'s `TwoFieldPromptModal`, a `ui/` leaf beside
+`prompts.ts` and `textPrompt.ts` for that file's own reason (its 400-line budget), so
+both risk lists are written from one press — `view.config.set` twice, then one
+`view.render()` — rather than two dialogs that could leave a criterion half-configured
+on a cancel between them.
+
 **Two decisions the code cannot show.** A prerequisite is cleared by **this view's own
 already-bound `stateProperty` and its done values**, not by a sixth and seventh option: the
 rule that each criterion declares its own key guards against borrowing the key from the view

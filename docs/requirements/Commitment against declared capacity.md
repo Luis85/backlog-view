@@ -105,7 +105,12 @@ so a value import back the other way would be a runtime cycle, and that module a
 the other half of this comparison (the commitment), which is its stated reason for existing.
 The panel is the release summary's own render module, `src/view/release/renderReadiness.ts`.
 An unbound capacity key draws through `src/view/release/readinessFix.ts` — the red state's
-own remedy, a bind, an open, or a dialog its caller owns.
+own remedy, a bind, an open, or a dialog its caller owns. **An unset unit** is the fourth
+red state and the one this note's own comparison cannot draw without: `editCapacityUnit`
+in that same module opens a `ValuePromptModal` (`src/ui/prompts.ts`) and writes the
+`.base`'s `capacityUnit` option directly — `view.config.set`, never a note write and never
+the gate — then calls `view.render()` itself, since a config write raises no data update
+of its own.
 
 Both halves of the comparison are arithmetic on decimals somebody TYPED, so both go through
 `src/domain/decimal.ts` — `exactSum` for the commitment and `exactDifference` for the

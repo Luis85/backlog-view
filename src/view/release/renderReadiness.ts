@@ -7,7 +7,7 @@ import { exactDifference, toNumber } from '../../domain/decimal';
 import { ReleaseSettings } from '../../domain/releaseOptions';
 import { ReleaseRow } from '../../domain/releases';
 import { BacklogSettings } from '../../domain/settings';
-import { drawFixNote } from './readinessFix';
+import { drawFixNote, editCapacityUnit, editRiskValues } from './readinessFix';
 import { editReleaseCapacity } from './releaseEdits';
 
 /**
@@ -39,6 +39,7 @@ const CRITERION_NAME: Record<ReleaseCriterion['key'], () => string> = {
 };
 
 export function drawReadiness(
+	view: ReleaseView,
 	headerEl: HTMLElement,
 	readiness: ReleaseReadiness,
 	settings: ReleaseSettings,
@@ -54,11 +55,17 @@ export function drawReadiness(
 	if (readiness.members === 0) return;
 	const rowEl = headerEl.createDiv({ cls: 'pbl-rel-ready' });
 	const unconfigured = readiness.criteria.filter((c) => c.verdict === 'unconfigured');
-	if (unconfigured.length === readiness.criteria.length) {
-		drawCollapsed(rowEl, unconfigured);
-		return;
+	if (unconfigured.length === readiness.criteria.length) drawCollapsed(rowEl, unconfigured);
+	else for (const criterion of readiness.criteria) drawChip(rowEl, criterion, settings, planSettings);
+	// **Beside whichever shape drew the risk criterion**, collapsed or its own chip — the
+	// collapsed count already carries the risk criterion's own name into its
+	// `.pbl-sr-only` span (`drawCollapsed`), so this button is additional rather than a
+	// replacement either way. Drawn only where the KEY is bound: with no key at all there
+	// is no vocabulary here to write, and binding `riskProperty` is the fix that state
+	// needs first — this dialog cannot write a property, only the two lists beside it.
+	if (settings.riskKey !== '' && (settings.criticalRiskValues.length === 0 || settings.addressedRiskValues.length === 0)) {
+		drawFixNote(view, rowEl, t('release.scope.riskValuesTitle'), { kind: 'run', run: () => editRiskValues(view) }, 'pbl-rel-riskvalues-fix');
 	}
-	for (const criterion of readiness.criteria) drawChip(rowEl, criterion, settings, planSettings);
 }
 
 /**
@@ -427,7 +434,14 @@ function drawCapacityFigures(
 		// unconditionally it put THREE refusals on the strip for two unbound keys, beside the
 		// effort's own, on every vault that has never configured this: `drawCollapsed`'s rule
 		// one screen up, read here.
-		if (settings.capacityKey !== '') note(sumEl, t('release.scope.capacityNoUnit'));
+		//
+		// A missing MAPPING rather than a note to open or a property to bind — the unit is a
+		// `.base` option with no key of its own — so its remedy is the dialog that writes it
+		// (`readinessFix.ts`), carrying its own selector for the reason the capacity fix's
+		// does: a dialog's focus restore needs the exact button that opened it.
+		if (settings.capacityKey !== '') {
+			drawFixNote(ctx.view, sumEl, t('release.scope.capacityNoUnit'), { kind: 'run', run: () => editCapacityUnit(ctx.view) }, 'pbl-rel-unit-fix');
+		}
 		return;
 	}
 	// **The EXACT commitment, and it is the only null this branch asks about.** It is null in

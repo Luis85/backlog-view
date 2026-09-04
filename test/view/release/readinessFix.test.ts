@@ -17,11 +17,15 @@ useViewHarness();
  * of `RELEASE_CONFIG` with both keys actually removed — and mounts it directly, doing by
  * hand the two things `releaseScreen` does for every other caller: adding the release note
  * `scopeVault()`'s own members already name, and picking it.
+ *
+ * The two risk vocabularies are bound on top of `RELEASE_CONFIG`, which leaves them out —
+ * this fixture is about the two UNBOUND keys, and the risk criterion's own third fix
+ * button (Task 4) would otherwise draw here too, for a state this fixture is not about.
  */
 function unboundScreen() {
 	const vault = scopeVault();
 	vault.addFile('0.9.md', { frontmatter: { type: 'Release', version: '0.9.0' } });
-	const config: Record<string, unknown> = { ...RELEASE_CONFIG };
+	const config: Record<string, unknown> = { ...RELEASE_CONFIG, criticalRiskValues: 'High', addressedRiskValues: 'Low' };
 	delete config.estimateProperty;
 	delete config.capacityProperty;
 	const { view } = makeReleaseView(vault, config, { base: 'Releases.base' });
@@ -185,5 +189,52 @@ describe('the capacity figure’s own fix buttons', () => {
 		);
 		expect(vault.fm('0.9.md').capacity).toBeUndefined();
 		expect(vault.writeLog).toEqual([]);
+	});
+});
+
+/**
+ * The two remaining red states with a `run` remedy: the capacity unit and the two risk
+ * vocabularies. Both write the `.base` rather than a note — `view.config.set`, never the
+ * gate — so neither leaves a mark in `vault.writeLog` and both are read back straight off
+ * `view.config` instead.
+ */
+describe('the capacity unit', () => {
+	it('is typed into the note that says it is unset', async () => {
+		const config: Record<string, unknown> = { ...RELEASE_CONFIG, capacityUnit: '' };
+		const { view } = releaseScreen({ capacity: 40 }, scopeVault(), config);
+		button(view, '.pbl-rel-unit-fix').click();
+		await flush();
+		submitPrompt('story points');
+		await flush();
+
+		expect(view.config.get('capacityUnit')).toBe('story points');
+	});
+});
+
+describe('the risk vocabularies', () => {
+	it('are written together, or not at all', async () => {
+		const config: Record<string, unknown> = { ...RELEASE_CONFIG, criticalRiskValues: '', addressedRiskValues: '' };
+		const { view } = releaseScreen({}, scopeVault(), config);
+		button(view, '.pbl-rel-riskvalues-fix').click();
+		await flush();
+		submitPrompt({ critical: 'High, Critical', addressed: 'Mitigated' });
+		await flush();
+
+		expect(view.config.get('criticalRiskValues')).toBe('High, Critical');
+		expect(view.config.get('addressedRiskValues')).toBe('Mitigated');
+	});
+
+	it('hints at the vault’s own observed values on both fields, deduplicated case-insensitively', async () => {
+		const vault = scopeVault();
+		vault.setFrontmatter('M1.md', { type: 'PBI', order: 1, release: '[[0.9]]', risk: 'High' });
+		vault.setFrontmatter('M2.md', { type: 'PBI', order: 2, release: '[[0.9]]', status: 'Done', risk: 'high' });
+		const config: Record<string, unknown> = { ...RELEASE_CONFIG, criticalRiskValues: '', addressedRiskValues: '' };
+		const { view } = releaseScreen({}, vault, config);
+		button(view, '.pbl-rel-riskvalues-fix').click();
+		await flush();
+
+		const inputs = Array.from(Modal.lastOpened!.contentEl.querySelectorAll('input'));
+		expect(inputs[0].placeholder).toBe('High');
+		expect(inputs[1].placeholder).toBe('High');
 	});
 });

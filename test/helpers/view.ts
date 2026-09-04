@@ -375,17 +375,22 @@ export function submitSchedule(values: string[]): void {
 	promptButton('Save').dispatchEvent(new MouseEvent('click', { bubbles: true }));
 }
 
-/** Fill the currently open prompt and submit it. */
-export function submitPrompt(fields: { title: string; folder?: string }): void {
+/**
+ * Fill the currently open prompt and submit it. A bare string is a single-field prompt
+ * (`ValuePromptModal`); a record fills each input in the OBJECT's own key order, which is
+ * every multi-field prompt's own field order too — `{ title, folder }` for the new-item
+ * prompt, `{ critical, addressed }` for the risk vocabularies' two-field one — so one
+ * function covers both without asking which modal is open.
+ */
+export function submitPrompt(fields: { title: string; folder?: string } | Record<string, string> | string): void {
 	const modal = Modal.lastOpened;
 	if (!modal) throw new Error('prompt not opened');
 	const inputs = Array.from(modal.contentEl.querySelectorAll('input'));
-	inputs[0].value = fields.title;
-	inputs[0].dispatchEvent(new Event('input', { bubbles: true }));
-	if (fields.folder !== undefined) {
-		inputs[1].value = fields.folder;
-		inputs[1].dispatchEvent(new Event('input', { bubbles: true }));
-	}
+	const values = typeof fields === 'string' ? [fields] : Object.values(fields);
+	values.forEach((value, i) => {
+		inputs[i].value = value;
+		inputs[i].dispatchEvent(new Event('input', { bubbles: true }));
+	});
 	submitButton(modal)?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
 }
 

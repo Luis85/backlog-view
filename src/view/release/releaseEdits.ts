@@ -317,8 +317,12 @@ async function save(view: ReleaseView, writes: ReleaseWrite[], control: string, 
  * Open release note button instead: the same "a stable neighbour, never the body" rule,
  * pointed at the one control every scope screen always draws rather than at a control that
  * happens to cover the field this time.
+ *
+ * Exported since Task 4: the two `.base`-writing dialogs in `readinessFix.ts` close the
+ * same way — a modal that CLOSES before it submits — and need the identical restore
+ * rather than a second copy of it.
  */
-function focusControl(view: ReleaseView, control: string, fallback?: string): void {
+export function focusControl(view: ReleaseView, control: string, fallback?: string): void {
 	const target = view.viewEl.querySelector<HTMLElement>(control) ?? (fallback ? view.viewEl.querySelector<HTMLElement>(fallback) : null);
 	target?.focus({ preventScroll: true });
 }

@@ -545,7 +545,11 @@ describe('what an edit is, and is not', () => {
 		vault.addFile('R.md', {
 			frontmatter: { type: 'Release', version: '1.0.0', status: ['Planned', 'Cut'], description: { a: 1 } },
 		});
-		const { view, containerEl } = makeReleaseView(vault, { ...RELEASE_CONFIG, estimateProperty: '' });
+		// The risk vocabularies are bound on top of `RELEASE_CONFIG`, which leaves them out —
+		// this test is about the status and description fields, and the risk criterion's own
+		// third fix button (Task 4) would otherwise add a fifth, unrelated line below.
+		const risk = { criticalRiskValues: 'Critical', addressedRiskValues: 'Mitigated' };
+		const { view, containerEl } = makeReleaseView(vault, { ...RELEASE_CONFIG, estimateProperty: '', ...risk });
 		view.pick('R.md');
 
 		expect(containerEl.querySelector('.pbl-rel-status')).toBeNull();

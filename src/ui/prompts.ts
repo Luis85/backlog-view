@@ -7,8 +7,13 @@ import { ValueSuggest } from './valueSuggest';
  * screen — the shape every text field in these prompts wants. The Enter that
  * confirms an IME composition is not a submit: taking it would close the prompt
  * on the half-finished reading instead of the word being composed.
+ *
+ * Exported alongside {@link refusableBody}: this file is at its 400-line budget, so a
+ * prompt that needs one more text field than any modal here already has (the risk
+ * vocabularies' two, `src/ui/twoFieldPrompt.ts`) reuses both rather than growing this
+ * file or reimplementing either.
  */
-function submitOnEnter(inputEl: HTMLInputElement, submit: () => void, autofocus = false): void {
+export function submitOnEnter(inputEl: HTMLInputElement, submit: () => void, autofocus = false): void {
 	inputEl.addEventListener('keydown', (evt) => {
 		if (evt.key === 'Enter' && !evt.isComposing) {
 			evt.preventDefault();
@@ -104,7 +109,7 @@ export interface Refusable<T> {
  * The error element comes back so the field renderers can clear it — a refusal was about
  * what was entered, so it stops being true the moment the entry changes.
  */
-function refusableBody<T>(
+export function refusableBody<T>(
 	modal: Modal,
 	options: Refusable<T>,
 	read: () => T,

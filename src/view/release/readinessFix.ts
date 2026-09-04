@@ -2,6 +2,11 @@ import { Notice, TFile, setTooltip } from 'obsidian';
 import type { ReleaseView } from './releaseView';
 import { t } from '../../i18n/t';
 import { bindAndReport } from './newRelease';
+import { focusControl } from './releaseEdits';
+import { ValuePromptModal } from '../../ui/prompts';
+import { openTwoFieldPrompt } from '../../ui/twoFieldPrompt';
+import { riskValuesOf } from '../../domain/releaseReadiness';
+import { sameValue } from '../../domain/noteFields';
 
 /**
  * A red state and the press that clears it.
@@ -72,4 +77,117 @@ function runRemedy(view: ReleaseView, remedy: Remedy, evt: MouseEvent): void {
 		// detached copy of it. `initControl.ts` makes the identical call.
 		if (bound) view.render();
 	});
+}
+
+/**
+ * The two `.base`-writing dialogs: a capacity unit with nowhere else to be typed, and the
+ * two risk vocabularies a bound `riskProperty` still cannot answer with on its own. Both
+ * are `run` remedies — nothing here is a note write, so neither reaches the gate or the
+ * undo slot `releaseEdits.ts`'s three edits share.
+ *
+ * `view.config.set` is `runReleaseInit`'s own call (`init.ts`'s `RELEASE_SUGGESTED_VALUES`
+ * sweep), copied rather than invented, and it is not awaited — a `.base` write raises no
+ * data update of its own, so each dialog calls `view.render()` itself rather than waiting
+ * on one that never comes.
+ *
+ * Both dialogs close before they submit (`refusableBody`'s and `ValuePromptModal`'s own
+ * `this.close()`, ahead of `onSubmit`), which is `releaseEdits.ts`'s own reason for its
+ * `focusControl`/`save` split: the redraw inside a modal's `onSubmit` replaces the button
+ * that opened it, so the destination is looked up FRESH after the write, and `onClosed`
+ * covers the exit that never reaches `onSubmit` at all (Escape, the close control).
+ */
+
+/** Each dialog's own selector — `drawFixNote`'s `extraCls`, the capacity fix's own
+ *  reason: a dialog's focus restore needs the exact button that opened it, and
+ *  `pbl-rel-fix` alone is shared by every fix button on the strip. */
+const UNIT_FIX = '.pbl-rel-unit-fix';
+const RISKVALUES_FIX = '.pbl-rel-riskvalues-fix';
+/** The header's own Open release note control, drawn on every scope screen
+ *  (`renderScope.ts`'s `drawOpenNote`) — `releaseEdits.ts`'s identical constant, spelled
+ *  again rather than imported: a successful write here removes its own opening button
+ *  exactly as the capacity fix's does, and a stable neighbour beats the body. */
+const OPEN_BUTTON = '.pbl-rel-open';
+
+/**
+ * The capacity unit: typed once, read by both the effort figure and the capacity
+ * comparison (`renderReadiness.ts`). Reachable only from `release.scope.capacityNoUnit`,
+ * which draws exactly when the capacity key IS bound and the unit is not — so there is
+ * never a value on the note for a prefill to lose, the reason `editReleaseCapacity`
+ * states for its own blank open (`releaseEdits.ts`).
+ */
+export function editCapacityUnit(view: ReleaseView): void {
+	new ValuePromptModal(view.app, {
+		title: t('release.scope.unitTitle'),
+		fieldName: t('release.scope.unitTitle'),
+		placeholder: t('release.scope.unitPlaceholder'),
+		ctaLabel: t('release.scope.unitSave'),
+		known: [],
+		onClosed: () => focusControl(view, UNIT_FIX, OPEN_BUTTON),
+		onSubmit: (value) => {
+			view.config.set('capacityUnit', value);
+			view.render();
+			focusControl(view, UNIT_FIX, OPEN_BUTTON);
+		},
+	}).open();
+}
+
+/**
+ * The risk vocabularies, one dialog and one write for both — a criterion with only one of
+ * them bound is unconfigured exactly as if neither were
+ * (`docs/requirements/Answering the readiness checklist.md`), so two sequential prompts
+ * could leave it in that state on a cancel between them. Both keys are written before the
+ * single `view.render()`, never one write per field.
+ *
+ * Prefilled with the vault's own lists (`view.settings`, already resolved into arrays);
+ * the placeholder on both fields is what the base's own members already carry in the
+ * property, so a reader typing the vocabulary for the first time sees what is actually
+ * there rather than guessing a spelling — {@link observedRiskValues}.
+ */
+export function editRiskValues(view: ReleaseView): void {
+	const observed = observedRiskValues(view);
+	openTwoFieldPrompt(view.app, {
+		heading: t('release.scope.riskValuesTitle'),
+		description: t('release.scope.riskValuesHint'),
+		fields: [
+			{
+				field: 'critical',
+				name: t('release.scope.riskValuesCritical'),
+				value: view.settings.criticalRiskValues.join(', '),
+				placeholder: observed,
+			},
+			{
+				field: 'addressed',
+				name: t('release.scope.riskValuesAddressed'),
+				value: view.settings.addressedRiskValues.join(', '),
+				placeholder: observed,
+			},
+		],
+		cta: t('release.scope.riskValuesSave'),
+		validate: () => null,
+		onClosed: () => focusControl(view, RISKVALUES_FIX, OPEN_BUTTON),
+		onSubmit: (values) => {
+			view.config.set('criticalRiskValues', values.critical);
+			view.config.set('addressedRiskValues', values.addressed);
+			view.render();
+			focusControl(view, RISKVALUES_FIX, OPEN_BUTTON);
+		},
+	});
+}
+
+/**
+ * The distinct risk values the loaded model's members already carry, read off `view.model`
+ * rather than a second vault walk — `riskValuesOf` is `releaseReadiness.ts`'s own reader,
+ * reused so a raw value is parsed exactly once. This dialog is what decides which of them
+ * count as critical or addressed, so the same list is offered as a hint on BOTH fields
+ * rather than sorted into either.
+ */
+function observedRiskValues(view: ReleaseView): string {
+	if (view.model === null || view.settings.riskKey === '') return '';
+	const seen: string[] = [];
+	for (const item of view.model.items) {
+		for (const value of riskValuesOf(view.app, item, view.settings).values) {
+			if (!seen.some((known) => sameValue(known, value))) seen.push(value);
+		}
+	}
+	return seen.join(', ');
 }

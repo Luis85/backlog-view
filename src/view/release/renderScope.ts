@@ -205,7 +205,7 @@ function drawHeader(
 	const readiness = releaseReadiness(view.app, scope, view.settings, planSettings);
 	drawSummary(footEl, release, scope.members, readiness, { view, plan: planSettings, release: view.settings });
 	drawReleaseActions(view, footEl, release, scope, planSettings);
-	drawReadiness(headerEl, readiness, view.settings, planSettings);
+	drawReadiness(view, headerEl, readiness, view.settings, planSettings);
 }
 
 /**

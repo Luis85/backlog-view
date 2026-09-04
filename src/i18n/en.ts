@@ -2316,6 +2316,19 @@ export const en = {
 	 *  `Capacity reads capacity, in .` is what a screen reader would say otherwise, and a
 	 *  message assembled around a blank is not a sentence in any language. */
 	'release.scope.provenanceCapacityNoUnit': 'Capacity reads {property}.',
+	/** The unit dialog `capacityNoUnit` opens (`readinessFix.ts`) — doubles as the modal's
+	 *  heading and its one field's label, the way `capacityTitle` reads as a sentence but
+	 *  `capacityPlaceholder` is the field's own hint below it. */
+	'release.scope.unitTitle': 'Unit for capacity and effort',
+	'release.scope.unitPlaceholder': 'points',
+	'release.scope.unitSave': 'Set unit',
+	/** The risk vocabularies dialog `editRiskValues` opens — also the fix button drawn
+	 *  beside the chip row, so the same sentence names the problem and the dialog it opens. */
+	'release.scope.riskValuesTitle': 'Which risk values matter',
+	'release.scope.riskValuesCritical': 'Critical values',
+	'release.scope.riskValuesAddressed': 'Addressed values',
+	'release.scope.riskValuesHint': 'Comma-separated. The criterion needs both.',
+	'release.scope.riskValuesSave': 'Set risk values',
 
 	/**
 	 * The summary strip's own label for the progress figure, read into
