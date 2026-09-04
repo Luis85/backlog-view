@@ -252,6 +252,35 @@ describe('the risk vocabularies', () => {
 		expect(viewConfig.setCalls.map((c) => c.key)).not.toContain('addressedRiskValues');
 	});
 
+	/**
+	 * **The narrower dead end this pins**: the refusal above checked the raw string against
+	 * `''` alone, but `list()` (`settingsResolve.ts`) trims and drops empty entries — so
+	 * `"  "` or `","` passed the dialog's own guard, wrote a string that parses to `[]`, and
+	 * left the criterion exactly as unconfigured as `''` would have, with no reason shown.
+	 * Reusing `list()`'s own split (`parseListValue`) is what closes that door rather than
+	 * narrowing it a second time.
+	 */
+	it('refuses whitespace or a bare comma the same way, because both parse to nothing', async () => {
+		const config: Record<string, unknown> = { ...RELEASE_CONFIG, criticalRiskValues: '', addressedRiskValues: '' };
+		const { view, config: viewConfig } = releaseScreen({}, scopeVault(), config);
+		button(view, '.pbl-rel-riskvalues-fix').click();
+		await flush();
+		submitPrompt({ critical: '  ', addressed: 'Mitigated' });
+		await flush();
+
+		expect(Modal.lastOpened?.contentEl.querySelector('.pbl-modal-error')?.textContent).toBe(
+			en['release.scope.riskValuesRequired'],
+		);
+		expect(viewConfig.setCalls.map((c) => c.key)).not.toContain('criticalRiskValues');
+
+		submitPrompt({ critical: 'High', addressed: ',' });
+		await flush();
+		expect(Modal.lastOpened?.contentEl.querySelector('.pbl-modal-error')?.textContent).toBe(
+			en['release.scope.riskValuesRequired'],
+		);
+		expect(viewConfig.setCalls.map((c) => c.key)).not.toContain('addressedRiskValues');
+	});
+
 	it('hints at the vault’s own observed values on both fields, deduplicated case-insensitively', async () => {
 		const vault = scopeVault();
 		vault.setFrontmatter('M1.md', { type: 'PBI', order: 1, release: '[[0.9]]', risk: 'High' });

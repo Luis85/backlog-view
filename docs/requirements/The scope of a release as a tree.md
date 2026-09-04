@@ -254,6 +254,10 @@ count. **Both chips WRITE, since 2026-09-04** (Task 8 of [[Release readiness]]):
 `Set effort` / `Set risk` as the keyboard path the tree's one tab stop requires, and both
 inputs per field plan through one function (`memberEffortWrites` / `memberRiskWrites`) and
 apply through `ReleaseView.applyRelease`. **A context row is refused at the write, not merely
-undrawn**: `applyAndRefocus` is the one funnel every input passes through and it declines a
-context row itself, because the gate cannot — `releaseScope` skips an `outsideFilter`
-ancestor, so a context row here is a base result the gate has no question about.
+undrawn**: `applyAndRefocus` is the one funnel every input IN `scopeChips.ts` passes through
+and it declines a context row itself, because the gate cannot — `releaseScope` skips an
+`outsideFilter` ancestor, so a context row here is a base result the gate has no question
+about. **That is a claim about this module, not about every path to those writes**: the two
+planner functions and `applyRelease` are reachable directly from anywhere else in the
+codebase, and nothing — no lint rule, no spy — sits on either call to catch a writer built
+elsewhere that reaches them without going through `applyAndRefocus`.

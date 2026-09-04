@@ -107,7 +107,12 @@ claim this section made until the final review, and it was false for this screen
 this tree draws is a base result and `ReleaseView`'s own `outsideFilter` predicate can never
 refuse one. The structural check is `applyAndRefocus`'s instead — the single funnel both
 fields and both inputs pass through refuses a `row.context` write itself, so withholding the
-two controls decides what is DRAWN and a third input written later is still refused.
+two controls decides what is DRAWN and a third input added to `scopeChips.ts` is refused too.
+**That guarantee stops at the module.** `memberEffortWrites`/`memberRiskWrites`
+(`domain/releaseWritePlan.ts`) and `ReleaseView.applyRelease` are reachable directly from
+anywhere else in the codebase, with no lint rule or spy on either call — a writer built in
+another module that reaches them without going through `applyAndRefocus` is not refused by
+anything stated here.
 
 **Effort takes a number, judged by the reader that counts it.** The prompt accepts a value
 `estimateValue` (already exported from `domain/releaseReadiness.ts`) reads as a finite

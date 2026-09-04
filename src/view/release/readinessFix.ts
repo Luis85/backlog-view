@@ -7,6 +7,7 @@ import { ValuePromptModal } from '../../ui/prompts';
 import { openTwoFieldPrompt } from '../../ui/twoFieldPrompt';
 import { riskValuesOf } from '../../domain/releaseReadiness';
 import { sameValue } from '../../domain/noteFields';
+import { parseListValue } from '../../domain/settingsResolve';
 
 /**
  * A red state and the press that clears it.
@@ -168,8 +169,18 @@ export function editRiskValues(view: ReleaseView): void {
 		// puts the reader back on the identical red note with nothing said — the dead end
 		// every fix button on this strip exists to remove, reached through the press meant to
 		// clear it. Refused in the dialog, where the typing is still there to correct.
+		//
+		// Checked against what `list()` (`settingsResolve.ts`) will actually PARSE the typed
+		// string into, not against the raw string: `list()` trims each entry and drops the
+		// empty ones, so `"  "` or `","` is `''` in every way that matters here and a bare
+		// `=== ''` check let both through — writing a value that reads back as unconfigured
+		// and returning the reader to the identical red note. `parseListValue` is that same
+		// split, reused rather than re-implemented, so the two can never disagree about what
+		// counts as empty.
 		validate: (values) =>
-			values.critical === '' || values.addressed === '' ? t('release.scope.riskValuesRequired') : null,
+			parseListValue(values.critical).length === 0 || parseListValue(values.addressed).length === 0
+				? t('release.scope.riskValuesRequired')
+				: null,
 		onClosed: () => focusControl(view, RISKVALUES_FIX, OPEN_BUTTON),
 		onSubmit: (values) => {
 			view.config.set('criticalRiskValues', values.critical);

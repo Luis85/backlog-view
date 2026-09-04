@@ -26,7 +26,13 @@ import { TreeDraw } from '../scopeKeys';
  * is a base result and `ReleaseView`'s own `outsideFilter` predicate can never refuse one.
  * The check is therefore at the forbidden thing instead: {@link applyAndRefocus}, the one
  * funnel both fields and both inputs pass through, refuses a context row itself, so the two
- * gates below decide what is DRAWN and a third input written next year is still refused.
+ * gates below decide what is DRAWN and a THIRD INPUT ADDED TO THIS MODULE is covered too,
+ * without anyone remembering it. **That claim stops at this module's own boundary and no
+ * wider**: `memberEffortWrites` / `memberRiskWrites` (`domain/releaseWritePlan.ts`) and
+ * `ReleaseView.applyRelease` are both reachable directly from anywhere else in the
+ * codebase, and no lint rule or spy sits on either call — a writer built in another module
+ * that reaches them without going through `applyAndRefocus` is not refused by anything
+ * written here, and nothing today would fail if one did.
  *
  * **An unset value draws a DASHED chip rather than nothing**, which is the tree's own rule
  * for risk and priority (`src/view/CLAUDE.md`'s label-chip section): absence here is an
@@ -286,12 +292,15 @@ export function wireReadinessChips(view: ReleaseView, draw: TreeDraw, settings: 
  * `save`, over a per-ROW control rather than one per screen.
  *
  * **And refuse a CONTEXT row here, which is the whole of what keeps a member write off
- * one.** This is the single funnel every input for either field passes through, so the rule
- * is stated at the write rather than at the two places that withhold a control — the check
- * that holds for a path not yet written, which is what the module header's own paragraph on
- * the gate explains this cannot borrow from `ReleaseView`. Unreachable from the screen as it
- * stands, so it says so to the console rather than to the reader: a Notice would be a
- * sentence nobody can produce.
+ * one THROUGH THIS MODULE.** This is the single funnel every input in `scopeChips.ts` for
+ * either field passes through, so the rule is stated at the write rather than at the two
+ * places that withhold a control — the check that holds for a fourth input added HERE,
+ * which is what the module header's own paragraph on the gate explains this cannot borrow
+ * from `ReleaseView`. **It is not a check on the write planners or on `applyRelease`
+ * themselves** — see that same paragraph for what reaching either directly, from outside
+ * this module, is not stopped by. Unreachable from the screen as it stands, so it says so
+ * to the console rather than to the reader: a Notice would be a sentence nobody can
+ * produce.
  */
 async function applyAndRefocus(view: ReleaseView, writes: ReleaseWrite[], row: ScopeRow, field: 'effort' | 'risk'): Promise<void> {
 	if (row.context) {
