@@ -134,6 +134,9 @@ note assumed and `## Where it lives` explains it cannot be.
 - With the membership property unconfigured, no tree is drawn and the empty state names the
   option.
 - Drawing the scope plans no write.
+- A write aimed at a CONTEXT row is refused at the write itself, not only by withholding the
+  control: neither readiness chip is drawn on one, and a control planted on one anyway still
+  writes nothing.
 - A folded parent keeps its own rollup: folding is a render decision over what is drawn, and it
   must never change a figure computed over the subtree.
 - Hiding never removes a context ancestor that still holds a visible member: a context row
@@ -243,7 +246,14 @@ silent, drawn but empty on a context row (the columnar-layout rule above applies
 exactly as it does to the state chip), and absent whole where the property is unbound, or,
 for risk, where neither `criticalRiskValues`, `addressedRiskValues` nor any member's own
 value gives it anything to offer (`computeRiskChoices` in `scopeTree.ts`, built once per draw
-rather than per row). `scopeTree.ts` calls it after `drawScopeStateChip` and before the
-rollup, so the strip reads state, effort, risk, then the count. Both chips are drawn only —
-`tabindex="-1"`, no listener — until the row menu gives them a keyboard path and a write to
-open.
+— over the release's WHOLE scope, never the rows a readiness narrowing left standing, or the
+column would appear and vanish as a side effect of a filter). `scopeTree.ts` calls it after
+`drawScopeStateChip` and before the rollup, so the strip reads state, effort, risk, then the
+count. **Both chips WRITE, since 2026-09-04** (Task 8 of [[Release readiness]]): each is a
+`tabindex="-1"` button opening the effort dialog or the risk menu, with the row menu's own
+`Set effort` / `Set risk` as the keyboard path the tree's one tab stop requires, and both
+inputs per field plan through one function (`memberEffortWrites` / `memberRiskWrites`) and
+apply through `ReleaseView.applyRelease`. **A context row is refused at the write, not merely
+undrawn**: `applyAndRefocus` is the one funnel every input passes through and it declines a
+context row itself, because the gate cannot — `releaseScope` skips an `outsideFilter`
+ancestor, so a context row here is a base result the gate has no question about.

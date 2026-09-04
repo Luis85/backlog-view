@@ -100,9 +100,14 @@ Each member row of the scope tree draws, at its end beside the state chip:
 Both are `tabindex="-1"` buttons, the tree's own answer for a per-row control (`src/view/
 CLAUDE.md`, Controls), so the tree stays one tab stop.
 
-**A context row draws neither.** An `outsideFilter`-shaped row on this screen is a
-non-member ancestor: it renders, it parents, and that is all. The gate's whole-batch refusal
-is the structural backstop behind that, not a substitute for it.
+**A context row draws neither.** A context row on this screen is a non-member ancestor: it
+renders, it parents, and that is all. **The gate is not the backstop behind that** — the
+claim this section made until the final review, and it was false for this screen:
+`scopeRows` walks THROUGH an `outsideFilter` ancestor rather than keeping it, so every row
+this tree draws is a base result and `ReleaseView`'s own `outsideFilter` predicate can never
+refuse one. The structural check is `applyAndRefocus`'s instead — the single funnel both
+fields and both inputs pass through refuses a `row.context` write itself, so withholding the
+two controls decides what is DRAWN and a third input written later is still refused.
 
 **Effort takes a number, judged by the reader that counts it.** The prompt accepts a value
 `estimateValue` (already exported from `domain/releaseReadiness.ts`) reads as a finite
