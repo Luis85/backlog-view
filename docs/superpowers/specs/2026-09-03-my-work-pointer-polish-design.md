@@ -118,8 +118,15 @@ the other is drift, not scope discipline.
 
 ## Not in this change
 
-- **The loading shell.** `mywork.loading` shows for one frame before the first data
-  update; a guidance shell there costs two catalog keys to dress a flash.
+- **A guidance shell for the loading state, refused — the shared spinner, shipped
+  instead.** `mywork.loading` used to show as one bare line of text for one frame before
+  the first data update, and a `guidanceShell` (an icon, a heading, a hint — two catalog
+  keys) to dress that single flash was refused as more than the moment is worth. What
+  shipped is neither: `renderLoadingState` (`view/render/emptyStates.ts`), the spinner
+  and live region every other view already announces its own loading state through, costs
+  no catalog key of this view's own and is a smaller change than either the bare text it
+  replaces or the guidance shell that was refused — the decision changed once the shared
+  state was noticed as the third option.
 - **A count of open work beside the picker.** Summing a person's load belongs to
   [[Product Operations]] — [[My work]] states that boundary, and both epics wanting the
   same calculation is how the two drift.

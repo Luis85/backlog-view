@@ -9,23 +9,32 @@
    sites here re-target a selector another partial owns — counted by walking every
    selector in this file against the class names the other partials declare, not by
    reading down looking for them, because this inventory has been wrong twice from doing
-   that. Every one is a two-class compound at (0,2,0), beating the bare single-class rule
-   it targets at (0,1,0), so each wins from any position in the import list:
+   that. Five are a two-class compound at (0,2,0), beating the bare single-class rule
+   each targets at (0,1,0), so each wins from any position in the import list:
    `.pbl-mw-view .pbl-row` (`user-select`, against `tree.css`'s bare `.pbl-row`),
    `.pbl-mw-view .pbl-title` (`min-width`, against `tree.css`'s bare `.pbl-title`),
    `.pbl-mw-view .pbl-state-text` (`display`, inside the narrow block, against
    `columns.css`'s bare `.pbl-state-text`, which declares only that element's
-   `overflow`/`text-overflow`), `.pbl-mw-open .pbl-title` (`color`/`font-weight`,
-   `tree.css`'s bare `.pbl-title` again — drawn since Task 3, missed by this paragraph
-   until 2026-09-03's second correction), and — added 2026-09-03 with the context row's
-   own colour-based emphasis — `.pbl-mw-context .pbl-title` (`color`, `tree.css`'s bare
-   `.pbl-title` a third time) and `.pbl-mw-context .pbl-badge` (`opacity`, against
-   `badges.css`'s bare `.pbl-badge`). Everything else here is `.pbl-mw-*`, a vocabulary
-   no other partial declares — the disclosure (`button.pbl-twisty`, `releaseScope.css`),
-   the spacer (`.pbl-row-spacer`, `propertyColumns.css`) and the state chip's own base
-   rules (`.pbl-state-chip`, `.pbl-state-static`, …, `columns.css`) are used here exactly
-   as drawn. Write an UNPREFIXED rule over another partial's selector and this paragraph
-   is what contradicts you.
+   `overflow`/`text-overflow`), and — added 2026-09-03 with the context row's own
+   colour-based emphasis — `.pbl-mw-context .pbl-title` (`color`, `tree.css`'s bare
+   `.pbl-title` again) and `.pbl-mw-context .pbl-badge` (`opacity`, against
+   `badges.css`'s bare `.pbl-badge`). **The sixth is a three-class compound at (0,3,0)
+   since 2026-09-03's second correction**: `.pbl-row.pbl-mw-open .pbl-title`
+   (`color`/`font-weight`, `tree.css`'s bare `.pbl-title` a third time) used to be the
+   two-class `.pbl-mw-open .pbl-title` and win only by being written after
+   `.pbl-mw-context .pbl-title` in this same file — a claim a whole-branch review found
+   undocumented and, worse, silent about the one row shape that needs it decided at all: a
+   context ancestor can BE the open note (`wireRowOpen` opens one on purpose,
+   `syncOpenRow` marks every path in `rowEls`), so a row can carry both classes and the two
+   rules disagree about the title's colour. Raised to `.pbl-row.pbl-mw-open` rather than
+   documented as order-dependent, this repo's own preference where a claim CAN be made
+   structural: the open state must read as open regardless of where either rule sits in
+   this file. Everything else here is `.pbl-mw-*`, a vocabulary no other partial declares
+   — the disclosure (`button.pbl-twisty`, `releaseScope.css`), the spacer
+   (`.pbl-row-spacer`, `propertyColumns.css`) and the state chip's own base rules
+   (`.pbl-state-chip`, `.pbl-state-static`, …, `columns.css`) are used here exactly as
+   drawn. Write an UNPREFIXED rule over another partial's selector and this paragraph is
+   what contradicts you.
    ========================================================================== */
 
 /* A tree that DRAGS nothing may not keep the tree's own `user-select: none` —
@@ -115,7 +124,12 @@ button.pbl-mw-toggle-on {
 	background-color: var(--nav-item-background-active, var(--background-modifier-hover));
 }
 
-.pbl-mw-open .pbl-title {
+/* `.pbl-row.pbl-mw-open`, never the bare `.pbl-mw-open .pbl-title` this used to be —
+   structural rather than order-dependent, since a row can carry `.pbl-mw-context` too (a
+   context ancestor that is also the open note) and this is the rule that must win when it
+   does: (0,3,0) beats `.pbl-mw-context .pbl-title`'s (0,2,0) regardless of which rule this
+   file writes second. See this file's own header. */
+.pbl-row.pbl-mw-open .pbl-title {
 	color: var(--text-normal);
 	font-weight: var(--font-medium);
 }
@@ -317,9 +331,19 @@ button.pbl-mw-menu:hover {
 	   control past the pane, measured in the harness at `?width=200`; 240px and wider carry
 	   no such row and clip nothing). Neither the chip's own floor nor the 260px cutoff
 	   moves for it — the chip already has the narrower rules above, and a wider cutoff
-	   would cost every row the marker never reaches. Guarded by `(hover: hover)`, `touch.
-	   css`'s own reason repeated: a reader who cannot hover is the reader who cannot
-	   right-click either, so on a touch pane this stays the ONLY route to the menu. */
+	   would cost every row the marker never reaches. Guarded by `(hover: hover)`, so the
+	   button is withdrawn only where the reader has a right-click to fall back on instead —
+	   never the biconditional this comment stated until a whole-branch review narrowed it:
+	   `hover: hover`/`hover: none` answer for the PRIMARY pointer, not for every input a
+	   device has, so a touchscreen laptop whose primary pointer is a mouse reports `hover:
+	   hover` even while a reader is tapping its screen with a finger, and below this width
+	   that reader loses the button to this rule with no hover reveal and no right-click to
+	   replace it — a device this media feature cannot see and this rule cannot help.
+	   What holds is narrower and still true: a device that DOES report `hover: hover`
+	   through its primary pointer has a right-click through that same pointer, so THIS
+	   rule costs that reader nothing; a device that reports `hover: none` never reaches
+	   this block at all, since the media query excludes it, and keeps the button as its
+	   only route (the `@media (hover: none)` rule above). */
 	@media (hover: hover) {
 		.pbl-mw-view button.pbl-mw-menu {
 			display: none;

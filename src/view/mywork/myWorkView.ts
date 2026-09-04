@@ -23,17 +23,29 @@ export const MY_WORK_VIEW_TYPE = 'product-my-work';
 /**
  * The classes a redraw's own controls carry — `ReleaseView.render()`'s own
  * `FOCUS_HANDLE_CLASSES` mechanism (`view/release/releaseView.ts`), over this view's own
- * vocabulary. `pbl-mw-tree` (Task 6) and Task 8's own four toolbar controls — the
- * person picker and the collapse-all/expand-all/hide-done trio (`toolbar.ts`) — are what
- * this view draws today. `ReleaseView`'s own list grew the same way, one control at a
- * time, and three separate fixes for a lost focus shipped on that branch before the list
- * did.
+ * vocabulary. `pbl-mw-tree` (Task 6), Task 8's own four toolbar controls — the person
+ * picker and the collapse-all/expand-all/hide-done trio (`toolbar.ts`) — and `pbl-mw-solo`
+ * (`drawSoloPress`, below) are what this view draws today. `ReleaseView`'s own list grew
+ * the same way, one control at a time, and three separate fixes for a lost focus shipped
+ * on that branch before the list did; `pbl-mw-solo` is this view's own version of the
+ * identical miss (whole-branch review, Important 1) — a real tab stop this enumeration
+ * left out, so a keyboard reader who activated it was thrown onto `document.body` by the
+ * redraw the press itself triggers, because `focusedHandle()` (below) found no class of
+ * theirs in this list to remember.
  *
  * No `data-path` tiebreak, unlike `ReleaseView`'s: nothing this view draws repeats one
- * handle class per item (there is one tree, one picker, one of each toolbar button), so a
- * bare class is already a unique answer.
+ * handle class per item (there is one tree, one picker, one of each toolbar button, and
+ * `pbl-mw-solo` draws at most once, for a roster of exactly one), so a bare class is
+ * already a unique answer.
  */
-const FOCUS_HANDLE_CLASSES = ['pbl-mw-tree', 'pbl-mw-person', 'pbl-mw-collapse', 'pbl-mw-expand', 'pbl-mw-hidedone'];
+const FOCUS_HANDLE_CLASSES = [
+	'pbl-mw-tree',
+	'pbl-mw-person',
+	'pbl-mw-collapse',
+	'pbl-mw-expand',
+	'pbl-mw-hidedone',
+	'pbl-mw-solo',
+];
 
 export class MyWorkView extends BasesView {
 	type = MY_WORK_VIEW_TYPE;

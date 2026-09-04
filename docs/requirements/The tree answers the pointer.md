@@ -146,9 +146,10 @@ at 240px, 260px and 600px under it. **The `(hover: hover)` branch — the button
 disappearing below 260px for a mouse — was never render-verified**, only confirmed from
 the built stylesheet: the rule nests correctly inside the container query
 (`test/view/mywork/narrow.test.ts` asserts the selector, its `display: none`, and its
-position after the base rule, read from the assembled CSS source, not from computed
-layout — jsdom computes none). Watching the button actually vanish at 200px under a real
-mouse is a live-vault or live-browser check this environment cannot perform.
+position after the base rule, read from the partial's own source (`styles/mywork.css`),
+not from computed layout — jsdom computes none). Watching the button actually vanish at
+200px under a real mouse is a live-vault or live-browser check this environment cannot
+perform.
 
 ## Where it lives
 
@@ -164,7 +165,10 @@ mouse is a live-vault or live-browser check this environment cannot perform.
   `drawSoloPress` for the roster-of-one press, and `render()`'s person-switch vs.
   same-person scroll branch (reading `nextRowEl` through a local `as HTMLElement | null`
   read — a TS 6.0.3 control-flow narrowing gap this repo's pinned compiler has, confirmed
-  by a standalone reproduction, not a stray cast).
+  by a standalone reproduction, not a stray cast). Also draws the loading state through
+  the shared `renderLoadingState` (`view/render/emptyStates.ts`) rather than the bare
+  line of text it used to be — no catalog key of this view's own, see the design note's
+  own "Not in this change" for why the earlier refusal was of a different shape.
 - `styles/mywork.css` — `.pbl-mw-menu`'s reveal rule, the `@media (hover: hover)` narrow
   fallback, `.pbl-mw-open`, and `.pbl-mw-context`'s per-element emphasis (`.pbl-title`
   colour, `.pbl-badge` opacity) in place of the old whole-row `opacity`.

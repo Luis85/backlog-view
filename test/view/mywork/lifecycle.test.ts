@@ -66,6 +66,28 @@ describe('render scrolling on a person switch', () => {
 	});
 });
 
+describe('the solo press is a focus handle (whole-branch review, Important 1)', () => {
+	it('keeps focus inside the view when the roster-of-one press is activated', () => {
+		// The fixture ships two people; a roster of ONE is what this press is for — the
+		// identical trim `shell.test.ts`'s own "offers a press for a roster of one" uses.
+		const vault = myWorkVault();
+		vault.files.delete('People/Bo.md');
+		vault.frontmatter.delete('People/Bo.md');
+		const { view } = makeMyWorkView(vault);
+
+		const btn = view.viewEl.querySelector<HTMLElement>('.pbl-mw-solo')!;
+		// Tab, then Enter/Space — a browser fires `click` on a focused button either way,
+		// which is what a `MouseEvent('click')` dispatched at a focused element stands in
+		// for here (jsdom fires no synthetic activation of its own).
+		btn.focus();
+		btn.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+
+		// `pick()` renders a fresh tree over `btn`'s own detached element — a keyboard
+		// reader must land SOMEWHERE inside the redrawn view, never on `document.body`.
+		expect(view.viewEl.contains(document.activeElement)).toBe(true);
+	});
+});
+
 describe('a write landing through this view’s own gate', () => {
 	it('applies an in-filter write and rebuilds the model over the fresh frontmatter', async () => {
 		const vault = myWorkVault();

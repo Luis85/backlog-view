@@ -159,11 +159,15 @@
    BESIDE its neighbour here is a reading convenience. */
 @import "./releaseReadiness.css";
 /* Position NOT load-bearing, and not because nothing here overlaps another partial: six
-   sites re-target a foreign selector — `.pbl-mw-view .pbl-row`, `.pbl-mw-view .pbl-title`
-   and `.pbl-mw-open .pbl-title` (all `tree.css`'s bare `.pbl-row`/`.pbl-title`),
-   `.pbl-mw-view .pbl-state-text` (`columns.css`'s bare `.pbl-state-text`), and, since
-   2026-09-03, `.pbl-mw-context .pbl-title` (`tree.css`'s bare `.pbl-title` again) and
-   `.pbl-mw-context .pbl-badge` (`badges.css`'s bare `.pbl-badge`) — and all six win on
-   the same (0,2,0)-against-(0,1,0) compound-selector arithmetic, whatever position this
-   import holds. The partial's own header gives the per-site properties. */
+   sites re-target a foreign selector — `.pbl-mw-view .pbl-row` and `.pbl-mw-view
+   .pbl-title` (`tree.css`'s bare `.pbl-row`/`.pbl-title`), `.pbl-mw-view .pbl-state-text`
+   (`columns.css`'s bare `.pbl-state-text`), and, since 2026-09-03, `.pbl-mw-context
+   .pbl-title` (`tree.css`'s bare `.pbl-title` again) and `.pbl-mw-context .pbl-badge`
+   (`badges.css`'s bare `.pbl-badge`) — and all five win on the same
+   (0,2,0)-against-(0,1,0) compound-selector arithmetic, whatever position this import
+   holds. **The sixth, `.pbl-row.pbl-mw-open .pbl-title`, wins by a wider margin still**:
+   a three-class compound at (0,3,0), raised from two classes on 2026-09-03 so it beats
+   `.pbl-mw-context .pbl-title` on the one row a context ancestor can also be the open
+   note — the partial's own header states why. The partial's own header gives the
+   per-site properties. */
 @import "./mywork.css";
