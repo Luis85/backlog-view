@@ -535,6 +535,19 @@ function drawCapacityFigures(
 		note(sumEl, t('release.scope.capacityPctOverflow'));
 		return;
 	}
+	// **The bar is the comparison; the sentence is the numbers.** Eight sibling spans of
+	// jargon is what this replaced, and the reason is that a ratio is the one thing a reader
+	// takes in without reading — the summary strip's own progress bar, one line up, making
+	// the identical trade.
+	//
+	// **The arithmetic does not move.** `over` is still `exactDifference` over the exact
+	// commitment, `pct` is still divided before it is multiplied, and both were decided
+	// above: this branch draws them and derives nothing.
+	const barEl = sumEl.createDiv({ cls: 'pbl-rel-cap' + (over > 0 ? ' pbl-rel-cap-over' : '') });
+	// CLAMPED, because a bar wider than its track is a layout bug rather than a reading: past
+	// 100% the number beside it is what says how far over, and the class is what says that at
+	// a glance.
+	barEl.createDiv({ cls: 'pbl-rel-cap-fill' }).setCssProps({ '--pbl-rel-cap': `${Math.min(100, pct)}%` });
 	figure(
 		sumEl,
 		over >= 0
