@@ -160,6 +160,36 @@ export function visibleRows(rows: ScopeRow[], folded: ReadonlySet<string>): Scop
 }
 
 /**
+ * The named rows, and every ancestor that holds one in place.
+ *
+ * One pass over a DEPTH-ORDERED list, carrying the ancestor chain of the row in hand —
+ * `doubleCountFigure`'s own walk shape (`domain/releaseReadiness.ts`), and legitimate for
+ * the same reason: `rows` arrives depth-ordered from `scopeRows`, so an ancestor is open
+ * exactly while rows deeper than it keep arriving.
+ *
+ * **Depth is not recomputed.** A narrowed tree draws the same indentation the whole one
+ * did, because the rows kept are the same rows: re-rooting them would move a member
+ * sideways as a side effect of a filter, and the reader is looking for the row they were
+ * just looking at.
+ */
+export function rowsForPaths(rows: ScopeRow[], paths: ReadonlySet<string>): ScopeRow[] {
+	const kept: ScopeRow[] = [];
+	// The chain of rows above the one in hand, deepest last.
+	const open: ScopeRow[] = [];
+	for (const row of rows) {
+		while (open.length > 0 && open[open.length - 1].depth >= row.depth) open.pop();
+		if (paths.has(row.item.file.path)) {
+			// Every open ancestor not yet kept — never only the nearest, or a named row two
+			// levels down would be drawn with a hole above it.
+			for (const ancestor of open) if (!kept.includes(ancestor)) kept.push(ancestor);
+			kept.push(row);
+		}
+		open.push(row);
+	}
+	return kept;
+}
+
+/**
  * Each row's position among its SIBLINGS at its own level, never its index in the flat row
  * list — which would announce a three-row scope as one list of three and defeat the point
  * of drawing a tree.
