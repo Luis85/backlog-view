@@ -57,13 +57,18 @@ export function drawScopeToolbar(view: ReleaseView, parentEl: HTMLElement, relea
  * `criterionName` is `renderReadiness.ts`'s own table, read here rather than copied: the
  * toolbar's sentence and the chip's own name can never come to call a criterion two
  * different things.
+ *
+ * `.pbl-rel-toggle-on` alone is shared with the hide-done toggle's own "on" state
+ * (identical accent look, deliberately) — `pbl-rel-filterclear` is this control's OWN
+ * hook, so a query for one can never silently find the other were both ever visible at
+ * once (they are not, today, but nothing enforces that).
  */
 function drawFilterClear(view: ReleaseView, barEl: HTMLElement): void {
 	const criterion = view.criterionFilter;
 	if (criterion === null) return;
 	const label = t('release.scope.filterOn', { criterion: criterionName(criterion) });
 	const btn = barEl.createEl('button', {
-		cls: 'pbl-rel-toggle pbl-rel-toggle-on',
+		cls: 'pbl-rel-toggle pbl-rel-toggle-on pbl-rel-filterclear',
 		attr: { type: 'button', 'aria-label': label },
 		text: t('release.scope.filterClear'),
 	});

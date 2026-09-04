@@ -29,9 +29,9 @@ function drillVault(): FakeVault {
 	return vault;
 }
 
-describe('drilling into a criterion', () => {
-	useViewHarness();
+useViewHarness();
 
+describe('drilling into a criterion', () => {
 	it('narrows the tree to the failing rows and their ancestors', () => {
 		const { view } = releaseScreen({}, drillVault());
 		chip(view, 'estimated').click();
@@ -75,6 +75,7 @@ describe('drilling into a criterion', () => {
 		const { view, vault } = releaseScreen({}, drillVault());
 		chip(view, 'estimated').click();
 		expect(row(view, 'M1.md', { optional: true })).toBeNull();
+		expect(view.viewEl.querySelector('.pbl-rel-filterclear')).not.toBeNull();
 
 		// Give the last unestimated member an effort, out of band, and refresh.
 		vault.setFrontmatter('M2.md', { type: 'PBI', release: '[[0.9]]', effort: 3 });
@@ -82,6 +83,47 @@ describe('drilling into a criterion', () => {
 
 		expect(view.criterionFilter).toBeNull();
 		expect(row(view, 'M1.md', { optional: true })).not.toBeNull();
+		// The toolbar's own clear control must not survive a render that already cleared
+		// the filter it names — a stale "Show every row again" is a control that lies.
+		// Review finding: this failed before `criterionRows` was moved to resolve right
+		// after `readiness`, ahead of `drawScopeToolbar`'s own read of `criterionFilter`.
+		expect(view.viewEl.querySelector('.pbl-rel-filterclear')).toBeNull();
+	});
+
+	it('resumes a suspended hide-done in the SAME render the filter clears, not the next one', () => {
+		// The bug this pins: `drawScopeToolbar` and the hide-done/all-done check used to
+		// read `view.criterionFilter` BEFORE `criterionRows` cleared it, so a render that
+		// satisfied the filtered criterion still suspended hide-done for one render — a
+		// done, now-estimated member stayed drawn instead of folding into the all-done
+		// state, and the toolbar kept showing "Show every row again" for a narrowing that
+		// had already ended. Both self-heal on the NEXT render, which is why nothing caught
+		// it before review.
+		const vault = new FakeVault();
+		vault.addFile('M.md', { frontmatter: { type: 'PBI', release: '[[0.9]]', status: 'Done' } });
+		const { view, vault: v } = releaseScreen({}, vault);
+
+		button(view, '.pbl-rel-hidedone').click();
+		// Alone, done and unestimated: hide-done (filter not yet active) already hides it.
+		expect(view.viewEl.querySelector('.pbl-rel-alldone')).not.toBeNull();
+
+		chip(view, 'estimated').click();
+		// Narrowed to the one outstanding member — hide-done suspended, so the done row is
+		// drawn again despite the preference staying on.
+		expect(view.viewEl.querySelector('.pbl-rel-alldone')).toBeNull();
+		expect(row(view, 'M.md', { optional: true })).not.toBeNull();
+
+		// Estimate it, out of band, and refresh: the ONLY outstanding member clears the
+		// criterion, so the filter self-clears this same render.
+		v.setFrontmatter('M.md', { type: 'PBI', release: '[[0.9]]', status: 'Done', effort: 3 });
+		refreshRelease(view, v);
+
+		expect(view.criterionFilter).toBeNull();
+		expect(view.viewEl.querySelector('.pbl-rel-filterclear')).toBeNull();
+		// Hide-done resumed in THIS render: the done, now-estimated member folds straight
+		// into the all-done state rather than drawing as a bare, filter-free tree for one
+		// more render.
+		expect(view.viewEl.querySelector('.pbl-rel-alldone')).not.toBeNull();
+		expect(row(view, 'M.md', { optional: true })).toBeNull();
 	});
 
 	it('offers no narrowing on a satisfied criterion', () => {
@@ -107,20 +149,18 @@ describe('drilling into a criterion', () => {
 });
 
 describe('the clear-filter control', () => {
-	useViewHarness();
-
 	it('is offered only while narrowed, and clears the narrowing', () => {
 		const { view } = releaseScreen({}, drillVault());
-		expect(view.viewEl.querySelector('.pbl-rel-toggle-on')).toBeNull();
+		expect(view.viewEl.querySelector('.pbl-rel-filterclear')).toBeNull();
 
 		chip(view, 'estimated').click();
-		const clear = view.viewEl.querySelector<HTMLButtonElement>('.pbl-rel-toggle-on')!;
+		const clear = view.viewEl.querySelector<HTMLButtonElement>('.pbl-rel-filterclear')!;
 		expect(clear).not.toBeNull();
 		expect(clear.textContent).toBe('Show every row again');
 
 		clear.click();
 		expect(view.criterionFilter).toBeNull();
-		expect(view.viewEl.querySelector('.pbl-rel-toggle-on')).toBeNull();
+		expect(view.viewEl.querySelector('.pbl-rel-filterclear')).toBeNull();
 		expect(row(view, 'M1.md', { optional: true })).not.toBeNull();
 	});
 });

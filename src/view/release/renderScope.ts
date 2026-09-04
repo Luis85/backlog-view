@@ -72,6 +72,15 @@ export function renderScope(
 	// back — never a second call here, `domain/releaseReadiness.ts`'s own "one walk, one
 	// predicate per number" rule read at this call site too.
 	const readiness = drawHeader(view, scope, release, planSettings, index);
+	// Resolved HERE, immediately, and not at the tree below: `criterionRows` is what clears
+	// a filter whose criterion just became satisfied, and `drawScopeToolbar` (the clear
+	// button) and the hide-done/all-done check both read `view.criterionFilter` before the
+	// tree is ever reached. Left until the tree, a Bases refresh that satisfies the filtered
+	// criterion drew a "Show every row again" button that was already lying, and suspended
+	// hide-done for one render it no longer needed to — found by review. `scope.rows` still
+	// goes to the toolbar and the hide-done check below: only `drawScopeTree` gets the
+	// narrowed set, `filtered`'s own name for it.
+	const filtered = criterionRows(view, scope.rows, readiness);
 	// Both empty states sit BELOW the header, so the back control survives either. A
 	// release nobody can read the scope of must not also be a dead end.
 	if (view.settings.membershipKey === '') {
@@ -109,8 +118,8 @@ export function renderScope(
 		drawAllDoneState(view.viewEl, scope.members);
 		return;
 	}
-	// See `criterionRows`' own docblock, below, for what this narrows to and when it clears.
-	const filtered = criterionRows(view, scope.rows, readiness);
+	// `filtered` was resolved right after `readiness`, above — see `criterionRows`' own
+	// docblock, below, for what it narrows to and when it clears.
 	const draw = drawScopeTree(view, release, filtered);
 	wireScopeKeys(view, draw.treeEl, { prefix: RELEASE_FOLD, path: release.path }, draw);
 	// The third step, for `wireScopeKeys`' own reason: this module already holds the draw

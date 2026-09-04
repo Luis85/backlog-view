@@ -160,3 +160,16 @@ hiding the row the reader is being shown to fix would be the dead end this whole
 exists to remove. Drawn in `src/view/release/renderReadiness.ts` (the chip),
 `src/view/release/renderScope.ts` (the narrowing, between the readiness walk and the tree)
 and `src/view/release/scopeToolbar.ts` (the toolbar's own way to clear it).
+
+**The narrowing is resolved before anything else reads it, and that ordering is load-bearing
+rather than cosmetic (fixed the same day, on review).** `renderScope` calls `criterionRows`
+immediately after the readiness walk — before `drawScopeToolbar` and the hide-done/all-done
+check, both of which also read `view.criterionFilter` — so a render that satisfies the
+filtered criterion has already cleared the field by the time either asks. Read afterwards,
+as it first shipped, the toolbar drew a "Show every row again" that had stopped being true
+and the all-done check answered from a filter one render stale, both self-healing on the
+NEXT render (which is why the suite did not catch it): a done member the reader had just
+finished estimating stayed drawn for one extra render instead of folding straight into the
+all-done state. `scope.rows`, not the narrowed set, still goes to the toolbar and that
+check — only `drawScopeTree` reads `filtered` — so the fix moves WHEN the field is resolved,
+never what a control after it is handed.
