@@ -59,7 +59,7 @@ function fieldWrite(file: TFile, role: ReleaseField, key: string, value: string 
  * under a single role would compare the date key against the status key and refuse every
  * release. See `reconfiguredKey`.
  */
-export type ReleaseField = 'status' | 'description' | 'released' | 'capacity';
+export type ReleaseField = 'status' | 'description' | 'released' | 'capacity' | 'effort' | 'risk';
 
 /** One key to set, carrying the FIELD it was planned for. `expects` is `PropertySet`'s
  *  own field — `applyPropertyWrites` is what reads it, so it lives with the type that
@@ -177,6 +177,51 @@ export function releaseCapacityWrites(file: TFile, key: string, current: number 
 }
 
 /**
+ * A member's effort, planned from the release screen — the first write this view makes to
+ * a note that is not the release it is showing.
+ *
+ * **No `requiresType`.** The three release planners above pin `RELEASE_TYPE` because their
+ * note is a release and a retype between the menu and the pick is a window nothing
+ * upstream can see. A member is ordinary work of any type on either ladder, so there is no
+ * one name to pin — and the gate's own refusal is what stands here instead: a batch naming
+ * a note the base did not return is refused whole, which is the guarantee that actually
+ * matters for a row drawn from the base's own results.
+ *
+ * `current` is the RAW frontmatter value, because that is what the row carries and what
+ * the criterion beside it reads. Judged by `estimateValue` for {@link
+ * releaseCapacityWrites}'s own reason: a value this control accepts must be a value the
+ * figure beside it will sum, or the chip would manufacture the red state it exists to
+ * clear.
+ */
+export function memberEffortWrites(file: TFile, key: string, current: unknown, entry: string): ReleaseWrite[] {
+	const trimmed = entry.trim();
+	const held = estimateValue(current);
+	if (trimmed === '') return held === null ? [] : memberWrite(file, 'effort', key, null);
+	const value = estimateValue(trimmed);
+	if (value === null) return [];
+	if (held !== null && held === value) return [];
+	return memberWrite(file, 'effort', key, trimmed);
+}
+
+/**
+ * A member's risk level: the picked value, or null to take the key off.
+ *
+ * `sameValue` for the no-op, case-insensitively — the rule every pick in this plugin
+ * keeps, and the reason the menu's checkmark asks this planner rather than comparing
+ * beside it.
+ */
+export function memberRiskWrites(file: TFile, key: string, current: string | null, pick: string | null): ReleaseWrite[] {
+	if (pick === null && current === null) return [];
+	if (pick !== null && current !== null && sameValue(current, pick)) return [];
+	return memberWrite(file, 'risk', key, pick);
+}
+
+/** {@link fieldWrite} without the release's type pin — see {@link memberEffortWrites}. */
+function memberWrite(file: TFile, role: ReleaseField, key: string, value: string | null): ReleaseWrite[] {
+	return key === '' ? [] : [{ file, sets: [{ key, value, role }] }];
+}
+
+/**
  * Whether a batch names a key the CURRENT settings no longer give this view to edit — the
  * question `ReleaseView.applyRelease` asks before it hands anything to the gate.
  *
@@ -230,6 +275,8 @@ const ROLE_KEYS = {
 	description: 'descriptionKey',
 	released: 'releasedDateKey',
 	capacity: 'capacityKey',
+	effort: 'estimateKey',
+	risk: 'riskKey',
 } as const;
 
 /**

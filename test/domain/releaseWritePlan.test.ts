@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { TFile } from '../helpers/obsidian-mock';
 import {
+	memberEffortWrites,
+	memberRiskWrites,
 	reconfiguredKey,
 	releaseCapacityWrites,
 	releaseClosureWrites,
@@ -211,6 +213,50 @@ describe('the keys this view may write', () => {
 		// unbound case reaches here as the key the control was DRAWN with, against a role
 		// that now names nothing. Refused before `applyPropertyWrites` drops it quietly.
 		expect(reconfiguredKey({ ...settings, descriptionKey: '' }, write('description', 'summary'))).toBe('summary');
+	});
+});
+
+describe('memberEffortWrites', () => {
+	const file = { path: 'M1.md' } as TFile;
+
+	it('writes the number, refuses what the criterion would not count, and clears on empty', () => {
+		expect(memberEffortWrites(file, 'effort', null, '5')).toEqual([
+			{ file, sets: [{ key: 'effort', value: '5', role: 'effort' }] },
+		]);
+		expect(memberEffortWrites(file, 'effort', null, '5 pts')).toEqual([]);
+		expect(memberEffortWrites(file, 'effort', null, '-2')).toEqual([]);
+		expect(memberEffortWrites(file, 'effort', 5, '  ')).toEqual([
+			{ file, sets: [{ key: 'effort', value: null, role: 'effort' }] },
+		]);
+	});
+
+	it('plans nothing for the value already held, however it is spelled', () => {
+		expect(memberEffortWrites(file, 'effort', 5, '5')).toEqual([]);
+		expect(memberEffortWrites(file, 'effort', '5', '5.0')).toEqual([]);
+	});
+
+	it('never writes an unconfigured key', () => {
+		expect(memberEffortWrites(file, '', null, '5')).toEqual([]);
+	});
+
+	it('carries no type requirement — a member is work, not a release', () => {
+		expect(memberEffortWrites(file, 'effort', null, '5')[0].requiresType).toBeUndefined();
+	});
+});
+
+describe('memberRiskWrites', () => {
+	const file = { path: 'M1.md' } as TFile;
+
+	it('writes the pick, clears on null, and plans nothing for a re-pick', () => {
+		expect(memberRiskWrites(file, 'risk', null, 'High')).toEqual([
+			{ file, sets: [{ key: 'risk', value: 'High', role: 'risk' }] },
+		]);
+		expect(memberRiskWrites(file, 'risk', 'High', null)).toEqual([
+			{ file, sets: [{ key: 'risk', value: null, role: 'risk' }] },
+		]);
+		// Case-insensitively — every other pick in this plugin keeps that rule.
+		expect(memberRiskWrites(file, 'risk', 'High', 'high')).toEqual([]);
+		expect(memberRiskWrites(file, 'risk', null, null)).toEqual([]);
 	});
 });
 
