@@ -8,7 +8,7 @@ import { BacklogSettings } from '../../domain/settings';
 import { WorkflowKind, workflowStateInfo } from '../../domain/board';
 import { guidanceShell } from '../render/emptyStates';
 import { renderReleaseInit } from './initControl';
-import { computeRiskChoices, drawScopeTree, effectiveHideDone } from './scopeTree';
+import { drawScopeTree, effectiveHideDone } from './scopeTree';
 import { rowsAfterHideDone } from '../../domain/scopeRows';
 import { drawScopeToolbar } from './scopeToolbar';
 import { wireScopeKeys } from '../scopeKeys';
@@ -108,17 +108,15 @@ export function renderScope(
 	}
 	const draw = drawScopeTree(view, release, scope.rows);
 	wireScopeKeys(view, draw.treeEl, { prefix: RELEASE_FOLD, path: release.path }, draw);
-	// The risk vocabulary the tree was DRAWN against — `drawScopeTree`'s own walk, computed
-	// once and handed to both wiring steps below rather than re-derived by either, so a
-	// chip's menu and the row menu's `Set risk` can never offer a different list.
-	const riskChoices = computeRiskChoices(view, rowsAfterHideDone(scope.rows, hideDone));
 	// The third step, for `wireScopeKeys`' own reason: this module already holds the draw
 	// and the settings, so the row menu is wired from here rather than by `scopeTree.ts`
-	// importing a writer back.
-	wireScopeCreate(view, release, planSettings, draw, riskChoices);
+	// importing a writer back. `draw.riskChoices` is `drawScopeTree`'s own walk — the risk
+	// vocabulary the tree was DRAWN against, read off the draw rather than re-derived here,
+	// so a chip's menu and the row menu's `Set risk` can never offer a different list.
+	wireScopeCreate(view, release, planSettings, draw, draw.riskChoices);
 	// The fourth step, since Task 8: the readiness chips' own click, which is the second
 	// write this screen offers — a member's effort and risk, never the release note.
-	wireReadinessChips(view, draw, view.settings, riskChoices);
+	wireReadinessChips(view, draw, view.settings, draw.riskChoices);
 }
 
 /**

@@ -1,4 +1,4 @@
-import { App, Menu, setTooltip } from 'obsidian';
+import { App, Menu, MenuItem, setTooltip } from 'obsidian';
 import type { ReleaseView } from './releaseView';
 import { t } from '../../i18n/t';
 import { ownValue, readString } from '../../domain/noteFields';
@@ -7,7 +7,7 @@ import { ReleaseSettings } from '../../domain/releaseOptions';
 import { ScopeRow } from '../../domain/scopeRows';
 import { memberEffortWrites, memberRiskWrites, ReleaseWrite } from '../../domain/releaseWritePlan';
 import { ValuePromptModal } from '../../ui/prompts';
-import { showMenuAtElement, showMenuForClick } from '../interactions/menu';
+import { showMenuForClick } from '../interactions/menu';
 import { TreeDraw } from '../scopeKeys';
 
 /**
@@ -28,12 +28,13 @@ import { TreeDraw } from '../scopeKeys';
  * the `App` and read `getFileCache(...)?.frontmatter`, the same door `releaseReadiness.ts`'s
  * `estimateOf` reads through, so this can never disagree with the figures the header sums.
  *
- * **One method per field, two inputs each** — the chip and the row menu — the root guide's
- * "one move, N inputs" for this screen: `editMemberEffort` and `showMemberRiskMenu` are the
- * whole of what either gesture does, so a chip's click and the row menu's own entry cannot
- * come to plan a different write. The menu entries are not garnish: both chips are
- * `tabindex="-1"` and the tree is one tab stop, so without them the two fields would be
- * pointer-only.
+ * **One move per field, two inputs each** — the chip and the row menu — the root guide's
+ * "one move, N inputs" for this screen: effort plans through `editMemberEffort` either
+ * way, and risk plans through `addMemberRiskItems` either way (the chip wraps it in a
+ * standalone `Menu`, the row menu in a true submenu — see that function's own header), so
+ * a chip's click and the row menu's own entry cannot come to plan a different write. The
+ * menu entries are not garnish: both chips are `tabindex="-1"` and the tree is one tab
+ * stop, so without them the two fields would be pointer-only.
  */
 export function drawReadinessChips(app: App, rowEl: HTMLElement, row: ScopeRow, settings: ReleaseSettings, riskChoices: string[]): void {
 	drawChip(rowEl, 'pbl-rel-effortcol', {
@@ -124,24 +125,25 @@ function editMemberEffort(view: ReleaseView, row: ScopeRow): void {
 }
 
 /**
- * The risk menu — the chip's own click hands it a `MouseEvent` (`showMenuForClick`'s own
- * anchor), the row menu's `Set risk` entry hands it that entry's own row element instead
- * (`showMenuAtElement`'s), because a `Menu` built by `MenuItem.onClick` has no pointer of
- * its own to anchor at. One function either way, so the two inputs cannot offer different
- * values or disagree about which is checked.
+ * The risk choices, built into whatever container they are handed — `addRiskItems`'s own
+ * shape (`interactions/labels.ts`): a standalone `Menu` for the chip's own click
+ * (`showMemberRiskMenu`, below) and a true submenu, via `submenuOf`, for the row menu's
+ * `Set risk` entry (`addReadinessItems`). One content builder either way, so the two
+ * inputs cannot offer different values or disagree about which is checked — the "one
+ * move, two inputs" rule is about the WRITE, and stays one method; the CONTAINER is each
+ * caller's own, the same split every sibling entry in this plugin (Set risk, Set
+ * priority, Set assignee, Set state, Set horizon, Set iteration, Set release, all in
+ * `interactions/menu.ts` and `interactions/labels.ts`) already makes.
  *
  * **The checkmark is asked of the PLAN** — an entry is checked exactly when picking it
  * would write nothing — never a comparison written beside the plan. `Clear risk` is offered
  * only where the note carries a readable value, the presence gate every removal in this
  * plugin uses (`releaseEdits.ts`'s own `Clear status`): an action that would write nothing
  * is not an action.
- *
- * Not exported, `editMemberEffort`'s own reason: both callers live in this file.
  */
-function showMemberRiskMenu(view: ReleaseView, anchor: MouseEvent | HTMLElement, row: ScopeRow, riskChoices: string[]): void {
+function addMemberRiskItems(view: ReleaseView, menu: Menu, row: ScopeRow, riskChoices: string[]): void {
 	const key = view.settings.riskKey;
 	const current = riskText(view.app, row, view.settings);
-	const menu = new Menu();
 	for (const choice of riskChoices) {
 		const writes = memberRiskWrites(row.item.file, key, current, choice);
 		menu.addItem((mi) =>
@@ -160,8 +162,24 @@ function showMemberRiskMenu(view: ReleaseView, anchor: MouseEvent | HTMLElement,
 				.onClick(() => void applyAndRefocus(view, memberRiskWrites(row.item.file, key, current, null), row, 'risk')),
 		);
 	}
-	if (anchor instanceof HTMLElement) showMenuAtElement(menu, anchor);
-	else showMenuForClick(menu, anchor);
+}
+
+/** The chip's own click — a standalone menu, shown at the click. Not exported:
+ *  `wireReadinessChips`, this file's own, is the one caller. */
+function showMemberRiskMenu(view: ReleaseView, evt: MouseEvent, row: ScopeRow, riskChoices: string[]): void {
+	const menu = new Menu();
+	addMemberRiskItems(view, menu, row, riskChoices);
+	showMenuForClick(menu, evt);
+}
+
+/**
+ * `setSubmenu` is missing from the published obsidian typings, not from the app —
+ * `interactions/menu.ts`'s own `submenuOf` states the identical reason: submenus predate
+ * the 1.12.0 this plugin requires, so the cast asserts what is always there rather than
+ * guarding against its absence.
+ */
+function submenuOf(item: MenuItem): Menu {
+	return (item as MenuItem & { setSubmenu: () => Menu }).setSubmenu();
 }
 
 /**
@@ -170,11 +188,11 @@ function showMemberRiskMenu(view: ReleaseView, anchor: MouseEvent | HTMLElement,
  * CONTEXT row, which is what keeps a catalog row (always context here — it can never be a
  * release member) from offering either without a second check for it.
  *
- * `rowEl` is `showMemberRiskMenu`'s own anchor for the `Set risk` entry — a `MenuItem`'s
- * `onClick` carries no event to anchor a second menu at, so the row's own element is what
- * the entry opens against instead.
+ * `Set risk` is a true submenu (`submenuOf`), never a second `showMenuAtElement` popup —
+ * the shape `addMemberRiskItems`'s own header states, and the one every sibling entry in
+ * this plugin already uses.
  */
-export function addReadinessItems(view: ReleaseView, menu: Menu, row: ScopeRow, riskChoices: string[], rowEl: HTMLElement): boolean {
+export function addReadinessItems(view: ReleaseView, menu: Menu, row: ScopeRow, riskChoices: string[]): boolean {
 	if (row.context) return false;
 	let added = false;
 	if (view.settings.estimateKey !== '') {
@@ -188,12 +206,10 @@ export function addReadinessItems(view: ReleaseView, menu: Menu, row: ScopeRow, 
 	}
 	if (view.settings.riskKey !== '' && riskChoices.length > 0) {
 		added = true;
-		menu.addItem((mi) =>
-			mi
-				.setTitle(t('release.scope.setRisk'))
-				.setIcon('shield-alert')
-				.onClick(() => showMemberRiskMenu(view, rowEl, row, riskChoices)),
-		);
+		menu.addItem((mi) => {
+			mi.setTitle(t('release.scope.setRisk')).setIcon('shield-alert');
+			addMemberRiskItems(view, submenuOf(mi), row, riskChoices);
+		});
 	}
 	return added;
 }

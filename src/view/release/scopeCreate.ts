@@ -56,15 +56,11 @@ import { releaseFoldedPaths, toggleReleaseFold } from './scopeTree';
 export function wireScopeCreate(view: ReleaseView, release: ReleaseRow, settings: BacklogSettings, draw: TreeDraw, riskChoices: string[]): void {
 	const { treeEl, rows, rowEls } = draw;
 	const menuFor = (row: ScopeRow): Menu | null => {
-		// `rowEls.get(...)!`: both callers below reach `menuFor` only for a row this draw
-		// actually drew, so the lookup always hits — `showMenuAtElement`'s own keyboard call
-		// beneath this makes the identical assertion for the identical reason.
-		const rowEl = rowEls.get(row.item.file.path)!;
 		const { menu, added } = scopeMenu(view, release, settings, row);
 		// The row's OWN readiness — Set effort and Set risk — after the type entries;
 		// withheld automatically on a context row (`addReadinessItems`' own gate), which a
 		// catalog row always is, so no second check is needed for it here.
-		const readiness = addReadinessItems(view, menu, row, riskChoices, rowEl);
+		const readiness = addReadinessItems(view, menu, row, riskChoices);
 		return added || readiness ? menu : null;
 	};
 

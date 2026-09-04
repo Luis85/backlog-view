@@ -110,6 +110,19 @@ export function setHideDone(view: ReleaseView, next: boolean): void {
 }
 
 /**
+ * `TreeDraw` plus the one thing this tree's own draw computes that the shared shape has
+ * no field for — the risk vocabulary the row menu's `Set risk` needs too (Task 8 review
+ * finding 2). Kept as an EXTENSION of the shared type here, in this release-only module,
+ * rather than added to `TreeDraw` itself in `scopeKeys.ts`: that type is drawn by the
+ * my-work tree as well, which has no risk chip and nothing to put in the field, so a
+ * shared type carrying a release-only value would either force a meaningless empty array
+ * out of the other producer or go optional and need a null check at every reader here.
+ */
+export interface ScopeTreeDraw extends TreeDraw {
+	readonly riskChoices: string[];
+}
+
+/**
  * What `scopeKeys.ts`'s `wireScopeKeys` needs of a finished draw — `TreeDraw`, defined in
  * that shared module rather than here (Task 7 of [[Assigned work in the sidebar]] moved
  * it out of this file, where it used to be `ScopeDraw`): `scopeTree.ts` has no reason to
@@ -117,8 +130,13 @@ export function setHideDone(view: ReleaseView, next: boolean): void {
  * lives below both, so `drawScopeTree` returns it and `renderScope.ts` (which already
  * imports both tree modules) wires the keyboard as a second step, which is what keeps the
  * two release-tree modules a DAG rather than a cycle `npm run analyze` refuses.
+ *
+ * Returns `ScopeTreeDraw`, not the bare `TreeDraw`: `wireScopeKeys` only asks for the
+ * shared shape and is handed the wider object structurally, while `renderScope.ts` reads
+ * `draw.riskChoices` straight off it for `wireScopeCreate` and `wireReadinessChips` —
+ * computed exactly ONCE, here, rather than a second call re-walking the same rows.
  */
-export function drawScopeTree(view: ReleaseView, release: ReleaseRow, rows: ScopeRow[]): TreeDraw {
+export function drawScopeTree(view: ReleaseView, release: ReleaseRow, rows: ScopeRow[]): ScopeTreeDraw {
 	// Named by the release, so a reader arriving at the tree hears which one it is. The
 	// name is vault content rather than text — it goes nowhere near the catalog.
 	// `tabindex="0"` makes the CONTAINER the tab stop — a composite widget's own rule
@@ -169,7 +187,7 @@ export function drawScopeTree(view: ReleaseView, release: ReleaseRow, rows: Scop
 	// `visible`, never `rows`: arrowing onto a row a fold hid would move the active
 	// descendant to an element that is not in the DOM. `withKids` is the rendered tree's
 	// own answer too — see `scopeKeys.ts`'s own comment on why the fold set cannot stand in.
-	return { treeEl, rows: visible, kids: withKids, rowEls, folded };
+	return { treeEl, rows: visible, kids: withKids, rowEls, folded, riskChoices };
 }
 
 /** A row's place in its sibling group plus its own fold state — one bag rather than four
@@ -253,11 +271,11 @@ function drawRow(view: ReleaseView, release: ReleaseRow, treeEl: HTMLElement, ro
  * every member's frontmatter for a key this view never reads would be work spent to answer
  * a question the chip has already refused.
  *
- * **Exported since Task 8.** `renderScope.ts` needs the identical list to wire the risk
- * chip's menu and the row menu's `Set risk` entry — the same vocabulary the tree was drawn
- * against, not a second walk that could answer differently.
+ * Not exported: `drawScopeTree` is the one caller, and hands the result out on
+ * `ScopeTreeDraw.riskChoices` rather than a second module re-deriving it (Task 8 review
+ * finding 2) — see that field's own comment.
  */
-export function computeRiskChoices(view: ReleaseView, rows: ScopeRow[]): string[] {
+function computeRiskChoices(view: ReleaseView, rows: ScopeRow[]): string[] {
 	const settings = view.settings;
 	if (settings.riskKey === '') return [];
 	const values = new Set<string>();

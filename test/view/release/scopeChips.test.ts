@@ -146,6 +146,19 @@ describe('writing a member’s readiness values', () => {
 			expect(checkedTitles(Menu.lastShown!)).toEqual(['High']);
 		});
 
+		it('checks case-insensitively, asking the plan rather than a bare ===', () => {
+			const vault = new FakeVault();
+			vault.addFile('M1.md', { frontmatter: { type: 'PBI', order: 1, release: '[[0.9]]', risk: 'high' } });
+			const config = { ...RELEASE_CONFIG, criticalRiskValues: 'High', addressedRiskValues: '' };
+			const { view } = releaseScreen({}, vault, config);
+			row(view, 'M1.md').querySelector<HTMLElement>('.pbl-rel-riskcol .pbl-state-chip')!.click();
+
+			// The note holds `high`; the declared vocabulary offers `High` too, so both are
+			// on the menu. `memberRiskWrites`' own case-insensitive `sameValue` checks BOTH —
+			// a naive `===` against the raw value would tick only the exact-case `high`.
+			expect(checkedTitles(Menu.lastShown!)).toEqual(['High', 'high']);
+		});
+
 		it('offers no clear on a member carrying nothing', () => {
 			const { view } = releaseScreen({}, riskVault());
 			row(view, 'M2.md').querySelector<HTMLElement>('.pbl-rel-riskcol .pbl-state-chip')!.click();
@@ -165,10 +178,10 @@ describe('writing a member’s readiness values', () => {
 		it('writes what the row menu’s entry picks, through the same method the chip uses', async () => {
 			const { view, vault } = releaseScreen({}, riskVault());
 			const rowMenu = openMenu(view, 'M2.md');
-			rowMenu.item('Set risk')!.click();
-			// `Set risk` opens a SECOND menu — the identical one the chip opens — since a row
-			// menu entry carries no pointer of its own to anchor a submenu at.
-			Menu.lastShown!.item('High')!.click();
+			// `Set risk` is a true SUBMENU (`submenuOf`), never a second popup — so its
+			// entries are read straight off the item rather than off a fresh `Menu.lastShown`.
+			const submenu = rowMenu.item('Set risk')!.submenu!;
+			submenu.item('High')!.click();
 			await flush();
 
 			expect(vault.fm('M2.md').risk).toBe('High');
