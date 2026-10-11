@@ -24,6 +24,8 @@ See [RELEASING.md](RELEASING.md) for how this file is kept in step with a releas
 
 ## [Unreleased]
 
+## [0.11.0] - 2026-10-11
+
 ### Added
 
 - The toolbar's **Expand all** and **Collapse all** now fold and open the resource bands on
