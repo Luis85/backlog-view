@@ -69,6 +69,13 @@ updates:
         versions:
           - ">1.12.0"
 
+      # fallow 3.32 reports 15 clone groups and one health finding in this tree that 3.19
+      # does not, and `npm run check` fails on them. Held at ~3.19 until the findings are
+      # triaged on purpose; delete this entry then and let the group move.
+      - dependency-name: fallow
+        versions:
+          - ">=3.20.0"
+
   # What deliberately falls outside that group gets its own pull request: every major,
   # and — at any level, patch included — the three @atlaskit packages, since the group is
   # scoped to `development` and those are the only dependencies that reach `main.js`.
