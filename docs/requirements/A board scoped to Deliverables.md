@@ -186,7 +186,7 @@ narrowed to one type.
 
 ## Acceptance criteria
 
-- The toolbar offers exactly Tree, Board, Roadmap, Deliverables, and the fourth shows
+- The toolbar offers exactly Roadmap, Board, Tree, Deliverables, and the fourth shows
   cards only for items typed `Deliverable`.
 - Its columns come from a workflow (state property, ordered states, done values) that
   is either its own, configured independently from the requirements board's
