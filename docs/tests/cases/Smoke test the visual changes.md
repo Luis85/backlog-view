@@ -93,7 +93,7 @@ Nothing below has ever been looked at. The first roadmap increment shipped its l
 jsdom structure tests alone, and the horizon writes added a second set of things only a
 pointer can exercise. Point a Base at `docs/` and switch to the roadmap.
 
-**The four-position toggle** — tree, board, roadmap, Deliverables board as one segmented
+**The four-position toggle** — roadmap, board, tree, Deliverables board as one segmented
 group. Check the active position reads as active without the group looking like four
 separate buttons, and that the labelled axis-picker menu button beside it (not a
 segmented picker — a single button naming the current axis, opening a menu of the other)

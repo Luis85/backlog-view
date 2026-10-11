@@ -546,7 +546,7 @@ function renderFocusPicker(host: BacklogViewHost, barEl: HTMLElement, model: Bac
 }
 
 /**
- * The projection toggle — one view, read as a tree, a board or a roadmap. The
+ * The projection toggle — one view, read as a roadmap, a board or a tree. The
  * mode is working position, not configuration: base settings are saved on the
  * view, UI state in vault-scoped localStorage, so the choice persists in the
  * view-state store — per saved view, per device — and never touches the `.base`.
@@ -580,8 +580,8 @@ function renderModeToggle(host: BacklogViewHost, barEl: HTMLElement): void {
 		btn.addEventListener('click', () => host.setProjection(mode));
 	};
 	position('roadmap', 'map', t('toolbar.modeRoadmap'), t('toolbar.modeRoadmapWord'));
-	position('tree', 'list-tree', t('toolbar.modeTree'), t('toolbar.modeTreeWord'));
 	position('board', 'square-kanban', t('toolbar.modeBoard'), t('toolbar.modeBoardWord'));
+	position('tree', 'list-tree', t('toolbar.modeTree'), t('toolbar.modeTreeWord'));
 	// No Deliverables position since 2026-08-16, by the user's own call: every board is
 	// the `Boards` button now, and the scope picker beside it says which — `Product`,
 	// `Deliverables`, or an iteration. The projection still exists; only its door moved.

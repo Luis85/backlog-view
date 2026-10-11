@@ -73,6 +73,7 @@ See [RELEASING.md](RELEASING.md) for how this file is kept in step with a releas
 
 ### Changed
 
+- The toolbar's view switcher now reads Roadmap, Boards, Tree, Tests.
 - `npm run check` runs both its typechecks incrementally (cached under
   `node_modules/.cache/`), which takes the test typecheck from 11 s to 2–5 s on a
   second local run; CI still runs them cold.
