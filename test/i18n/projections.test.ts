@@ -482,6 +482,29 @@ describe('the release view reads every word it draws from the catalog', () => {
 		]);
 	});
 
+	it("leaves nothing but the releases' own facts and the ruler's calendar unmarked on the map", () => {
+		const { view, containerEl } = makeReleaseView(releaseVault(), RELEASE_CONFIG);
+		view.setTab('map');
+
+		// Month and year labels are FORMATTED (`formatDate`), never translated — data
+		// presentation in the reader's locale — so they are read off the cells and set aside.
+		const calendar = new Set(Array.from(containerEl.querySelectorAll('.pbl-relmap-cell'), (el) => el.textContent ?? ''));
+		expect(calendar.size).toBeGreaterThan(0);
+		// The same ten facts the list's own test names: the map says nothing the list does not.
+		expect(remainder(containerEl).filter((text) => !calendar.has(text))).toEqual([
+			'0.8',
+			'0.8.0',
+			'0.9',
+			'0.9.0',
+			'2026-09-12',
+			'2026-10-24',
+			'Idea',
+			'In progress',
+			'Planned',
+			'Someday',
+		]);
+	});
+
 	it("leaves nothing but the release's own facts and its rows' titles unmarked on the scope", () => {
 		const vault = scopeVault();
 		const { view, containerEl } = makeReleaseView(vault, RELEASE_CONFIG);

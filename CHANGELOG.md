@@ -24,6 +24,12 @@ See [RELEASING.md](RELEASING.md) for how this file is kept in step with a releas
 
 ## [Unreleased]
 
+### Added
+
+- The release view has a **Map** tab beside the list: every release on one timeline in
+  date order, each with its facts and its first scope items, and the undated ones on a
+  shelf below; a click opens the release, and Back returns to the map.
+
 ## [0.11.0] - 2026-10-11
 
 ### Added
