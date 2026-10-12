@@ -11,10 +11,11 @@ const params = new URLSearchParams(window.location.search);
  * property unbound; `?config=nomembership` leaves the membership property unbound;
  * `?config=noreleased` leaves the RELEASED-DATE property unbound, which is the withheld
  * half of the overdue treatment — see `mountRelease.ts`, where the pair is described.
+ * `?config=plan` mounts an eight-release plan for the Map tab.
  * Anything else — the default — binds every key.
  */
 const wantedConfig = params.get('config');
-const VARIANTS: ReleaseConfigVariant[] = ['empty', 'notype', 'nomembership', 'noreleased'];
+const VARIANTS: ReleaseConfigVariant[] = ['empty', 'notype', 'nomembership', 'noreleased', 'plan'];
 const config = VARIANTS.includes(wantedConfig as ReleaseConfigVariant) ? (wantedConfig as ReleaseConfigVariant) : 'full';
 
 // Before the mount — `page.ts`'s own ordering, kept for the day this view grows a control
@@ -33,6 +34,10 @@ drawSchemeToggle();
  * through `pick`, which is the real gesture, so the pick persists exactly as a click's
  * would and the next plain open shows the release last asked for.
  */
+/** `?tab=map` opens the index on its Map tab, through `setTab` — the control's own call —
+ *  so it persists as a press would. Before `?pick=`, so Back from a picked release lands on the map. */
+if (params.get('tab') === 'map') view.setTab('map');
+
 const pick = params.get('pick');
 if (pick !== null) view.pick(pick);
 
