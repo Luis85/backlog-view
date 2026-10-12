@@ -55,7 +55,7 @@ today. Output: a `ReleaseMap { rows, shelf, window }`.
 - **Overdue.** In flight with a past target: ends at the target, flagged with `overdue`.
 - **Window.** `timelineWindow` over every row's span (start..end, or end..end) plus today.
   Scale fixed to month (`scaleFor('month')`).
-- **Headline scope.** The roots of `releaseScope` for that release, in its order; at most 5,
+- **Headline scope.** The roots of `releaseScope` for that release, in its order; at most 3,
   then a count of the rest. An empty release reports zero members ("No items yet").
 - **Shelf ("Not scheduled").** In-flight releases with no readable target, in index order.
   Shipped releases always have an end and never land here.
@@ -63,13 +63,18 @@ today. Output: a `ReleaseMap { rows, shelf, window }`.
 ## 3. What the page draws (`view/release/renderMap.ts`)
 
 - **Ruler.** Month cells with year super-cells (`timelineCells`, `superCells`), sticky at top.
-- **Today line.** Full-height, as on the backlog roadmap.
-- **Rows.** One per map row, in date order. Each row: a faded dashed lead-in from the derived
-  start to the end; an end marker (diamond); for a slipped shipped release, the target tick;
-  then the card to the right of the end marker. The track gets a right-hand gutter one card
+- **Today line.** Full-height, as on the backlog roadmap. Its label sits below the ruler, so it
+  never covers a month label.
+- **Rows.** One per map row, in date order. Each row: a faded BAND with a dashed outline from
+  the derived start to the end (a band, not a hairline, so it reads as the release's time); an
+  end marker (diamond); for a slipped shipped release, a tick at the target and a short stub in
+  the error colour from the tick to the released date (early: the stub runs the other way in
+  the success colour), so a slip never reads as a lead-in; then the card to the right of the
+  end marker. The track gets a right-hand gutter one card
   wide so the last card is not clipped.
-- **Card.** Name, version, status chip, target date with "N days left" / overdue / shipped,
-  progress bar with "x of y done", headline scope list with "+N more".
+- **Card.** Line 1: name, version, status chip. Line 2: target date with "N days left" /
+  overdue / shipped, then the progress bar with "x of y done" on the same line. Then the
+  headline scope list with "+N more".
 - **Interaction.** Each row is one `button` (as `.pbl-rel-band` is); its accessible name
   reuses the list's spoken facts plus "start derived from the previous release" when a lead-in
   is drawn. Tab order is date order. Click or Enter → `pick(path)`.
