@@ -28,16 +28,16 @@ const { view, containerEl } = mountReleaseHarness(document.body, config);
 // which `mountReleaseHarness` empties.
 drawSchemeToggle();
 
+/** `?tab=map` opens the index on its Map tab, through `setTab` — the control's own call —
+ *  so it persists as a press would. Before `?pick=`, so Back from a picked release lands on the map. */
+if (params.get('tab') === 'map') view.setTab('map');
+
 /**
  * `?pick=Releases/0.8.md` opens one release's screen — the state a screenshot cannot click
  * its way to, and `?view=` / `?select=`'s own bargain on the other two entries. It goes
  * through `pick`, which is the real gesture, so the pick persists exactly as a click's
  * would and the next plain open shows the release last asked for.
  */
-/** `?tab=map` opens the index on its Map tab, through `setTab` — the control's own call —
- *  so it persists as a press would. Before `?pick=`, so Back from a picked release lands on the map. */
-if (params.get('tab') === 'map') view.setTab('map');
-
 const pick = params.get('pick');
 if (pick !== null) view.pick(pick);
 

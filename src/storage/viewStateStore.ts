@@ -71,8 +71,6 @@ export const BOARD_MODE = 'board';
 export const ROADMAP_MODE = 'roadmap';
 /** The value the `mode` field holds while the view is the Deliverables board. */
 export const DELIVERABLES_MODE = 'deliverables';
-/** The release view's Map tab — the one value {@link ViewPrefs.releaseTab} stores. */
-export const RELEASE_MAP_TAB = 'map';
 /** The value the `mode` field holds while the view is the test catalog. */
 export const CATALOG_MODE = 'catalog';
 /**
@@ -124,6 +122,8 @@ const ZOOM_VALUES = ['week', 'month', 'quarter'];
 const DENSITY_VALUES = ['compact'];
 /** The values the `shelfSort` field may hold. Mirrors `ShelfSort` in `domain/shelf.ts`. */
 const SHELF_SORT_VALUES = ['tree', 'title', 'modified'];
+/** The release view's Map tab — the one value {@link ViewPrefs.releaseTab} stores. */
+export const RELEASE_MAP_TAB = 'map';
 /**
  * The values the `estimationSort` field may hold: `${column}:${direction}` for the
  * prioritized list's clickable headers — column ∈
