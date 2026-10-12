@@ -65,6 +65,10 @@ const FOCUS_HANDLE_CLASSES = [
 	'pbl-tree',
 	'pbl-rel-new',
 	'pbl-rel-band',
+	// The map's row, which is the band's case on the other tab: one per release, so the
+	// `data-path` match restores the same row, and a press that opens the release falls
+	// back to the scope's own first button (Back) rather than the body.
+	'pbl-relmap-row',
 	// The scope header's own three, added 2026-08-29 (Codex, PR #211, which caught the
 	// first of them). Each is a real tab stop that this header draws exactly one of, so the
 	// exact-match branch below finds it with no `data-path` to disambiguate — and each is
@@ -413,14 +417,16 @@ export class ReleaseView extends BasesView {
 	 * assigned, connected or not — so the ORDER is what a test can check here and the
 	 * restored NUMBER is owed a live vault.
 	 *
-	 * **One saved offset, and it is keyed by the screen that produced it.** The two screens
-	 * scroll different elements over different content — `.pbl-rel-list` on the index,
-	 * `.pbl-tree` on one release — so a single value carried across a change of screen
+	 * **One saved offset, and it is keyed by the screen that produced it.** The three screens
+	 * scroll different elements over different content — `.pbl-rel-list` on the index's list,
+	 * `.pbl-relmap-scroll` on its map, `.pbl-tree` on one release — so a single value carried across a change of screen
 	 * would drop a reader into the middle of a tree because they had scrolled the list,
 	 * which is worse than the top. That makes the DATA UPDATE the event that restores (the
 	 * same screen, redrawn under a Bases refresh, an external status edit, a rename) and the
 	 * PICK the event that does not: `pick` changes the key, so it starts at the top, in both
-	 * directions. `restoreBox` (`view/render/projections.ts`) keys its bands the same way and
+	 * directions, and so does a tab change. The offset is both axes: the map scrolls
+	 * sideways as well, and a data update must not yank it back to the left edge any more
+	 * than to the top. `restoreBox` (`view/render/projections.ts`) keys its bands the same way and
 	 * for the same reason.
 	 *
 	 * Going back to the index therefore starts at the top too, because the scope's own
@@ -431,10 +437,11 @@ export class ReleaseView extends BasesView {
 	render(): void {
 		const previousEl = this.scrollerEl();
 		const previousTop = previousEl?.scrollTop ?? 0;
+		const previousLeft = previousEl?.scrollLeft ?? 0;
 		const previousKey = this.drawnKey;
 		// Captured before `empty()` for `previousTop`'s own reason: a detached element
-		// answers nothing. `previousEl` already narrows to `.pbl-tree` or `.pbl-rel-list`,
-		// so this only has to ask whether it was THIS render's tree specifically.
+		// answers nothing. `previousEl` already narrows to the one scroller this screen
+		// has (`.pbl-tree`, `.pbl-rel-list` or `.pbl-relmap-scroll`), so this only has to ask whether it was THIS render's tree specifically.
 		//
 		// `contains`, not `===`: a MOUSE press on a per-row control inside the tree (the
 		// disclosure) focuses that button, and the redraw this render is performing is
@@ -452,8 +459,12 @@ export class ReleaseView extends BasesView {
 		const el = this.scrollerEl();
 		// Clamped to the FRESH `scrollHeight` so a redraw with fewer rows — a note that left
 		// the base's results, a release whose members shrank — cannot park the pane below its
-		// own last row. `renderTable.ts` clamps its own restore for the same case.
-		if (el !== null && this.drawnKey === previousKey) el.scrollTop = Math.min(previousTop, el.scrollHeight);
+		// own last row. `renderTable.ts` clamps its own restore for the same case, and
+		// `scrollWidth` clamps the map's narrower window the same way.
+		if (el !== null && this.drawnKey === previousKey) {
+			el.scrollTop = Math.min(previousTop, el.scrollHeight);
+			el.scrollLeft = Math.min(previousLeft, el.scrollWidth);
+		}
 		// Re-queried rather than kept as an element reference: `empty()` already detached the
 		// original. The exact handle comes back first — a reader who pressed a control should
 		// land on that same control again, not near it — but a screen that replaced it (binding
@@ -499,10 +510,10 @@ export class ReleaseView extends BasesView {
 	 * The element that scrolls on whichever screen is drawn, or null for an empty state,
 	 * which has none.
 	 *
-	 * A query rather than a field the two render modules assign: it runs once per render
-	 * over the two candidates, both of them within a couple of nodes of `viewEl`, so it is
+	 * A query rather than a field the three render modules assign: it runs once per render
+	 * over the three candidates, all of them within a couple of nodes of `viewEl`, so it is
 	 * nothing like the per-row `treeEl` scan the cost rule bans — and the alternative is a
-	 * public field written from two other files for one caller's benefit.
+	 * public field written from three other files for one caller's benefit.
 	 */
 	private scrollerEl(): HTMLElement | null {
 		return this.viewEl.querySelector<HTMLElement>('.pbl-rel-list, .pbl-tree, .pbl-relmap-scroll');
@@ -510,7 +521,8 @@ export class ReleaseView extends BasesView {
 
 	/**
 	 * Draw whichever screen the state asks for, and answer WHICH one that was — the open
-	 * release's path, or null for the index and for every empty state.
+	 * release's path, `MAP_KEY` for the index's map, or null for the index's list and for
+	 * every empty state.
 	 *
 	 * Not `pickedPath`: by the time `pick` re-renders, that field already holds the screen
 	 * being drawn rather than the one being left, so comparing it would restore across

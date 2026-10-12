@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
-import { describe, expect, it } from 'vitest';
-import { MAX_TIMELINE_DAYS } from '../../../src/domain/timeline';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import { MAX_TIMELINE_DAYS, scaleFor } from '../../../src/domain/timeline';
 import { loadViewState } from '../../../src/storage/viewStateStore';
 import { button, makeReleaseView, noReleaseVault, RELEASE_CONFIG, releaseVault, scopeVault } from '../../helpers/release';
 import { FakeVault } from '../../helpers/vault';
@@ -192,7 +192,7 @@ describe('the inputs most likely to surprise the map', () => {
 		const { view } = onMap(vault);
 		const row = rowOf(view.viewEl, 'Far.md');
 		expect(row?.classList.contains('pbl-relmap-clipped')).toBe(true);
-		expect(cssPx(row?.querySelector('.pbl-relmap-marker'), '--pbl-relmap-x')).toBe((MAX_TIMELINE_DAYS - 1) * 4);
+		expect(cssPx(row?.querySelector('.pbl-relmap-marker'), '--pbl-relmap-x')).toBe((MAX_TIMELINE_DAYS - 1) * scaleFor('month').dayPx);
 		expect(row?.querySelector('.pbl-rel-date')?.textContent).toBe(beyondPlan());
 	});
 });
@@ -231,5 +231,53 @@ describe('the tab is view state', () => {
 		const list = view.viewEl.innerHTML;
 		view.setTab('map');
 		expect(view.viewEl.innerHTML).toBe(list);
+	});
+});
+
+describe('a redraw keeps the reader on the map', () => {
+	afterEach(() => vi.restoreAllMocks());
+
+	it('puts focus back on the same row after a data update', () => {
+		const { view } = onMap(releaseVault());
+		rowOf(view.viewEl, '0.9.md')?.focus();
+		view.onDataUpdated();
+		const active = document.activeElement as HTMLElement | null;
+		expect(active?.classList.contains('pbl-relmap-row')).toBe(true);
+		expect(active?.dataset.path).toBe('0.9.md');
+	});
+
+	it('lands on Back when a pressed row opens its release', () => {
+		const { view } = onMap(scopeVault());
+		const row = button(view, '.pbl-relmap-row[data-path="R.md"]');
+		row.focus();
+		row.click();
+		expect(document.activeElement).toBe(view.viewEl.querySelector('.pbl-rel-back'));
+	});
+
+	it('keeps the horizontal and vertical position across a data update', () => {
+		const { view } = onMap(releaseVault());
+		vi.spyOn(HTMLElement.prototype, 'scrollHeight', 'get').mockReturnValue(1000);
+		vi.spyOn(HTMLElement.prototype, 'scrollWidth', 'get').mockReturnValue(5000);
+		const scroller = view.viewEl.querySelector('.pbl-relmap-scroll') as HTMLElement;
+		scroller.scrollLeft = 2400;
+		scroller.scrollTop = 120;
+		view.onDataUpdated();
+		const rebuilt = view.viewEl.querySelector('.pbl-relmap-scroll') as HTMLElement;
+		expect(rebuilt).not.toBe(scroller);
+		expect(rebuilt.scrollLeft).toBe(2400);
+		expect(rebuilt.scrollTop).toBe(120);
+	});
+
+	it('starts at the top left when the tab changes screens', () => {
+		const { view } = makeReleaseView(releaseVault(), RELEASE_CONFIG, { base: 'Releases.base' });
+		vi.spyOn(HTMLElement.prototype, 'scrollHeight', 'get').mockReturnValue(1000);
+		vi.spyOn(HTMLElement.prototype, 'scrollWidth', 'get').mockReturnValue(5000);
+		const list = view.viewEl.querySelector('.pbl-rel-list') as HTMLElement;
+		list.scrollLeft = 300;
+		list.scrollTop = 200;
+		view.setTab('map');
+		const scroller = view.viewEl.querySelector('.pbl-relmap-scroll') as HTMLElement;
+		expect(scroller.scrollLeft).toBe(0);
+		expect(scroller.scrollTop).toBe(0);
 	});
 });
