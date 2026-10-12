@@ -7,12 +7,13 @@ import { t } from '../../i18n/t';
 import { BacklogModel, buildModel } from '../../domain/model';
 import { ReleaseSettings, resolveReleaseSettings } from '../../domain/releaseOptions';
 import { releaseIndex, releaseScope } from '../../domain/releases';
+import { releaseMap } from '../../domain/releaseMap';
 import { ReleaseCriterion } from '../../domain/releaseReadiness';
 import { todayCivil } from '../../domain/noteFields';
 import { resolveSettings } from '../../domain/settingsResolve';
 import { membershipCollision, releaseNoteProblems } from '../../domain/settingsConsistency';
 import { reconfiguredKey, ReleaseWrite } from '../../domain/releaseWritePlan';
-import { loadViewState, updateViewPrefs } from '../../storage/viewStateStore';
+import { loadViewState, RELEASE_MAP_TAB, updateViewPrefs } from '../../storage/viewStateStore';
 import { resolveViewIdentity } from '../../storage/viewIdentity';
 import { guidanceShell } from '../render/emptyStates';
 import { OpenContext, OpenController } from '../openTarget';
@@ -20,9 +21,19 @@ import { RELEASE_SUGGESTED_KEYS, RELEASE_SUGGESTED_VALUES } from './init';
 import { renderReleaseInit } from './initControl';
 import { renderNewRelease } from './newRelease';
 import { drawUnresolved, renderIndex } from './renderIndex';
+import { renderMap } from './renderMap';
 import { renderScope } from './renderScope';
 
 export const RELEASE_VIEW_TYPE = 'product-release';
+
+/** The index's two tabs. View state, never a `.base` setting (ADR 0011). */
+export type ReleaseTab = 'list' | 'map';
+
+/**
+ * What `draw` answers for the map, so the scroll restore treats a tab change as a change of
+ * screen. A NUL never appears in a vault path, so it never equals a release's path.
+ */
+const MAP_KEY = '\u0000map';
 
 /**
  * The classes a redraw's own controls carry — the fixed vocabulary {@link ReleaseView.render}
@@ -121,6 +132,8 @@ export class ReleaseView extends BasesView {
 	settings: ReleaseSettings;
 	/** The open release's path, or null for the index. Restored on mount, saved on every pick. */
 	pickedPath: string | null = null;
+	/** Which tab the index draws. Restored with the pick; session-only on an embedded base. */
+	tab: ReleaseTab = 'list';
 	model: BacklogModel | null = null;
 	/** Which screen the LAST render drew — see {@link draw}. */
 	private drawnKey: string | null = null;
@@ -334,6 +347,17 @@ export class ReleaseView extends BasesView {
 	}
 
 	/**
+	 * Switch the index's tab. Persists `'map'` only — the list is absence — then redraws:
+	 * no config was set and no Bases refresh is coming. Writes nothing to the vault.
+	 */
+	setTab(tab: ReleaseTab): void {
+		this.tab = tab;
+		const id = resolveViewIdentity(this.app, this.viewEl, this.config.name ?? '');
+		if (id) updateViewPrefs(this.app, id, { releaseTab: tab === 'map' ? RELEASE_MAP_TAB : undefined });
+		this.render();
+	}
+
+	/**
 	 * Narrow the scope tree to one criterion's outstanding rows, or clear the narrowing.
 	 *
 	 * Re-renders itself: no config was set and no Bases refresh is coming —
@@ -372,7 +396,10 @@ export class ReleaseView extends BasesView {
 	private restorePick(): void {
 		const id = resolveViewIdentity(this.app, this.viewEl, this.config.name ?? '');
 		if (!id) return;
-		this.pickedPath = loadViewState(this.app, id).prefs.release ?? null;
+		const prefs = loadViewState(this.app, id).prefs;
+		this.pickedPath = prefs.release ?? null;
+		// Anything but the one stored word is the list — the store already refused the rest.
+		this.tab = prefs.releaseTab === RELEASE_MAP_TAB ? 'map' : 'list';
 	}
 
 	/**
@@ -478,7 +505,7 @@ export class ReleaseView extends BasesView {
 	 * public field written from two other files for one caller's benefit.
 	 */
 	private scrollerEl(): HTMLElement | null {
-		return this.viewEl.querySelector<HTMLElement>('.pbl-rel-list, .pbl-tree');
+		return this.viewEl.querySelector<HTMLElement>('.pbl-rel-list, .pbl-tree, .pbl-relmap-scroll');
 	}
 
 	/**
@@ -524,10 +551,11 @@ export class ReleaseView extends BasesView {
 		// of them to resolve to — so returning first reported the maximum-information state as
 		// "no releases" and hid all of it. [[The scope of a release as a tree]] 1b is what rules
 		// on that: such an item is reported among the unresolved "rather than silently dropped".
+		const today = todayCivil();
 		const index = releaseIndex(this.app, this.model, this.settings, {
 			stateKey: backlogSettings.stateKey,
 			deliverableStateKey: backlogSettings.deliverableStateKey,
-			today: todayCivil(),
+			today,
 		});
 		if (this.model.releases.length === 0) {
 			// The SECOND entry point onto `renderNewRelease`'s one creation function — this
@@ -565,6 +593,13 @@ export class ReleaseView extends BasesView {
 		// A remembered release that no longer exists returns the INDEX, silently. A working
 		// position that has gone is not a failure and must not raise one.
 		if (scope === null || scope.release === null) {
+			if (this.tab === 'map') {
+				// A local: the closure below would lose `this.model`'s narrowing.
+				const model = this.model;
+				const map = releaseMap(index, (path) => releaseScope(this.app, model, this.settings, index, path).rows, today);
+				renderMap(this, map, index, backlogSettings);
+				return MAP_KEY;
+			}
 			renderIndex(this, index, backlogSettings);
 			return null;
 		}

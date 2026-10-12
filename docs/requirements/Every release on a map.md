@@ -93,3 +93,10 @@ tick, the headline over `releaseScope`, and the shelf, with the window from `tim
 in `src/domain/timeline.ts`. It computes no figure the list does not, so a card and a band
 cannot disagree. The tab is the `releaseTab` pref in `src/storage/viewStateStore.ts`. Tested
 in `test/domain/releaseMap.test.ts`.
+
+`src/view/release/renderMap.ts` draws it: the ruler from `superCells` and `timelineCells`,
+the grid lines and today line `src/view/render/timeline.ts` draws for the roadmap, the band,
+marker and slip stub placed by `barGeometry`, and a card built from
+`src/view/release/renderIndex.ts`'s own band parts. `src/view/release/releaseView.ts` holds
+the tab, restores it with the pick, and draws the map in place of the list when it is set.
+Tested in `test/view/release/releaseMap.test.ts`.

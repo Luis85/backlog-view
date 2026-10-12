@@ -32,14 +32,7 @@ import { unconfiguredProgressText } from './renderScope';
  * what this view refuses (`test/view/releaseNeverEdits.test.ts`).
  */
 export function renderIndex(view: ReleaseView, index: ReleaseIndex, plan: BacklogSettings): void {
-	// Above the scroller rather than in it: the controls are chrome for the screen, and one
-	// inside `.pbl-rel-list` would scroll away with the rows. There is no toolbar on this
-	// view to hang them on — `viewEl` holds screens — so the head of the index IS the head
-	// of the screen. The ✨ goes first so the primary action (`New release`) stays last —
-	// the position a reader's eye and tab order both land on.
-	const actionsEl = view.viewEl.createDiv({ cls: 'pbl-rel-actions' });
-	renderReleaseInit(view, actionsEl, 'bar');
-	renderNewRelease(view, actionsEl);
+	drawIndexActions(view);
 	const listEl = view.viewEl.createDiv({ cls: 'pbl-rel-list' });
 	const bandsEl = listEl.createDiv({ cls: 'pbl-rel-bands' });
 
@@ -59,6 +52,21 @@ export function renderIndex(view: ReleaseView, index: ReleaseIndex, plan: Backlo
 
 	drawAbsences(listEl, index.rows);
 	drawUnresolved(listEl, index, membershipCollision(view.settings, plan));
+}
+
+/**
+ * The head of the index on either tab — the list's and the map's alike. Above the scroller
+ * rather than in it: the controls are chrome for the screen, and one inside the scroller
+ * would scroll away with the rows. There is no toolbar on this view to hang them on —
+ * `viewEl` holds screens — so the head of the index IS the head of the screen. The ✨ goes
+ * first so the primary action (`New release`) stays last — the position a reader's eye and
+ * tab order both land on.
+ */
+export function drawIndexActions(view: ReleaseView): HTMLElement {
+	const actionsEl = view.viewEl.createDiv({ cls: 'pbl-rel-actions' });
+	renderReleaseInit(view, actionsEl, 'bar');
+	renderNewRelease(view, actionsEl);
+	return actionsEl;
 }
 
 /**
@@ -91,7 +99,7 @@ function labelledText(fig: ReleaseFigure<string>): string | null {
 	return fig.value;
 }
 
-function drawVersion(line1: HTMLElement, row: ReleaseRow): void {
+export function drawVersion(line1: HTMLElement, row: ReleaseRow): void {
 	const text = labelledText(row.version);
 	if (text === null) return;
 	line1.createSpan({ cls: row.version.invalid ? 'pbl-rel-unreadable' : 'pbl-rel-version', text });
@@ -100,7 +108,7 @@ function drawVersion(line1: HTMLElement, row: ReleaseRow): void {
 /** The tree's read-only chip: this whole view is read-only, so every chip on it is the
  *  static one — `--pbl-state-color` belongs to the legend and the card projections, not
  *  to a band. */
-function drawStatus(line1: HTMLElement, row: ReleaseRow): void {
+export function drawStatus(line1: HTMLElement, row: ReleaseRow): void {
 	const text = labelledText(row.status);
 	if (text === null) return;
 	if (row.status.invalid) {
@@ -154,7 +162,7 @@ function unreadableReleased(): string {
  * `test/view/releaseIndex.test.ts` asks the PRODUCT of the two figures' states rather than
  * the cases somebody thought of, and asks it of the drawn and the spoken reading alike.
  */
-function drawWhen(line1: HTMLElement, row: ReleaseRow): void {
+export function drawWhen(line1: HTMLElement, row: ReleaseRow): void {
 	const whenEl = line1.createSpan({ cls: 'pbl-rel-when' });
 	if (row.released.invalid) whenEl.createSpan({ cls: 'pbl-rel-unreadable', text: unreadableReleased() });
 	else if (row.released.value !== null) {
@@ -257,7 +265,7 @@ function speakProgress(row: ReleaseRow): string | null {
  * bound, would each say more than the configuration supports. "No items yet" draws no bar
  * either: a zero-length one reads as failure where the answer is emptiness.
  */
-function drawProgressLine(line2: HTMLElement, row: ReleaseRow): void {
+export function drawProgressLine(line2: HTMLElement, row: ReleaseRow): void {
 	const noItems = noMembersText(row);
 	if (noItems !== null) {
 		line2.createSpan({ cls: 'pbl-rel-nomembers', text: noItems });
@@ -317,7 +325,7 @@ function drawProgressLine(line2: HTMLElement, row: ReleaseRow): void {
  * now extended to the two inputs `overdue` itself cannot see. It does NOT govern the
  * days-remaining figure, which is arithmetic rather than paint — see `drawWhen`.
  */
-function overdueVisible(row: ReleaseRow): boolean {
+export function overdueVisible(row: ReleaseRow): boolean {
 	return row.overdue && !row.released.invalid && !row.released.unconfigured;
 }
 
@@ -346,7 +354,7 @@ function noteText(row: ReleaseRow): string | null {
 	return t('release.index.shippedOnTime');
 }
 
-function drawNote(line2: HTMLElement, row: ReleaseRow): void {
+export function drawNote(line2: HTMLElement, row: ReleaseRow): void {
 	const text = noteText(row);
 	if (text !== null) line2.createSpan({ cls: 'pbl-rel-band-note', text });
 }
@@ -362,8 +370,9 @@ function drawNote(line2: HTMLElement, row: ReleaseRow): void {
  * paired with their heading, because a bare "0.8.0" or "In progress" says nothing on its
  * own. Every piece goes through the catalog and the list is joined by `Intl.ListFormat`
  * inside it: a joiner written here would be grammar decided by whoever typed it.
+ * `extra` is what the map adds after the list's own figures — the derived start.
  */
-function bandLabel(row: ReleaseRow): string {
+export function bandLabel(row: ReleaseRow, extra: string[] = []): string {
 	const figures: string[] = [];
 	const version = speakLabelled(row.version, t('release.index.column.version'));
 	if (version !== null) figures.push(version);
@@ -374,6 +383,7 @@ function bandLabel(row: ReleaseRow): string {
 	if (progress !== null) figures.push(progress);
 	const note = noteText(row);
 	if (note !== null) figures.push(note);
+	figures.push(...extra);
 	return t('release.index.rowLabel', { name: row.name, figures });
 }
 
