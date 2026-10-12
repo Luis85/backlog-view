@@ -89,8 +89,8 @@ const FOCUS_HANDLE_CLASSES = [
 	// defect it exists to stop.
 	'pbl-rel-close',
 	'pbl-rel-notes',
-	// The index's two tabs (2026-10-12). A tab press redraws the screen it sits on — the
-	// sharp case again. (The map's row is listed above, beside the band's case.)
+	// The index's two tabs (2026-10-12). A press on the other tab redraws the screen it sits
+	// on — the sharp case again. (The map's row is listed above, beside the band's case.)
 	'pbl-rel-tab-list',
 	'pbl-rel-tab-map',
 ];
@@ -358,9 +358,11 @@ export class ReleaseView extends BasesView {
 
 	/**
 	 * Switch the index's tab. Persists `'map'` only — the list is absence — then redraws:
-	 * no config was set and no Bases refresh is coming. Writes nothing to the vault.
+	 * no config was set and no Bases refresh is coming. Writes nothing to the vault. A press
+	 * on the tab already showing does nothing: a redraw would only lose the reader's place.
 	 */
 	setTab(tab: ReleaseTab): void {
+		if (tab === this.tab) return;
 		this.tab = tab;
 		const id = resolveViewIdentity(this.app, this.viewEl, this.config.name ?? '');
 		if (id) updateViewPrefs(this.app, id, { releaseTab: tab === 'map' ? RELEASE_MAP_TAB : undefined });
@@ -424,17 +426,17 @@ export class ReleaseView extends BasesView {
 	 * restored NUMBER is owed a live vault.
 	 *
 	 * **One saved offset, and it is keyed by the screen that produced it.** The three screens
-	 * scroll different elements over different content — `.pbl-rel-list` on the index's list,
-	 * `.pbl-relmap-scroll` on its map, `.pbl-tree` on one release — so a single value carried across a change of screen
-	 * would drop a reader into the middle of a tree because they had scrolled the list,
-	 * which is worse than the top. That makes the DATA UPDATE the event that restores (the
-	 * same screen, redrawn under a Bases refresh, an external status edit, a rename) and the
-	 * PICK the event that does not: `pick` changes the key, so it starts at the top, in both
-	 * directions, and so does a tab change — except ARRIVING on the map, which opens at today
-	 * instead (`renderMap`'s `openAtToday`). The offset is both axes: the map scrolls
-	 * sideways as well, and a data update must not yank it back to the left edge any more
-	 * than to the top. `restoreBox` (`view/render/projections.ts`) keys its bands the same way and
-	 * for the same reason.
+	 * scroll different elements over different content — `.pbl-rel-list` on the index's
+	 * list, `.pbl-relmap-scroll` on its map, `.pbl-tree` on one release — so a single value
+	 * carried across a change of screen would drop a reader into the middle of a tree
+	 * because they had scrolled the list, which is worse than the top. That makes the DATA
+	 * UPDATE the event that restores (the same screen, redrawn under a Bases refresh, an
+	 * external status edit, a rename) and the PICK the event that does not: `pick` changes
+	 * the key, so it starts at the top, in both directions, and so does a tab change —
+	 * except ARRIVING on the map, which opens on its own position instead (`renderMap`'s
+	 * `openAtToday`). The offset is both axes: the map scrolls sideways as well, and a data
+	 * update must not yank it back to the left edge any more than to the top. `restoreBox`
+	 * (`view/render/projections.ts`) keys its bands the same way and for the same reason.
 	 *
 	 * Going back to the index therefore starts at the top too, because the scope's own
 	 * render overwrote the one slot. That is today's behaviour rather than a regression, and
@@ -448,7 +450,8 @@ export class ReleaseView extends BasesView {
 		const previousKey = this.drawnKey;
 		// Captured before `empty()` for `previousTop`'s own reason: a detached element
 		// answers nothing. `previousEl` already narrows to the one scroller this screen
-		// has (`.pbl-tree`, `.pbl-rel-list` or `.pbl-relmap-scroll`), so this only has to ask whether it was THIS render's tree specifically.
+		// has (`.pbl-tree`, `.pbl-rel-list` or `.pbl-relmap-scroll`), so this only has to
+		// ask whether it was THIS render's tree specifically.
 		//
 		// `contains`, not `===`: a MOUSE press on a per-row control inside the tree (the
 		// disclosure) focuses that button, and the redraw this render is performing is

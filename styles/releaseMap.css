@@ -1,7 +1,8 @@
 /* The release view's Map tab — `src/view/release/renderMap.ts`, and the `List | Map`
    control `renderIndex.ts` draws at the head of both tabs. Every position is a custom
    property the view publishes (`--pbl-relmap-x`, `--pbl-relmap-w`, `--pbl-relmap-cell-w`,
-   `--pbl-relmap-track`), in px from the window's first day. The ruler, the marks and the
+   `--pbl-relmap-track`), in px from the window's first day, and so are the card's width and
+   its gap (`--pbl-relmap-card`, `--pbl-relmap-gap`), which the track counts. The ruler, the marks and the
    cards are placed with logical properties; the reused `.pbl-today` and `.pbl-grid-line`
    (`timeline.css`) use a physical `left`, and the today label centres with
    `translateX(-50%)`, so a right-to-left pane does NOT mirror the map as a whole. */
@@ -18,12 +19,11 @@
 	padding-block-end: var(--size-4-4);
 }
 
-/* The track, then a gutter one card wide so the last card is not clipped. */
+/* The track already runs one card and two gaps past the window (`renderMap.ts`), so the
+   ruler and the grid reach past the last card. */
 .pbl-relmap {
-	--pbl-relmap-card: 280px;
-	--pbl-relmap-gap: var(--size-4-4);
 	position: relative;
-	inline-size: calc(var(--pbl-relmap-track) + var(--pbl-relmap-gap) + var(--pbl-relmap-card) + var(--size-4-4));
+	inline-size: var(--pbl-relmap-track);
 	min-inline-size: 100%;
 }
 
@@ -31,7 +31,6 @@
 	position: sticky;
 	inset-block-start: 0;
 	z-index: 3;
-	inline-size: var(--pbl-relmap-track);
 	background-color: var(--background-primary);
 	border-block-end: 1px solid var(--background-modifier-border);
 }
@@ -91,6 +90,10 @@
 /* A bare `button` in a vault arrives with a fill, a shadow, a radius and a fixed height —
    `button.pbl-rel-band`'s reset, for the same reason (`release.css`). */
 button.pbl-relmap-row {
+	/* Line 1's height, and its centre in the row: the row's padding, the card's border and
+	   padding, then half the line. Every mark is centred on it. */
+	--pbl-relmap-line1: 24px;
+	--pbl-relmap-mid: calc(var(--size-4-2) + 1px + var(--size-4-2) + var(--pbl-relmap-line1) / 2);
 	position: relative;
 	display: block;
 	inline-size: 100%;
@@ -117,7 +120,7 @@ button.pbl-relmap-row:focus-visible {
 	outline-offset: -2px;
 }
 
-/* The marks sit on the card's first line. */
+/* The marks are centred on the card's first line (`--pbl-relmap-mid`). */
 .pbl-relmap-lead,
 .pbl-relmap-tick,
 .pbl-relmap-slip,
@@ -128,7 +131,7 @@ button.pbl-relmap-row:focus-visible {
 
 /* The derived start: a band, faded and dashed, never a solid bar. */
 .pbl-relmap-lead {
-	inset-block-start: calc(var(--size-4-2) + 10px);
+	inset-block-start: calc(var(--pbl-relmap-mid) - 8px);
 	inline-size: var(--pbl-relmap-w);
 	block-size: 16px;
 	box-sizing: border-box;
@@ -139,7 +142,7 @@ button.pbl-relmap-row:focus-visible {
 }
 
 .pbl-relmap-marker {
-	inset-block-start: calc(var(--size-4-2) + 11px);
+	inset-block-start: calc(var(--pbl-relmap-mid) - 7px);
 	inline-size: 14px;
 	block-size: 14px;
 	margin-inline-start: -7px;
@@ -166,13 +169,13 @@ button.pbl-relmap-row:focus-visible {
 }
 
 .pbl-relmap-tick {
-	inset-block-start: calc(var(--size-4-2) + 8px);
+	inset-block-start: calc(var(--pbl-relmap-mid) - 10px);
 	block-size: 20px;
 	border-inline-start: 2px solid var(--text-muted);
 }
 
 .pbl-relmap-slip {
-	inset-block-start: calc(var(--size-4-2) + 17px);
+	inset-block-start: calc(var(--pbl-relmap-mid) - 1.5px);
 	inline-size: var(--pbl-relmap-w);
 	block-size: 0;
 	border-block-start: 3px solid;
@@ -217,6 +220,11 @@ button.pbl-relmap-row:focus-visible {
 	align-items: center;
 	gap: var(--size-4-2);
 	min-inline-size: 0;
+}
+
+/* At least the height `--pbl-relmap-mid` counts, so the marks meet its centre. */
+.pbl-relmap-card > .pbl-relmap-line:first-child {
+	min-block-size: var(--pbl-relmap-line1);
 }
 
 .pbl-relmap-name {

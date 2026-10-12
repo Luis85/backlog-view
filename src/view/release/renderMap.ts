@@ -9,6 +9,7 @@ import { membershipCollision } from '../../domain/settingsConsistency';
 import { barGeometry, BarGeometry, daysBetween, scaleFor, superCells, TimelineCell, timelineCells, TimelineWindow } from '../../domain/timeline';
 import { centreOnToday } from '../render/projections';
 import { renderGridLines } from '../render/timeline';
+import { uniqueElementId } from '../selection';
 import {
 	bandLabel,
 	drawAbsences,
@@ -39,6 +40,16 @@ const SCALE = scaleFor('month');
 
 const px = (days: number): string => `${days * SCALE.dayPx}px`;
 
+/** A card's width, published as `--pbl-relmap-card`. */
+const CARD_PX = 280;
+/** The space between a marker and its card, and past the card's end — `--pbl-relmap-gap`. */
+const GAP_PX = 16;
+/**
+ * How many days the ruler and the grid run on past the window: enough to reach a gap past
+ * a card drawn at the window's last day. The marks are still placed in the window alone.
+ */
+const GUTTER_DAYS = Math.ceil((GAP_PX + CARD_PX + GAP_PX) / SCALE.dayPx);
+
 /** Where one date sits, clamped into the window — `barGeometry` asked of a point. */
 const pointAt = (window: TimelineWindow, date: CivilDate): BarGeometry => barGeometry(window, { start: date, target: date });
 
@@ -51,11 +62,17 @@ export function renderMap(view: ReleaseView, map: ReleaseMap, index: ReleaseInde
 	drawIndexActions(view);
 	const scroller = view.viewEl.createDiv({ cls: 'pbl-relmap-scroll' });
 	const mapEl = scroller.createDiv({ cls: 'pbl-relmap' });
+	const track: TimelineWindow = { start: map.window.start, days: map.window.days + GUTTER_DAYS };
 	// `--pbl-tl-line` is what the reused `.pbl-today` reads for its width (`styles/timeline.css`).
-	mapEl.setCssProps({ '--pbl-relmap-track': px(map.window.days), '--pbl-tl-line': `${SCALE.lineWidth}px` });
-	drawRuler(mapEl, map);
+	mapEl.setCssProps({
+		'--pbl-relmap-track': px(track.days),
+		'--pbl-relmap-card': `${CARD_PX}px`,
+		'--pbl-relmap-gap': `${GAP_PX}px`,
+		'--pbl-tl-line': `${SCALE.lineWidth}px`,
+	});
+	drawRuler(mapEl, map, track);
 	const rowsEl = mapEl.createDiv({ cls: 'pbl-relmap-rows' });
-	renderGridLines(rowsEl, map.window, SCALE, 0);
+	renderGridLines(rowsEl, track, SCALE, 0);
 	const todayDay = pointAt(map.window, map.today).startDay;
 	rowsEl.createDiv({ cls: 'pbl-today', attr: { 'aria-hidden': 'true' } }).setCssProps({ '--pbl-today-left': px(todayDay) });
 	const rowEls = map.rows.map((row) => drawRow(view, rowsEl, map.window, row));
@@ -69,24 +86,30 @@ export function renderMap(view: ReleaseView, map: ReleaseMap, index: ReleaseInde
 
 /**
  * Open where the plan is NOW: today centred sideways, as the roadmap opens
- * (`centreOnToday`, with no lead column), and the first release not yet past scrolled up to
- * where the first row sits — or the last row, when every release is past. Two layout reads,
+ * (`centreOnToday`, with no lead column), and one row scrolled up to where the first row
+ * sits — the earliest release painted overdue (`overdueVisible`, the list's own
+ * condition), else the first release not yet past, else the last row. Two layout reads,
  * once per arrival and never on a redraw.
  */
 function openAtToday(scroller: HTMLElement, todayPx: number, map: ReleaseMap, rowEls: HTMLElement[]): void {
 	scroller.scrollLeft = centreOnToday(todayPx, scroller.clientWidth, 0);
 	if (rowEls.length === 0) return;
+	// Rows are in end order and an overdue row ends at its past target, so the first is the earliest.
+	const overdue = map.rows.findIndex((row) => overdueVisible(row.release));
 	const next = map.rows.findIndex((row) => daysBetween(map.today, row.end) >= 0);
-	const target = rowEls[next === -1 ? rowEls.length - 1 : next];
+	const target = rowEls[[overdue, next].find((i) => i !== -1) ?? rowEls.length - 1];
 	scroller.scrollTop = target.offsetTop - rowEls[0].offsetTop;
 }
 
-/** Years over months, and today's label hanging BELOW the ruler so it never covers a month. */
-function drawRuler(mapEl: HTMLElement, map: ReleaseMap): void {
+/**
+ * Years over months across the whole `track`, and today's label hanging BELOW the ruler so
+ * it never covers a month.
+ */
+function drawRuler(mapEl: HTMLElement, map: ReleaseMap, track: TimelineWindow): void {
 	const ruler = mapEl.createDiv({ cls: 'pbl-relmap-ruler', attr: { 'aria-hidden': 'true' } });
 	const tiers: Array<[TimelineCell[], string]> = [
-		[superCells(map.window, SCALE), 'pbl-relmap-cell pbl-relmap-cell-year'],
-		[timelineCells(map.window, SCALE), 'pbl-relmap-cell'],
+		[superCells(track, SCALE), 'pbl-relmap-cell pbl-relmap-cell-year'],
+		[timelineCells(track, SCALE), 'pbl-relmap-cell'],
 	];
 	for (const [cells, cls] of tiers) {
 		const tier = ruler.createDiv({ cls: 'pbl-relmap-tier' });
@@ -108,11 +131,11 @@ function drawRow(view: ReleaseView, rowsEl: HTMLElement, window: TimelineWindow,
 	rowEl.toggleClass('pbl-rel-overdue', overdueVisible(row.release));
 	rowEl.toggleClass('pbl-relmap-clipped', end.outside);
 	if (row.start !== null) drawLead(rowEl, barGeometry(window, { start: row.start, target: row.end }));
-	if (row.slipTarget !== null) drawSlip(rowEl, pointAt(window, row.slipTarget).startDay, end.startDay, (row.release.slip ?? 0) > 0);
+	if (row.slipTarget !== null) drawSlip(rowEl, pointAt(window, row.slipTarget).startDay, end.startDay, row.release.slip ?? 0);
 	rowEl.createSpan({ cls: 'pbl-relmap-marker' }).setCssProps({ '--pbl-relmap-x': px(end.startDay) });
 	const slot = rowEl.createSpan({ cls: 'pbl-relmap-slot' });
 	slot.setCssProps({ '--pbl-relmap-x': px(end.startDay) });
-	drawCard(slot, row);
+	drawCard(rowEl, slot, row);
 	rowEl.addEventListener('click', () => view.pick(row.release.path));
 	return rowEl;
 }
@@ -124,8 +147,12 @@ function drawLead(rowEl: HTMLElement, lead: BarGeometry): void {
 	setTooltip(el, t('release.map.derivedStart'));
 }
 
-/** A tick at the target, and a stub from it to the released date — forward when late, back when early. */
-function drawSlip(rowEl: HTMLElement, tickDay: number, endDay: number, late: boolean): void {
+/**
+ * A tick at the target, and a stub from it to the released date — forward when late, back
+ * when early. The stub's tooltip is the list's own slip sentence (`drawNote`'s keys).
+ */
+function drawSlip(rowEl: HTMLElement, tickDay: number, endDay: number, slip: number): void {
+	const late = slip > 0;
 	rowEl.createSpan({ cls: 'pbl-relmap-tick' }).setCssProps({ '--pbl-relmap-x': px(tickDay) });
 	// Two toggles, not a ternary inside a template: `TEXT_TERNARY` in `eslint.config.mjs`
 	// refuses that shape whatever the strings are, and says to use `addClass` instead.
@@ -133,10 +160,15 @@ function drawSlip(rowEl: HTMLElement, tickDay: number, endDay: number, late: boo
 	stub.toggleClass('pbl-relmap-late', late);
 	stub.toggleClass('pbl-relmap-early', !late);
 	stub.setCssProps({ '--pbl-relmap-x': px(Math.min(tickDay, endDay)), '--pbl-relmap-w': px(Math.abs(endDay - tickDay)) });
+	setTooltip(stub, late ? t('release.index.daysLate', { count: slip }) : t('release.index.daysEarly', { count: -slip }));
 }
 
-/** Line 1: name, version, status. Line 2: the date figure, its note, the progress. Then the headline. */
-function drawCard(parent: HTMLElement, card: MapCard): void {
+/**
+ * Line 1: name, version, status. Line 2: the date figure, its note, the progress. Then the
+ * headline, which `rowEl` names as its description: the row's `aria-label` replaces its
+ * content, so without `aria-describedby` a screen reader never hears the scope.
+ */
+function drawCard(rowEl: HTMLElement, parent: HTMLElement, card: MapCard): void {
 	const cardEl = parent.createSpan({ cls: 'pbl-relmap-card' });
 	const line1 = cardEl.createSpan({ cls: 'pbl-relmap-line' });
 	line1.createSpan({ cls: 'pbl-relmap-name', text: card.release.name });
@@ -148,7 +180,9 @@ function drawCard(parent: HTMLElement, card: MapCard): void {
 	// One nowrap box, so the bar and its count never wrap apart.
 	drawProgressLine(line2.createSpan({ cls: 'pbl-relmap-progress' }), card.release);
 	if (card.headline.length === 0) return;
-	const scopeEl = cardEl.createSpan({ cls: 'pbl-relmap-scope' });
+	// Minted per row: the id resolves across the document, which can hold two maps in split panes.
+	const scopeEl = cardEl.createSpan({ cls: 'pbl-relmap-scope', attr: { id: uniqueElementId('pbl-relmap-scope') } });
+	rowEl.setAttribute('aria-describedby', scopeEl.id);
 	for (const title of card.headline) scopeEl.createSpan({ cls: 'pbl-relmap-scope-item', text: title });
 	if (card.more > 0) scopeEl.createSpan({ cls: 'pbl-relmap-more', text: t('release.map.more', { count: card.more }) });
 }
@@ -165,7 +199,7 @@ function drawShelf(view: ReleaseView, scroller: HTMLElement, shelf: MapCard[]): 
 			cls: 'pbl-relmap-row pbl-relmap-shelf-row',
 			attr: { type: 'button', 'data-path': card.release.path, 'aria-label': bandLabel(card.release) },
 		});
-		drawCard(btn, card);
+		drawCard(btn, btn, card);
 		btn.addEventListener('click', () => view.pick(card.release.path));
 	}
 }

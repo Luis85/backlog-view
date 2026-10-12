@@ -490,6 +490,8 @@ describe('the release view reads every word it draws from the catalog', () => {
 		// presentation in the reader's locale — so they are read off the cells and set aside.
 		const calendar = new Set(Array.from(containerEl.querySelectorAll('.pbl-relmap-cell'), (el) => el.textContent ?? ''));
 		expect(calendar.size).toBeGreaterThan(0);
+		// Two keys, one inside the other: the outer mark alone would pass an English label.
+		expect(containerEl.querySelector('.pbl-relmap-shelf h2')?.textContent).toBe(`${MARK}${MARK}Not scheduled (1)`);
 		// The same ten facts the list's own test names: the map says nothing the list does not.
 		expect(remainder(containerEl).filter((text) => !calendar.has(text))).toEqual([
 			'0.8',

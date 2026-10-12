@@ -38,7 +38,8 @@ go into any release from there.
    per device and per saved view, never in the `.base`.
 2. The view orders the releases by their end — the released date once shipped, the target
    otherwise — and draws one row each under a month ruler, with today marked. The map opens
-   with today centred and the first release not yet past in view.
+   with today centred and, in view, the earliest release painted overdue — else the first
+   release not yet past, else the last.
 3. Each row draws a faded band from the previous row's end to its own, labelled as a derived
    start; a marker at its end; and a card: the name, version and status; the date with its
    days figure, overdue count or slip, and the progress bar; then the first three top-level
@@ -86,8 +87,9 @@ go into any release from there.
 - A card lists at most three top-level scope items, then `+N more`.
 - In-flight releases without a readable target are on the shelf; a shipped release never is.
 - A row or a shelf card opens that release, and Back returns to the map.
-- Arriving on the map centres today and scrolls the first release not yet past into view; a
-  redraw of the map keeps the reader's place.
+- Arriving on the map centres today and scrolls into view the earliest release painted
+  overdue, else the first release not yet past, else the last row; a redraw of the map
+  keeps the reader's place.
 - Nothing on the map writes to a note or to the `.base`.
 
 ## Where it lives

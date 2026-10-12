@@ -180,8 +180,16 @@ describe('the release map lays itself out', () => {
 
 	it('keeps every card opaque, so the today line never shows through one', () => {
 		// A shipped card was `opacity: 0.7`: the line beneath showed through it and its muted
-		// text fell below AA. Its CONTENT is muted instead; the card keeps its own fill.
-		expect(declarations).not.toMatch(/\.pbl-relmap[\w-]*\s+\.pbl-relmap-card\s*\{[^}]*opacity/);
+		// text fell below AA. Its CONTENT is muted instead; the card keeps its own fill. Asked
+		// of every rule whose selector ENDS on a card or a row — bare, scoped or in a state —
+		// so the derived band's own `opacity` is left alone. `[^{}]` in the body skips an
+		// at-rule's head and reads the rules inside it.
+		const cardOrRow = /(?:\.pbl-relmap-card|button\.pbl-relmap-row[\w.-]*)(?::[\w-]+(?:\([^)]*\))?)*$/;
+		const faded = Array.from(declarations.matchAll(/([^{}]+)\{([^{}]*)\}/g))
+			.filter(([, , body]) => /\bopacity\s*:/.test(body))
+			.flatMap(([, selectors]) => selectors.split(',').map((selector) => selector.trim()))
+			.filter((selector) => cardOrRow.test(selector));
+		expect(faded).toEqual([]);
 		expect(ruleAt('.pbl-relmap-shipped .pbl-relmap-card', 'color: var(--text-muted);')).toBeGreaterThan(-1);
 	});
 

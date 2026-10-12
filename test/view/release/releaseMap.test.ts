@@ -77,12 +77,15 @@ describe('the release map', () => {
 		// Late: the stub starts at the tick and runs forward to the marker.
 		expect(cssPx(late?.querySelector('.pbl-relmap-slip.pbl-relmap-late'), '--pbl-relmap-x')).toBe(lateTick);
 		expect(lateTick).toBeLessThan(cssPx(late?.querySelector('.pbl-relmap-marker'), '--pbl-relmap-x'));
+		// The stub says what it is on hover, in the list's own slip sentence.
+		expect(late?.querySelector('.pbl-relmap-slip')?.getAttribute('data-tooltip')).toBe('7 days late');
 
 		// Early: the stub starts at the marker and runs forward to the tick.
 		const early = rowOf(view.viewEl, 'Early.md');
 		const earlyMarker = cssPx(early?.querySelector('.pbl-relmap-marker'), '--pbl-relmap-x');
 		expect(cssPx(early?.querySelector('.pbl-relmap-slip.pbl-relmap-early'), '--pbl-relmap-x')).toBe(earlyMarker);
 		expect(cssPx(early?.querySelector('.pbl-relmap-tick'), '--pbl-relmap-x')).toBeGreaterThan(earlyMarker);
+		expect(early?.querySelector('.pbl-relmap-slip')?.getAttribute('data-tooltip')).toBe('5 days early');
 
 		const onTime = rowOf(view.viewEl, 'OnTime.md');
 		expect(onTime?.querySelector('.pbl-relmap-tick')).toBeNull();
@@ -112,6 +115,44 @@ describe('the release map', () => {
 		const { view } = onMap(vault);
 		expect(texts(view.viewEl, '.pbl-relmap-scope-item')).toEqual(['P1', 'P2', 'P3']);
 		expect(view.viewEl.querySelector('.pbl-relmap-more')?.textContent).toBe('+2 more');
+	});
+
+	it("describes a row by its headline, which the row's own label replaces", () => {
+		const vault = new FakeVault();
+		release(vault, 'R.md', { 'target-date': '2026-09-12' });
+		release(vault, 'S.md', { 'target-date': '2026-09-20' });
+		release(vault, 'Empty.md', { 'target-date': '2026-09-30' });
+		release(vault, 'U.md', {});
+		vault.addFile('P1.md', { frontmatter: { type: 'PBI', order: 1, release: '[[R]]' } });
+		vault.addFile('P2.md', { frontmatter: { type: 'PBI', order: 2, release: '[[S]]' } });
+		vault.addFile('P3.md', { frontmatter: { type: 'PBI', order: 3, release: '[[U]]' } });
+		const { view } = onMap(vault);
+		const described = (path: string) => {
+			const row = view.viewEl.querySelector<HTMLElement>(`.pbl-relmap-row[data-path="${path}"]`);
+			const id = row?.getAttribute('aria-describedby') ?? '';
+			return { id, text: row?.querySelector(`[id="${id}"]`)?.textContent };
+		};
+		const [r, s, u] = ['R.md', 'S.md', 'U.md'].map(described);
+		expect([r.text, s.text, u.text]).toEqual(['P1', 'P2', 'P3']);
+		// Unique per row, so each row names its own list in a document that may hold two maps.
+		expect(new Set([r.id, s.id, u.id]).size).toBe(3);
+		expect(rowOf(view.viewEl, 'Empty.md')?.hasAttribute('aria-describedby')).toBe(false);
+	});
+
+	it('runs the ruler and the grid on past the last card', () => {
+		const { view } = onMap(releaseVault());
+		const mapEl = view.viewEl.querySelector('.pbl-relmap');
+		const months = Array.from(view.viewEl.querySelectorAll('.pbl-relmap-cell:not(.pbl-relmap-cell-year)'), (el) =>
+			cssPx(el, '--pbl-relmap-cell-w'),
+		);
+		const ruler = months.reduce((sum, w) => sum + w, 0);
+		const lastMarker = cssPx(rowOf(view.viewEl, '0.9.md')?.querySelector('.pbl-relmap-marker'), '--pbl-relmap-x');
+		// The card starts one gap past its marker; the ruler reaches a gap past the card's end.
+		const gap = cssPx(mapEl, '--pbl-relmap-gap');
+		expect(ruler).toBeGreaterThanOrEqual(lastMarker + gap + cssPx(mapEl, '--pbl-relmap-card') + gap);
+		expect(cssPx(mapEl, '--pbl-relmap-track')).toBe(ruler);
+		// A grid line at every month boundary inside the ruler, not only inside the window.
+		expect(view.viewEl.querySelectorAll('.pbl-relmap .pbl-grid-line')).toHaveLength(months.length - 1);
 	});
 
 	it('paints a row overdue exactly where the list would', () => {
@@ -154,6 +195,13 @@ describe('the release map', () => {
 		vault.addFile('F.md', { frontmatter: { type: 'Feature', order: 1, release: '[[Gone]]' } });
 		const { view } = onMap(vault);
 		expect(view.viewEl.querySelector('.pbl-relmap-scroll .pbl-rel-unresolved')).not.toBeNull();
+	});
+
+	it('leaves the screen alone when the tab already showing is pressed', () => {
+		const { view } = onMap(releaseVault());
+		const drawn = view.viewEl.querySelector('.pbl-relmap');
+		button(view, '.pbl-rel-tab-map').click();
+		expect(view.viewEl.querySelector('.pbl-relmap')).toBe(drawn);
 	});
 
 	it('writes nothing to a note or to the .base', () => {
@@ -289,6 +337,59 @@ describe('a redraw keeps the reader on the map', () => {
 		onMap(vault);
 		stubMapGeometry();
 		const { view } = makeReleaseView(vault, RELEASE_CONFIG, { base: 'Releases.base' });
+		expectOpenedAtToday(view.viewEl);
+	});
+
+	it('opens on the earliest overdue release before the first one not yet past', () => {
+		const vault = new FakeVault();
+		release(vault, 'A.md', { 'target-date': '2026-06-01', released: '2026-06-01' });
+		release(vault, 'B.md', { 'target-date': '2026-07-01' });
+		release(vault, 'C.md', { 'target-date': '2026-09-12' });
+		const { view } = makeReleaseView(vault, RELEASE_CONFIG, { base: 'Releases.base' });
+		stubMapGeometry();
+		view.setTab('map');
+		// B is still in flight past its target: the review starts where the plan is late.
+		expect((view.viewEl.querySelector('.pbl-relmap-scroll') as HTMLElement).scrollTop).toBe(100);
+	});
+
+	it('opens on the first release not yet past when no overdue one is painted', () => {
+		// Released date unbound: nothing ships, and the list paints nothing overdue either.
+		const { view } = makeReleaseView(pastAndNextVault(), { ...RELEASE_CONFIG, releasedDateProperty: '' }, { base: 'Releases.base' });
+		stubMapGeometry();
+		view.setTab('map');
+		expect((view.viewEl.querySelector('.pbl-relmap-scroll') as HTMLElement).scrollTop).toBe(200);
+	});
+
+	it('opens on the last row when every release is past', () => {
+		const vault = new FakeVault();
+		release(vault, 'A.md', { 'target-date': '2026-06-01', released: '2026-06-01' });
+		release(vault, 'B.md', { 'target-date': '2026-07-01', released: '2026-07-01' });
+		const { view } = makeReleaseView(vault, RELEASE_CONFIG, { base: 'Releases.base' });
+		stubMapGeometry();
+		view.setTab('map');
+		expect((view.viewEl.querySelector('.pbl-relmap-scroll') as HTMLElement).scrollTop).toBe(100);
+	});
+
+	it('opens at today with no dated row to scroll to', () => {
+		const vault = new FakeVault();
+		release(vault, 'A.md', { order: 1 });
+		const { view } = makeReleaseView(vault, RELEASE_CONFIG, { base: 'Releases.base' });
+		stubMapGeometry();
+		view.setTab('map');
+		const scroller = view.viewEl.querySelector('.pbl-relmap-scroll') as HTMLElement;
+		expect(scroller.scrollTop).toBe(0);
+		expect(scroller.scrollLeft).toBe(cssPx(view.viewEl.querySelector('.pbl-relmap .pbl-today'), '--pbl-today-left') - 200);
+	});
+
+	it("does not carry the list's scroll into the map it opens", () => {
+		const { view } = makeReleaseView(pastAndNextVault(), RELEASE_CONFIG, { base: 'Releases.base' });
+		vi.spyOn(HTMLElement.prototype, 'scrollHeight', 'get').mockReturnValue(1000);
+		vi.spyOn(HTMLElement.prototype, 'scrollWidth', 'get').mockReturnValue(5000);
+		const list = view.viewEl.querySelector('.pbl-rel-list') as HTMLElement;
+		list.scrollTop = 500;
+		list.scrollLeft = 30;
+		stubMapGeometry();
+		view.setTab('map');
 		expectOpenedAtToday(view.viewEl);
 	});
 
