@@ -6,10 +6,12 @@ import { MapCard, MapRow, ReleaseMap } from '../../domain/releaseMap';
 import { ReleaseIndex } from '../../domain/releases';
 import { BacklogSettings } from '../../domain/settings';
 import { membershipCollision } from '../../domain/settingsConsistency';
-import { barGeometry, BarGeometry, scaleFor, superCells, TimelineCell, timelineCells, TimelineWindow } from '../../domain/timeline';
+import { barGeometry, BarGeometry, daysBetween, scaleFor, superCells, TimelineCell, timelineCells, TimelineWindow } from '../../domain/timeline';
+import { centreOnToday } from '../render/projections';
 import { renderGridLines } from '../render/timeline';
 import {
 	bandLabel,
+	drawAbsences,
 	drawIndexActions,
 	drawNote,
 	drawProgressLine,
@@ -40,7 +42,12 @@ const px = (days: number): string => `${days * SCALE.dayPx}px`;
 /** Where one date sits, clamped into the window — `barGeometry` asked of a point. */
 const pointAt = (window: TimelineWindow, date: CivilDate): BarGeometry => barGeometry(window, { start: date, target: date });
 
-export function renderMap(view: ReleaseView, map: ReleaseMap, index: ReleaseIndex, plan: BacklogSettings): void {
+/**
+ * `arriving` is true when the map is the screen being CHANGED TO — the first mount, a tab
+ * change, Back from a release — and false for a redraw of the map itself, whose place
+ * `releaseView.render` keeps instead.
+ */
+export function renderMap(view: ReleaseView, map: ReleaseMap, index: ReleaseIndex, plan: BacklogSettings, arriving: boolean): void {
 	drawIndexActions(view);
 	const scroller = view.viewEl.createDiv({ cls: 'pbl-relmap-scroll' });
 	const mapEl = scroller.createDiv({ cls: 'pbl-relmap' });
@@ -49,11 +56,29 @@ export function renderMap(view: ReleaseView, map: ReleaseMap, index: ReleaseInde
 	drawRuler(mapEl, map);
 	const rowsEl = mapEl.createDiv({ cls: 'pbl-relmap-rows' });
 	renderGridLines(rowsEl, map.window, SCALE, 0);
-	const todayEl = rowsEl.createDiv({ cls: 'pbl-today', attr: { 'aria-hidden': 'true' } });
-	todayEl.setCssProps({ '--pbl-today-left': px(pointAt(map.window, map.today).startDay) });
-	for (const row of map.rows) drawRow(view, rowsEl, map.window, row);
+	const todayDay = pointAt(map.window, map.today).startDay;
+	rowsEl.createDiv({ cls: 'pbl-today', attr: { 'aria-hidden': 'true' } }).setCssProps({ '--pbl-today-left': px(todayDay) });
+	const rowEls = map.rows.map((row) => drawRow(view, rowsEl, map.window, row));
 	drawShelf(view, scroller, map.shelf);
+	// The list's own note on unbound figures: an unbound target shelves every release in
+	// flight, and an unbound released date ships none, and only this says why.
+	drawAbsences(scroller, index.rows);
 	drawUnresolved(scroller, index, membershipCollision(view.settings, plan));
+	if (arriving) openAtToday(scroller, todayDay * SCALE.dayPx, map, rowEls);
+}
+
+/**
+ * Open where the plan is NOW: today centred sideways, as the roadmap opens
+ * (`centreOnToday`, with no lead column), and the first release not yet past scrolled up to
+ * where the first row sits — or the last row, when every release is past. Two layout reads,
+ * once per arrival and never on a redraw.
+ */
+function openAtToday(scroller: HTMLElement, todayPx: number, map: ReleaseMap, rowEls: HTMLElement[]): void {
+	scroller.scrollLeft = centreOnToday(todayPx, scroller.clientWidth, 0);
+	if (rowEls.length === 0) return;
+	const next = map.rows.findIndex((row) => daysBetween(map.today, row.end) >= 0);
+	const target = rowEls[next === -1 ? rowEls.length - 1 : next];
+	scroller.scrollTop = target.offsetTop - rowEls[0].offsetTop;
 }
 
 /** Years over months, and today's label hanging BELOW the ruler so it never covers a month. */
@@ -71,7 +96,7 @@ function drawRuler(mapEl: HTMLElement, map: ReleaseMap): void {
 	label.setCssProps({ '--pbl-relmap-x': px(pointAt(map.window, map.today).startDay) });
 }
 
-function drawRow(view: ReleaseView, rowsEl: HTMLElement, window: TimelineWindow, row: MapRow): void {
+function drawRow(view: ReleaseView, rowsEl: HTMLElement, window: TimelineWindow, row: MapRow): HTMLElement {
 	const end = pointAt(window, row.end);
 	const derived = row.start === null ? [] : [t('release.map.derivedStart')];
 	const rowEl = rowsEl.createEl('button', {
@@ -89,6 +114,7 @@ function drawRow(view: ReleaseView, rowsEl: HTMLElement, window: TimelineWindow,
 	slot.setCssProps({ '--pbl-relmap-x': px(end.startDay) });
 	drawCard(slot, row);
 	rowEl.addEventListener('click', () => view.pick(row.release.path));
+	return rowEl;
 }
 
 /** The derived start: faded, dashed, and named as derived — never a date a note holds. */
@@ -119,7 +145,8 @@ function drawCard(parent: HTMLElement, card: MapCard): void {
 	const line2 = cardEl.createSpan({ cls: 'pbl-relmap-line pbl-relmap-facts' });
 	drawWhen(line2, card.release);
 	drawNote(line2, card.release);
-	drawProgressLine(line2, card.release);
+	// One nowrap box, so the bar and its count never wrap apart.
+	drawProgressLine(line2.createSpan({ cls: 'pbl-relmap-progress' }), card.release);
 	if (card.headline.length === 0) return;
 	const scopeEl = cardEl.createSpan({ cls: 'pbl-relmap-scope' });
 	for (const title of card.headline) scopeEl.createSpan({ cls: 'pbl-relmap-scope-item', text: title });

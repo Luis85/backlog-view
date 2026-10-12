@@ -177,4 +177,22 @@ describe('the release map lays itself out', () => {
 	it('lets a click through the today line to the row beneath it', () => {
 		expect(ruleAt('.pbl-relmap .pbl-today', 'pointer-events: none;')).toBeGreaterThan(-1);
 	});
+
+	it('keeps every card opaque, so the today line never shows through one', () => {
+		// A shipped card was `opacity: 0.7`: the line beneath showed through it and its muted
+		// text fell below AA. Its CONTENT is muted instead; the card keeps its own fill.
+		expect(declarations).not.toMatch(/\.pbl-relmap[\w-]*\s+\.pbl-relmap-card\s*\{[^}]*opacity/);
+		expect(ruleAt('.pbl-relmap-shipped .pbl-relmap-card', 'color: var(--text-muted);')).toBeGreaterThan(-1);
+	});
+
+	it('draws a shelf card’s focus ring and hover where the card cannot paint over them', () => {
+		// The shelf button has no padding, so the opaque card covers all of it: a ring inset
+		// by -2px and a hover fill on the button are both underneath the card.
+		expect(ruleAt('button.pbl-relmap-row.pbl-relmap-shelf-row:focus-visible', 'outline-offset: 2px;')).toBeGreaterThan(-1);
+		expect(ruleAt('.pbl-relmap-shelf-row:hover .pbl-relmap-card', 'background-color: var(--background-modifier-hover);')).toBeGreaterThan(-1);
+	});
+
+	it('keeps a card’s progress bar and its count on one line', () => {
+		expect(ruleAt('.pbl-relmap-progress', 'white-space: nowrap;')).toBeGreaterThan(-1);
+	});
 });

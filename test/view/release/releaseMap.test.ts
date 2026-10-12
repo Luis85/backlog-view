@@ -98,7 +98,8 @@ describe('the release map', () => {
 		expect(card.querySelector('.pbl-state-text')?.textContent).toBe('In progress');
 		expect(card.querySelector('.pbl-rel-date')?.textContent).toBe('2026-09-12');
 		expect(card.querySelector('.pbl-rel-days')?.textContent).toBe('12 days left');
-		expect(card.querySelector('.pbl-rel-progress')?.textContent).toBe('0 of 2 items done');
+		// One wrapper for the bar and its count, so the two never wrap apart.
+		expect(card.querySelector('.pbl-relmap-progress > .pbl-rel-progress')?.textContent).toBe('0 of 2 items done');
 		// The scope's one root is the context Epic holding both members in place.
 		expect(texts(card, '.pbl-relmap-scope-item')).toEqual(['E']);
 		expect(card.querySelector('.pbl-relmap-more')).toBeNull();
@@ -138,6 +139,14 @@ describe('the release map', () => {
 		button(view, '.pbl-relmap-shelf-row[data-path="Someday.md"]').click();
 		expect(view.viewEl.querySelector('.pbl-relmap')).toBeNull();
 		expect(loadViewState(view.app, ID).prefs.release).toBe('Someday.md');
+	});
+
+	it('names an unbound figure beneath the map, as the list does', () => {
+		// Unbound, the target puts every release in flight on the shelf: without this note
+		// nothing on the map says why.
+		const { view } = onMap(releaseVault(), { ...RELEASE_CONFIG, targetDateProperty: '' });
+		const note = view.viewEl.querySelector('.pbl-relmap-scroll > .pbl-rel-note');
+		expect(note?.textContent).toContain('Target');
 	});
 
 	it('reports the unresolved memberships beneath the map', () => {
@@ -268,16 +277,59 @@ describe('a redraw keeps the reader on the map', () => {
 		expect(rebuilt.scrollTop).toBe(120);
 	});
 
-	it('starts at the top left when the tab changes screens', () => {
-		const { view } = makeReleaseView(releaseVault(), RELEASE_CONFIG, { base: 'Releases.base' });
+	it('opens at today when the tab changes into the map', () => {
+		const { view } = makeReleaseView(pastAndNextVault(), RELEASE_CONFIG, { base: 'Releases.base' });
+		stubMapGeometry();
+		view.setTab('map');
+		expectOpenedAtToday(view.viewEl);
+	});
+
+	it('opens at today on a fresh mount with the map remembered', () => {
+		const vault = pastAndNextVault();
+		onMap(vault);
+		stubMapGeometry();
+		const { view } = makeReleaseView(vault, RELEASE_CONFIG, { base: 'Releases.base' });
+		expectOpenedAtToday(view.viewEl);
+	});
+
+	it('starts the list at the top left when the tab leaves the map', () => {
+		const { view } = onMap(releaseVault());
 		vi.spyOn(HTMLElement.prototype, 'scrollHeight', 'get').mockReturnValue(1000);
 		vi.spyOn(HTMLElement.prototype, 'scrollWidth', 'get').mockReturnValue(5000);
-		const list = view.viewEl.querySelector('.pbl-rel-list') as HTMLElement;
-		list.scrollLeft = 300;
-		list.scrollTop = 200;
-		view.setTab('map');
 		const scroller = view.viewEl.querySelector('.pbl-relmap-scroll') as HTMLElement;
-		expect(scroller.scrollLeft).toBe(0);
-		expect(scroller.scrollTop).toBe(0);
+		scroller.scrollLeft = 300;
+		scroller.scrollTop = 200;
+		view.setTab('list');
+		const list = view.viewEl.querySelector('.pbl-rel-list') as HTMLElement;
+		expect(list.scrollLeft).toBe(0);
+		expect(list.scrollTop).toBe(0);
 	});
 });
+
+/** Two shipped releases behind today and one ahead of it, so the first current row is the third. */
+function pastAndNextVault(): FakeVault {
+	const vault = new FakeVault();
+	release(vault, 'A.md', { 'target-date': '2026-06-01', released: '2026-06-01' });
+	release(vault, 'B.md', { 'target-date': '2026-07-01', released: '2026-07-01' });
+	release(vault, 'C.md', { 'target-date': '2026-09-12' });
+	return vault;
+}
+
+/** jsdom lays nothing out: a 400px-wide pane, and rows 100px apart below a 10px lead. */
+function stubMapGeometry(): void {
+	vi.spyOn(HTMLElement.prototype, 'clientWidth', 'get').mockReturnValue(400);
+	const tops: Record<string, number> = { 'A.md': 10, 'B.md': 110, 'C.md': 210 };
+	vi.spyOn(HTMLElement.prototype, 'offsetTop', 'get').mockImplementation(function (this: HTMLElement) {
+		return tops[this.dataset.path ?? ''] ?? 0;
+	});
+}
+
+function expectOpenedAtToday(viewEl: HTMLElement): void {
+	const scroller = viewEl.querySelector('.pbl-relmap-scroll') as HTMLElement;
+	const today = cssPx(viewEl.querySelector('.pbl-relmap .pbl-today'), '--pbl-today-left');
+	expect(today).toBeGreaterThan(200);
+	// Centred in the pane, as the roadmap opens.
+	expect(scroller.scrollLeft).toBe(today - 200);
+	// C, the first release not yet past, sits where the first row does.
+	expect(scroller.scrollTop).toBe(200);
+}

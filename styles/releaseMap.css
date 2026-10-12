@@ -1,8 +1,10 @@
 /* The release view's Map tab — `src/view/release/renderMap.ts`, and the `List | Map`
    control `renderIndex.ts` draws at the head of both tabs. Every position is a custom
    property the view publishes (`--pbl-relmap-x`, `--pbl-relmap-w`, `--pbl-relmap-cell-w`,
-   `--pbl-relmap-track`), in px from the window's first day. Logical properties throughout,
-   so a right-to-left pane mirrors the ruler, the marks and the cards together. */
+   `--pbl-relmap-track`), in px from the window's first day. The ruler, the marks and the
+   cards are placed with logical properties; the reused `.pbl-today` and `.pbl-grid-line`
+   (`timeline.css`) use a physical `left`, and the today label centres with
+   `translateX(-50%)`, so a right-to-left pane does NOT mirror the map as a whole. */
 
 /* The tab group leads the bar; the bar's own `justify-content: flex-end` keeps ✨ and
    `New release` at the end. */
@@ -204,8 +206,10 @@ button.pbl-relmap-row:focus-visible {
 	border: 1px solid var(--background-modifier-border);
 }
 
+/* Muted CONTENT on an opaque card: an `opacity` on the card let the today line show
+   through it and took its muted text below AA contrast. */
 .pbl-relmap-shipped .pbl-relmap-card {
-	opacity: 0.7;
+	color: var(--text-muted);
 }
 
 .pbl-relmap-line {
@@ -237,6 +241,18 @@ button.pbl-relmap-row:focus-visible {
 
 .pbl-relmap-facts .pbl-rel-bar {
 	inline-size: 64px;
+}
+
+/* The bar and its count, as one unit the facts line wraps around but never through. */
+.pbl-relmap-progress {
+	display: inline-flex;
+	align-items: center;
+	gap: var(--size-4-2);
+	white-space: nowrap;
+}
+
+.pbl-relmap-progress:empty {
+	display: none;
 }
 
 .pbl-relmap-scope {
@@ -279,6 +295,16 @@ button.pbl-relmap-row:focus-visible {
 button.pbl-relmap-row.pbl-relmap-shelf-row {
 	inline-size: auto;
 	padding: 0;
+}
+
+/* The shelf button has no padding, so its opaque card covers all of it: the ring goes
+   OUTSIDE the button, and the hover fill goes on the card. */
+button.pbl-relmap-row.pbl-relmap-shelf-row:focus-visible {
+	outline-offset: 2px;
+}
+
+.pbl-relmap-shelf-row:hover .pbl-relmap-card {
+	background-color: var(--background-modifier-hover);
 }
 
 .pbl-relmap-shelf .pbl-relmap-card {

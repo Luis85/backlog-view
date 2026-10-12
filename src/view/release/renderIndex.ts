@@ -533,7 +533,7 @@ function absentFigures(): AbsentFigure[] {
  * onto the band that owns it (`drawProgressLine`, `speakProgress`) instead, and this list
  * narrowed back to the five figures a single row can answer for the whole list.
  */
-function drawAbsences(listEl: HTMLElement, rows: ReleaseRow[]): void {
+export function drawAbsences(listEl: HTMLElement, rows: ReleaseRow[]): void {
 	if (rows.length === 0) return;
 	const absent = absentFigures().filter((figure) => figure.unconfigured(rows[0]));
 	if (absent.length === 0) return;

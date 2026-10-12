@@ -37,7 +37,8 @@ go into any release from there.
 1. The reader presses **Map** in the index's `List | Map` control. The choice is remembered
    per device and per saved view, never in the `.base`.
 2. The view orders the releases by their end — the released date once shipped, the target
-   otherwise — and draws one row each under a month ruler, with today marked.
+   otherwise — and draws one row each under a month ruler, with today marked. The map opens
+   with today centred and the first release not yet past in view.
 3. Each row draws a faded band from the previous row's end to its own, labelled as a derived
    start; a marker at its end; and a card: the name, version and status; the date with its
    days figure, overdue count or slip, and the progress bar; then the first three top-level
@@ -59,8 +60,8 @@ go into any release from there.
   order is the list's own (rank, then path).
 - **2b — the first row.** No start can be derived, so it draws its marker alone.
 - **2c — a release ends past what the ruler can draw.** The ruler is bounded around today;
-  the marker is pinned to its edge and drawn as running past it, and the card still states
-  the date.
+  the marker is pinned to its edge and drawn hollow with a dashed border, so it does not
+  claim the date it sits at, and the card still states the date.
 - **3a — a release shipped late or early.** A tick marks its target and a short stub joins
   the tick to the released date — the error colour when late, the success colour when
   early — so a slip never reads as a lead-in.
@@ -70,7 +71,9 @@ go into any release from there.
 - **4a — a release's target is unreadable.** It goes on the shelf, and its card says the
   target is unreadable.
 - **4b — no release lacks a date.** No shelf is drawn.
-- **4c — the target property is unbound.** Every release still in flight is on the shelf.
+- **4c — the target property is unbound.** Every release still in flight is on the shelf, and
+  the note beneath the map names Target as a figure no property is bound for — the list's own
+  note. An unbound released date is named there the same way.
 
 ## Acceptance criteria
 
@@ -83,6 +86,8 @@ go into any release from there.
 - A card lists at most three top-level scope items, then `+N more`.
 - In-flight releases without a readable target are on the shelf; a shipped release never is.
 - A row or a shelf card opens that release, and Back returns to the map.
+- Arriving on the map centres today and scrolls the first release not yet past into view; a
+  redraw of the map keeps the reader's place.
 - Nothing on the map writes to a note or to the `.base`.
 
 ## Where it lives
@@ -95,7 +100,8 @@ cannot disagree. The tab is the `releaseTab` pref in `src/storage/viewStateStore
 in `test/domain/releaseMap.test.ts`.
 
 `src/view/release/renderMap.ts` draws it: the ruler from `superCells` and `timelineCells`,
-the grid lines and today line `src/view/render/timeline.ts` draws for the roadmap, the band,
+the grid lines `src/view/render/timeline.ts` draws for the roadmap, the today line as the
+roadmap's own `.pbl-today` element (styled in `styles/timeline.css`), the band,
 marker and slip stub placed by `barGeometry`, and a card built from
 `src/view/release/renderIndex.ts`'s own band parts. `src/view/release/releaseView.ts` holds
 the tab, restores it with the pick, and draws the map in place of the list when it is set.

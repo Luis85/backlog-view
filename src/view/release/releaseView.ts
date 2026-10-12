@@ -430,7 +430,8 @@ export class ReleaseView extends BasesView {
 	 * which is worse than the top. That makes the DATA UPDATE the event that restores (the
 	 * same screen, redrawn under a Bases refresh, an external status edit, a rename) and the
 	 * PICK the event that does not: `pick` changes the key, so it starts at the top, in both
-	 * directions, and so does a tab change. The offset is both axes: the map scrolls
+	 * directions, and so does a tab change — except ARRIVING on the map, which opens at today
+	 * instead (`renderMap`'s `openAtToday`). The offset is both axes: the map scrolls
 	 * sideways as well, and a data update must not yank it back to the left edge any more
 	 * than to the top. `restoreBox` (`view/render/projections.ts`) keys its bands the same way and
 	 * for the same reason.
@@ -615,7 +616,9 @@ export class ReleaseView extends BasesView {
 				// A local: the closure below would lose `this.model`'s narrowing.
 				const model = this.model;
 				const map = releaseMap(index, (path) => releaseScope(this.app, model, this.settings, index, path).rows, today);
-				renderMap(this, map, index, backlogSettings);
+				// `drawnKey` still names the screen being LEFT: `render` assigns it from this
+				// method's return, after it returns.
+				renderMap(this, map, index, backlogSettings, this.drawnKey !== MAP_KEY);
 				return MAP_KEY;
 			}
 			renderIndex(this, index, backlogSettings);
