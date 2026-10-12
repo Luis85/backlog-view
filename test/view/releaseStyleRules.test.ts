@@ -151,3 +151,30 @@ describe('line 1 yields its width readably, and no figure yields all of it', () 
 		expect(floor, 'a floor of zero is what let it reach 0px').not.toMatch(/^0[a-z%]*$/);
 	});
 });
+
+describe('the release map lays itself out', () => {
+	it('undoes Obsidian’s own button appearance on a row, as the band does', () => {
+		for (const decl of ['background-color: transparent;', 'box-shadow: none;', 'border-radius: 0;', 'block-size: auto;']) {
+			expect(ruleAt('button.pbl-relmap-row', decl), decl).toBeGreaterThan(-1);
+		}
+		expect(ruleAt('button.pbl-relmap-row:hover', 'box-shadow: none;')).toBeGreaterThan(-1);
+		expect(ruleAt('button.pbl-relmap-row:focus-visible', 'outline: 2px solid var(--interactive-accent);')).toBeGreaterThan(-1);
+	});
+
+	it('scrolls both ways, keeps the ruler on top, and keeps the shelf in view sideways', () => {
+		// A narrow pane is the case this answers: the track is wider than any pane.
+		expect(ruleAt('.pbl-relmap-scroll', 'overflow: auto;')).toBeGreaterThan(-1);
+		expect(ruleAt('.pbl-relmap-ruler', 'position: sticky;')).toBeGreaterThan(-1);
+		expect(ruleAt('.pbl-relmap-shelf', 'position: sticky;')).toBeGreaterThan(-1);
+	});
+
+	it('draws the derived band faded and dashed, and a slip stub in the colour of its direction', () => {
+		expect(ruleAt('.pbl-relmap-lead', 'border: 1px dashed var(--text-faint);')).toBeGreaterThan(-1);
+		expect(ruleAt('.pbl-relmap-late', 'border-color: var(--text-error);')).toBeGreaterThan(-1);
+		expect(ruleAt('.pbl-relmap-early', 'border-color: var(--text-success);')).toBeGreaterThan(-1);
+	});
+
+	it('lets a click through the today line to the row beneath it', () => {
+		expect(ruleAt('.pbl-relmap .pbl-today', 'pointer-events: none;')).toBeGreaterThan(-1);
+	});
+});
