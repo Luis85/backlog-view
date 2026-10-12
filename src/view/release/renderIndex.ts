@@ -373,9 +373,13 @@ export function overdueVisible(row: ReleaseRow): boolean {
  */
 function noteText(row: ReleaseRow): string | null {
 	if (overdueVisible(row)) return row.daysToTarget === null ? null : t('release.index.daysOverdue', { count: Math.abs(row.daysToTarget) });
-	if (row.slip === null) return null;
-	if (row.slip > 0) return t('release.index.daysLate', { count: row.slip });
-	if (row.slip < 0) return t('release.index.daysEarly', { count: Math.abs(row.slip) });
+	return row.slip === null ? null : slipText(row.slip);
+}
+
+/** A shipped release's slip as the list says it — late, early or on time. The map's slip stub reads it too. */
+export function slipText(slip: number): string {
+	if (slip > 0) return t('release.index.daysLate', { count: slip });
+	if (slip < 0) return t('release.index.daysEarly', { count: Math.abs(slip) });
 	return t('release.index.shippedOnTime');
 }
 

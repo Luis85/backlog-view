@@ -2,10 +2,10 @@
    control `renderIndex.ts` draws at the head of both tabs. Every position is a custom
    property the view publishes (`--pbl-relmap-x`, `--pbl-relmap-w`, `--pbl-relmap-cell-w`,
    `--pbl-relmap-track`), in px from the window's first day, and so are the card's width and
-   its gap (`--pbl-relmap-card`, `--pbl-relmap-gap`), which the track counts. The ruler, the marks and the
-   cards are placed with logical properties; the reused `.pbl-today` and `.pbl-grid-line`
-   (`timeline.css`) use a physical `left`, and the today label centres with
-   `translateX(-50%)`, so a right-to-left pane does NOT mirror the map as a whole. */
+   its gap (`--pbl-relmap-card`, `--pbl-relmap-gap`), which the track counts. The ruler, the
+   marks and the cards are placed with logical properties; the reused `.pbl-today` and
+   `.pbl-grid-line` (`timeline.css`) use a physical `left`, and the today label centres
+   with `translateX(-50%)`, so a right-to-left pane does NOT mirror the map as a whole. */
 
 /* The tab group leads the bar; the bar's own `justify-content: flex-end` keeps ✨ and
    `New release` at the end. */

@@ -181,10 +181,13 @@ describe('the release map lays itself out', () => {
 	it('keeps every card opaque, so the today line never shows through one', () => {
 		// A shipped card was `opacity: 0.7`: the line beneath showed through it and its muted
 		// text fell below AA. Its CONTENT is muted instead; the card keeps its own fill. Asked
-		// of every rule whose selector ENDS on a card or a row — bare, scoped or in a state —
-		// so the derived band's own `opacity` is left alone. `[^{}]` in the body skips an
-		// at-rule's head and reads the rules inside it.
-		const cardOrRow = /(?:\.pbl-relmap-card|button\.pbl-relmap-row[\w.-]*)(?::[\w-]+(?:\([^)]*\))?)*$/;
+		// of every rule whose selector's LAST compound is a card or a row — `.pbl-relmap-card`,
+		// `.pbl-relmap-row`, `.pbl-relmap-shelf-row` or `.pbl-relmap-shipped`, bare or on
+		// `button`, scoped, in a state or with a pseudo-element — so the derived band's own
+		// `opacity` is left alone. `[^{}]` in the body skips an at-rule's head and reads the
+		// rules inside it.
+		const cardOrRow =
+			/(?:^|[\s>+~])[\w-]*(?:\.[\w-]+)*\.pbl-relmap-(?:card|row|shelf-row|shipped)(?:\.[\w-]+)*(?:::?[\w-]+(?:\([^)]*\))?)*$/;
 		const faded = Array.from(declarations.matchAll(/([^{}]+)\{([^{}]*)\}/g))
 			.filter(([, , body]) => /\bopacity\s*:/.test(body))
 			.flatMap(([, selectors]) => selectors.split(',').map((selector) => selector.trim()))

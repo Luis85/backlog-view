@@ -21,6 +21,7 @@ import {
 	drawVersion,
 	drawWhen,
 	overdueVisible,
+	slipText,
 } from './renderIndex';
 
 /**
@@ -149,7 +150,7 @@ function drawLead(rowEl: HTMLElement, lead: BarGeometry): void {
 
 /**
  * A tick at the target, and a stub from it to the released date — forward when late, back
- * when early. The stub's tooltip is the list's own slip sentence (`drawNote`'s keys).
+ * when early. The stub's tooltip is the list's own slip sentence (`slipText`).
  */
 function drawSlip(rowEl: HTMLElement, tickDay: number, endDay: number, slip: number): void {
 	const late = slip > 0;
@@ -160,7 +161,7 @@ function drawSlip(rowEl: HTMLElement, tickDay: number, endDay: number, slip: num
 	stub.toggleClass('pbl-relmap-late', late);
 	stub.toggleClass('pbl-relmap-early', !late);
 	stub.setCssProps({ '--pbl-relmap-x': px(Math.min(tickDay, endDay)), '--pbl-relmap-w': px(Math.abs(endDay - tickDay)) });
-	setTooltip(stub, late ? t('release.index.daysLate', { count: slip }) : t('release.index.daysEarly', { count: -slip }));
+	setTooltip(stub, slipText(slip));
 }
 
 /**
