@@ -2085,6 +2085,14 @@ export const en = {
 		other: '{count} items name a release that could not be resolved.',
 	},
 
+	/** The index's two tabs (`release/renderIndex.ts`'s `drawTabs`) — the backlog
+	 *  switcher's shape: each position's accessible name, and the shorter word it shows. */
+	'release.tab.group': 'Show releases as',
+	'release.tab.list': 'Show as list',
+	'release.tab.listWord': 'List',
+	'release.tab.map': 'Show as map',
+	'release.tab.mapWord': 'Map',
+
 	/** The release map's shelf (`release/renderMap.ts`), counted through
 	 *  `release.index.group.count` like the list's two group headings. */
 	'release.map.shelf': 'Not scheduled',

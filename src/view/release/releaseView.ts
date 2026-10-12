@@ -89,6 +89,10 @@ const FOCUS_HANDLE_CLASSES = [
 	// defect it exists to stop.
 	'pbl-rel-close',
 	'pbl-rel-notes',
+	// The index's two tabs (2026-10-12). A tab press redraws the screen it sits on — the
+	// sharp case again. (The map's row is listed above, beside the band's case.)
+	'pbl-rel-tab-list',
+	'pbl-rel-tab-map',
 ];
 
 /**
@@ -271,10 +275,12 @@ export class ReleaseView extends BasesView {
 	 *
 	 * It asks the LOCK (`gate.writing`) rather than this view's own progress, the rule ADR
 	 * 0030 states: a batch is a fact about the vault, so a sibling view says so too.
+	 *
+	 * The tabs are left out: switching tabs writes nothing, so a batch has no reason to block it.
 	 */
 	private syncBusy(): void {
 		this.viewEl.toggleAttribute('aria-busy', this.gate.writing);
-		for (const el of this.viewEl.querySelectorAll<HTMLButtonElement>('.pbl-rel-actions button')) {
+		for (const el of this.viewEl.querySelectorAll<HTMLButtonElement>('.pbl-rel-actions button:not(.pbl-rel-tab)')) {
 			el.disabled = this.gate.writing;
 		}
 	}

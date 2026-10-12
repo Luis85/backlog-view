@@ -1,11 +1,12 @@
 import { setIcon } from 'obsidian';
-import type { ReleaseView } from './releaseView';
+import type { ReleaseTab, ReleaseView } from './releaseView';
 import { t } from '../../i18n/t';
 import { ReleaseFigure, ReleaseIndex, ReleaseRow } from '../../domain/releases';
 import { BacklogSettings } from '../../domain/settings';
 import { membershipCollision } from '../../domain/settingsConsistency';
 import { formatCivil } from '../../domain/timeline';
 import { drawIcon } from '../render/icons';
+import { iconButton } from '../render/toolbarControls';
 import { renderNewRelease } from './newRelease';
 import { renderReleaseInit } from './initControl';
 import { unconfiguredProgressText } from './renderScope';
@@ -64,9 +65,33 @@ export function renderIndex(view: ReleaseView, index: ReleaseIndex, plan: Backlo
  */
 export function drawIndexActions(view: ReleaseView): HTMLElement {
 	const actionsEl = view.viewEl.createDiv({ cls: 'pbl-rel-actions' });
+	drawTabs(view, actionsEl);
 	renderReleaseInit(view, actionsEl, 'bar');
 	renderNewRelease(view, actionsEl);
 	return actionsEl;
+}
+
+/**
+ * `List | Map` — `renderModeToggle`'s shape (`render/toolbar.ts`): one segmented group, the
+ * word inside the accessible name, `aria-pressed` on the current position. First in the
+ * bar; `.pbl-rel-tabs` pushes the rest to the end.
+ */
+function drawTabs(view: ReleaseView, actionsEl: HTMLElement): void {
+	const group = actionsEl.createDiv({
+		cls: 'pbl-btn-group pbl-rel-tabs',
+		attr: { role: 'group', 'aria-label': t('release.tab.group') },
+	});
+	const position = (tab: ReleaseTab, icon: string, label: string, word: string) => {
+		const btn = iconButton(group, icon, label);
+		btn.addClass('pbl-mode-btn', 'pbl-rel-tab', `pbl-rel-tab-${tab}`);
+		btn.createSpan({ cls: 'pbl-btn-label', text: word });
+		const active = view.tab === tab;
+		btn.toggleClass('is-active', active);
+		btn.setAttribute('aria-pressed', String(active));
+		btn.addEventListener('click', () => view.setTab(tab));
+	};
+	position('list', 'list', t('release.tab.list'), t('release.tab.listWord'));
+	position('map', 'map', t('release.tab.map'), t('release.tab.mapWord'));
 }
 
 /**
