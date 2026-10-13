@@ -7,12 +7,13 @@ import { t } from '../../i18n/t';
 import { BacklogModel, buildModel } from '../../domain/model';
 import { ReleaseSettings, resolveReleaseSettings } from '../../domain/releaseOptions';
 import { releaseIndex, releaseScope } from '../../domain/releases';
+import { releaseMap } from '../../domain/releaseMap';
 import { ReleaseCriterion } from '../../domain/releaseReadiness';
 import { todayCivil } from '../../domain/noteFields';
 import { resolveSettings } from '../../domain/settingsResolve';
 import { membershipCollision, releaseNoteProblems } from '../../domain/settingsConsistency';
 import { reconfiguredKey, ReleaseWrite } from '../../domain/releaseWritePlan';
-import { loadViewState, updateViewPrefs } from '../../storage/viewStateStore';
+import { loadViewState, RELEASE_MAP_TAB, updateViewPrefs } from '../../storage/viewStateStore';
 import { resolveViewIdentity } from '../../storage/viewIdentity';
 import { guidanceShell } from '../render/emptyStates';
 import { OpenContext, OpenController } from '../openTarget';
@@ -20,9 +21,19 @@ import { RELEASE_SUGGESTED_KEYS, RELEASE_SUGGESTED_VALUES } from './init';
 import { renderReleaseInit } from './initControl';
 import { renderNewRelease } from './newRelease';
 import { drawUnresolved, renderIndex } from './renderIndex';
+import { renderMap } from './renderMap';
 import { renderScope } from './renderScope';
 
 export const RELEASE_VIEW_TYPE = 'product-release';
+
+/** The index's two tabs. View state, never a `.base` setting (ADR 0011). */
+export type ReleaseTab = 'list' | 'map';
+
+/**
+ * What `draw` answers for the map, so the scroll restore treats a tab change as a change of
+ * screen. A NUL never appears in a vault path, so it never equals a release's path.
+ */
+const MAP_KEY = '\u0000map';
 
 /**
  * The classes a redraw's own controls carry — the fixed vocabulary {@link ReleaseView.render}
@@ -54,6 +65,10 @@ const FOCUS_HANDLE_CLASSES = [
 	'pbl-tree',
 	'pbl-rel-new',
 	'pbl-rel-band',
+	// The map's row, which is the band's case on the other tab: one per release, so the
+	// `data-path` match restores the same row, and a press that opens the release falls
+	// back to the scope's own first button (Back) rather than the body.
+	'pbl-relmap-row',
 	// The scope header's own three, added 2026-08-29 (Codex, PR #211, which caught the
 	// first of them). Each is a real tab stop that this header draws exactly one of, so the
 	// exact-match branch below finds it with no `data-path` to disambiguate — and each is
@@ -74,6 +89,10 @@ const FOCUS_HANDLE_CLASSES = [
 	// defect it exists to stop.
 	'pbl-rel-close',
 	'pbl-rel-notes',
+	// The index's two tabs (2026-10-12). A press on the other tab redraws the screen it sits
+	// on — the sharp case again. (The map's row is listed above, beside the band's case.)
+	'pbl-rel-tab-list',
+	'pbl-rel-tab-map',
 ];
 
 /**
@@ -121,6 +140,8 @@ export class ReleaseView extends BasesView {
 	settings: ReleaseSettings;
 	/** The open release's path, or null for the index. Restored on mount, saved on every pick. */
 	pickedPath: string | null = null;
+	/** Which tab the index draws. Restored with the pick; session-only on an embedded base. */
+	tab: ReleaseTab = 'list';
 	model: BacklogModel | null = null;
 	/** Which screen the LAST render drew — see {@link draw}. */
 	private drawnKey: string | null = null;
@@ -254,10 +275,12 @@ export class ReleaseView extends BasesView {
 	 *
 	 * It asks the LOCK (`gate.writing`) rather than this view's own progress, the rule ADR
 	 * 0030 states: a batch is a fact about the vault, so a sibling view says so too.
+	 *
+	 * The tabs are left out: switching tabs writes nothing, so a batch has no reason to block it.
 	 */
 	private syncBusy(): void {
 		this.viewEl.toggleAttribute('aria-busy', this.gate.writing);
-		for (const el of this.viewEl.querySelectorAll<HTMLButtonElement>('.pbl-rel-actions button')) {
+		for (const el of this.viewEl.querySelectorAll<HTMLButtonElement>('.pbl-rel-actions button:not(.pbl-rel-tab)')) {
 			el.disabled = this.gate.writing;
 		}
 	}
@@ -334,6 +357,19 @@ export class ReleaseView extends BasesView {
 	}
 
 	/**
+	 * Switch the index's tab. Persists `'map'` only — the list is absence — then redraws:
+	 * no config was set and no Bases refresh is coming. Writes nothing to the vault. A press
+	 * on the tab already showing does nothing: a redraw would only lose the reader's place.
+	 */
+	setTab(tab: ReleaseTab): void {
+		if (tab === this.tab) return;
+		this.tab = tab;
+		const id = resolveViewIdentity(this.app, this.viewEl, this.config.name ?? '');
+		if (id) updateViewPrefs(this.app, id, { releaseTab: tab === 'map' ? RELEASE_MAP_TAB : undefined });
+		this.render();
+	}
+
+	/**
 	 * Narrow the scope tree to one criterion's outstanding rows, or clear the narrowing.
 	 *
 	 * Re-renders itself: no config was set and no Bases refresh is coming —
@@ -372,7 +408,10 @@ export class ReleaseView extends BasesView {
 	private restorePick(): void {
 		const id = resolveViewIdentity(this.app, this.viewEl, this.config.name ?? '');
 		if (!id) return;
-		this.pickedPath = loadViewState(this.app, id).prefs.release ?? null;
+		const prefs = loadViewState(this.app, id).prefs;
+		this.pickedPath = prefs.release ?? null;
+		// Anything but the one stored word is the list — the store already refused the rest.
+		this.tab = prefs.releaseTab === RELEASE_MAP_TAB ? 'map' : 'list';
 	}
 
 	/**
@@ -386,15 +425,18 @@ export class ReleaseView extends BasesView {
 	 * assigned, connected or not — so the ORDER is what a test can check here and the
 	 * restored NUMBER is owed a live vault.
 	 *
-	 * **One saved offset, and it is keyed by the screen that produced it.** The two screens
-	 * scroll different elements over different content — `.pbl-rel-list` on the index,
-	 * `.pbl-tree` on one release — so a single value carried across a change of screen
-	 * would drop a reader into the middle of a tree because they had scrolled the list,
-	 * which is worse than the top. That makes the DATA UPDATE the event that restores (the
-	 * same screen, redrawn under a Bases refresh, an external status edit, a rename) and the
-	 * PICK the event that does not: `pick` changes the key, so it starts at the top, in both
-	 * directions. `restoreBox` (`view/render/projections.ts`) keys its bands the same way and
-	 * for the same reason.
+	 * **One saved offset, and it is keyed by the screen that produced it.** The three screens
+	 * scroll different elements over different content — `.pbl-rel-list` on the index's
+	 * list, `.pbl-relmap-scroll` on its map, `.pbl-tree` on one release — so a single value
+	 * carried across a change of screen would drop a reader into the middle of a tree
+	 * because they had scrolled the list, which is worse than the top. That makes the DATA
+	 * UPDATE the event that restores (the same screen, redrawn under a Bases refresh, an
+	 * external status edit, a rename) and the PICK the event that does not: `pick` changes
+	 * the key, so it starts at the top, in both directions, and so does a tab change —
+	 * except ARRIVING on the map, which opens on its own position instead (`renderMap`'s
+	 * `openAtToday`). The offset is both axes: the map scrolls sideways as well, and a data
+	 * update must not yank it back to the left edge any more than to the top. `restoreBox`
+	 * (`view/render/projections.ts`) keys its bands the same way and for the same reason.
 	 *
 	 * Going back to the index therefore starts at the top too, because the scope's own
 	 * render overwrote the one slot. That is today's behaviour rather than a regression, and
@@ -404,10 +446,12 @@ export class ReleaseView extends BasesView {
 	render(): void {
 		const previousEl = this.scrollerEl();
 		const previousTop = previousEl?.scrollTop ?? 0;
+		const previousLeft = previousEl?.scrollLeft ?? 0;
 		const previousKey = this.drawnKey;
 		// Captured before `empty()` for `previousTop`'s own reason: a detached element
-		// answers nothing. `previousEl` already narrows to `.pbl-tree` or `.pbl-rel-list`,
-		// so this only has to ask whether it was THIS render's tree specifically.
+		// answers nothing. `previousEl` already narrows to the one scroller this screen
+		// has (`.pbl-tree`, `.pbl-rel-list` or `.pbl-relmap-scroll`), so this only has to
+		// ask whether it was THIS render's tree specifically.
 		//
 		// `contains`, not `===`: a MOUSE press on a per-row control inside the tree (the
 		// disclosure) focuses that button, and the redraw this render is performing is
@@ -425,8 +469,12 @@ export class ReleaseView extends BasesView {
 		const el = this.scrollerEl();
 		// Clamped to the FRESH `scrollHeight` so a redraw with fewer rows — a note that left
 		// the base's results, a release whose members shrank — cannot park the pane below its
-		// own last row. `renderTable.ts` clamps its own restore for the same case.
-		if (el !== null && this.drawnKey === previousKey) el.scrollTop = Math.min(previousTop, el.scrollHeight);
+		// own last row. `renderTable.ts` clamps its own restore for the same case, and
+		// `scrollWidth` clamps the map's narrower window the same way.
+		if (el !== null && this.drawnKey === previousKey) {
+			el.scrollTop = Math.min(previousTop, el.scrollHeight);
+			el.scrollLeft = Math.min(previousLeft, el.scrollWidth);
+		}
 		// Re-queried rather than kept as an element reference: `empty()` already detached the
 		// original. The exact handle comes back first — a reader who pressed a control should
 		// land on that same control again, not near it — but a screen that replaced it (binding
@@ -472,18 +520,19 @@ export class ReleaseView extends BasesView {
 	 * The element that scrolls on whichever screen is drawn, or null for an empty state,
 	 * which has none.
 	 *
-	 * A query rather than a field the two render modules assign: it runs once per render
-	 * over the two candidates, both of them within a couple of nodes of `viewEl`, so it is
+	 * A query rather than a field the three render modules assign: it runs once per render
+	 * over the three candidates, all of them within a couple of nodes of `viewEl`, so it is
 	 * nothing like the per-row `treeEl` scan the cost rule bans — and the alternative is a
-	 * public field written from two other files for one caller's benefit.
+	 * public field written from three other files for one caller's benefit.
 	 */
 	private scrollerEl(): HTMLElement | null {
-		return this.viewEl.querySelector<HTMLElement>('.pbl-rel-list, .pbl-tree');
+		return this.viewEl.querySelector<HTMLElement>('.pbl-rel-list, .pbl-tree, .pbl-relmap-scroll');
 	}
 
 	/**
 	 * Draw whichever screen the state asks for, and answer WHICH one that was — the open
-	 * release's path, or null for the index and for every empty state.
+	 * release's path, `MAP_KEY` for the index's map, or null for the index's list and for
+	 * every empty state.
 	 *
 	 * Not `pickedPath`: by the time `pick` re-renders, that field already holds the screen
 	 * being drawn rather than the one being left, so comparing it would restore across
@@ -524,10 +573,11 @@ export class ReleaseView extends BasesView {
 		// of them to resolve to — so returning first reported the maximum-information state as
 		// "no releases" and hid all of it. [[The scope of a release as a tree]] 1b is what rules
 		// on that: such an item is reported among the unresolved "rather than silently dropped".
+		const today = todayCivil();
 		const index = releaseIndex(this.app, this.model, this.settings, {
 			stateKey: backlogSettings.stateKey,
 			deliverableStateKey: backlogSettings.deliverableStateKey,
-			today: todayCivil(),
+			today,
 		});
 		if (this.model.releases.length === 0) {
 			// The SECOND entry point onto `renderNewRelease`'s one creation function — this
@@ -565,6 +615,15 @@ export class ReleaseView extends BasesView {
 		// A remembered release that no longer exists returns the INDEX, silently. A working
 		// position that has gone is not a failure and must not raise one.
 		if (scope === null || scope.release === null) {
+			if (this.tab === 'map') {
+				// A local: the closure below would lose `this.model`'s narrowing.
+				const model = this.model;
+				const map = releaseMap(index, (path) => releaseScope(this.app, model, this.settings, index, path).rows, today);
+				// `drawnKey` still names the screen being LEFT: `render` assigns it from this
+				// method's return, after it returns.
+				renderMap(this, map, index, backlogSettings, this.drawnKey !== MAP_KEY);
+				return MAP_KEY;
+			}
 			renderIndex(this, index, backlogSettings);
 			return null;
 		}

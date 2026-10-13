@@ -151,3 +151,59 @@ describe('line 1 yields its width readably, and no figure yields all of it', () 
 		expect(floor, 'a floor of zero is what let it reach 0px').not.toMatch(/^0[a-z%]*$/);
 	});
 });
+
+describe('the release map lays itself out', () => {
+	it('undoes Obsidian’s own button appearance on a row, as the band does', () => {
+		for (const decl of ['background-color: transparent;', 'box-shadow: none;', 'border-radius: 0;', 'block-size: auto;']) {
+			expect(ruleAt('button.pbl-relmap-row', decl), decl).toBeGreaterThan(-1);
+		}
+		expect(ruleAt('button.pbl-relmap-row:hover', 'box-shadow: none;')).toBeGreaterThan(-1);
+		expect(ruleAt('button.pbl-relmap-row:focus-visible', 'outline: 2px solid var(--interactive-accent);')).toBeGreaterThan(-1);
+	});
+
+	it('scrolls both ways, keeps the ruler on top, and keeps the shelf in view sideways', () => {
+		// A narrow pane is the case this answers: the track is wider than any pane.
+		expect(ruleAt('.pbl-relmap-scroll', 'overflow: auto;')).toBeGreaterThan(-1);
+		expect(ruleAt('.pbl-relmap-ruler', 'position: sticky;')).toBeGreaterThan(-1);
+		expect(ruleAt('.pbl-relmap-shelf', 'position: sticky;')).toBeGreaterThan(-1);
+	});
+
+	it('draws the derived band faded and dashed, and a slip stub in the colour of its direction', () => {
+		expect(ruleAt('.pbl-relmap-lead', 'border: 1px dashed var(--text-faint);')).toBeGreaterThan(-1);
+		expect(ruleAt('.pbl-relmap-late', 'border-color: var(--text-error);')).toBeGreaterThan(-1);
+		expect(ruleAt('.pbl-relmap-early', 'border-color: var(--text-success);')).toBeGreaterThan(-1);
+	});
+
+	it('lets a click through the today line to the row beneath it', () => {
+		expect(ruleAt('.pbl-relmap .pbl-today', 'pointer-events: none;')).toBeGreaterThan(-1);
+	});
+
+	it('keeps every card opaque, so the today line never shows through one', () => {
+		// A shipped card was `opacity: 0.7`: the line beneath showed through it and its muted
+		// text fell below AA. Its CONTENT is muted instead; the card keeps its own fill. Asked
+		// of every rule whose selector's LAST compound is a card or a row — `.pbl-relmap-card`,
+		// `.pbl-relmap-row`, `.pbl-relmap-shelf-row` or `.pbl-relmap-shipped`, bare or on
+		// `button`, scoped, in a state or with a pseudo-element — so the derived band's own
+		// `opacity` is left alone. `[^{}]` in the body skips an at-rule's head and reads the
+		// rules inside it.
+		const cardOrRow =
+			/(?:^|[\s>+~])[\w-]*(?:\.[\w-]+)*\.pbl-relmap-(?:card|row|shelf-row|shipped)(?:\.[\w-]+)*(?:::?[\w-]+(?:\([^)]*\))?)*$/;
+		const faded = Array.from(declarations.matchAll(/([^{}]+)\{([^{}]*)\}/g))
+			.filter(([, , body]) => /\bopacity\s*:/.test(body))
+			.flatMap(([, selectors]) => selectors.split(',').map((selector) => selector.trim()))
+			.filter((selector) => cardOrRow.test(selector));
+		expect(faded).toEqual([]);
+		expect(ruleAt('.pbl-relmap-shipped .pbl-relmap-card', 'color: var(--text-muted);')).toBeGreaterThan(-1);
+	});
+
+	it('draws a shelf card’s focus ring and hover where the card cannot paint over them', () => {
+		// The shelf button has no padding, so the opaque card covers all of it: a ring inset
+		// by -2px and a hover fill on the button are both underneath the card.
+		expect(ruleAt('button.pbl-relmap-row.pbl-relmap-shelf-row:focus-visible', 'outline-offset: 2px;')).toBeGreaterThan(-1);
+		expect(ruleAt('.pbl-relmap-shelf-row:hover .pbl-relmap-card', 'background-color: var(--background-modifier-hover);')).toBeGreaterThan(-1);
+	});
+
+	it('keeps a card’s progress bar and its count on one line', () => {
+		expect(ruleAt('.pbl-relmap-progress', 'white-space: nowrap;')).toBeGreaterThan(-1);
+	});
+});

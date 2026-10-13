@@ -145,7 +145,7 @@ export function captureScroll(treeEl: HTMLElement, roadmap: RoadmapSnapshot | nu
  * than the lead itself, where the best available answer is the first visible pixel of
  * day.
  */
-function centreOnToday(todayLeft: number, viewport: number, leadWidth: number): number {
+export function centreOnToday(todayLeft: number, viewport: number, leadWidth: number): number {
 	const band = Math.max(viewport - leadWidth, 0);
 	return Math.max(todayLeft - leadWidth - band / 2, 0);
 }

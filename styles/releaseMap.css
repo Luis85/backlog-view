@@ -1,0 +1,320 @@
+/* The release view's Map tab — `src/view/release/renderMap.ts`, and the `List | Map`
+   control `renderIndex.ts` draws at the head of both tabs. Every position is a custom
+   property the view publishes (`--pbl-relmap-x`, `--pbl-relmap-w`, `--pbl-relmap-cell-w`,
+   `--pbl-relmap-track`), in px from the window's first day, and so are the card's width and
+   its gap (`--pbl-relmap-card`, `--pbl-relmap-gap`), which the track counts. The ruler, the
+   marks and the cards are placed with logical properties; the reused `.pbl-today` and
+   `.pbl-grid-line` (`timeline.css`) use a physical `left`, and the today label centres
+   with `translateX(-50%)`, so a right-to-left pane does NOT mirror the map as a whole. */
+
+/* The tab group leads the bar; the bar's own `justify-content: flex-end` keeps ✨ and
+   `New release` at the end. */
+.pbl-rel-tabs {
+	margin-inline-end: auto;
+}
+
+.pbl-relmap-scroll {
+	flex: 1 1 auto;
+	overflow: auto;
+	padding-block-end: var(--size-4-4);
+}
+
+/* The track already runs one card and two gaps past the window (`renderMap.ts`), so the
+   ruler and the grid reach past the last card. */
+.pbl-relmap {
+	position: relative;
+	inline-size: var(--pbl-relmap-track);
+	min-inline-size: 100%;
+}
+
+.pbl-relmap-ruler {
+	position: sticky;
+	inset-block-start: 0;
+	z-index: 3;
+	background-color: var(--background-primary);
+	border-block-end: 1px solid var(--background-modifier-border);
+}
+
+.pbl-relmap-tier {
+	display: flex;
+}
+
+.pbl-relmap-tier + .pbl-relmap-tier {
+	border-block-start: 1px solid var(--background-modifier-border);
+}
+
+.pbl-relmap-cell {
+	flex: 0 0 var(--pbl-relmap-cell-w);
+	box-sizing: border-box;
+	overflow: hidden;
+	white-space: nowrap;
+	padding: var(--size-2-2) var(--size-4-2);
+	font-size: var(--font-ui-smaller);
+	color: var(--text-muted);
+	border-inline-start: 1px solid var(--background-modifier-border);
+}
+
+.pbl-relmap-cell-year {
+	font-weight: var(--font-semibold);
+	color: var(--text-normal);
+}
+
+/* BELOW the ruler, so it never covers a month label. The ruler is sticky, which makes it
+   the containing block this hangs from. */
+.pbl-relmap-today-label {
+	position: absolute;
+	inset-block-start: 100%;
+	inset-inline-start: var(--pbl-relmap-x);
+	transform: translateX(-50%);
+	margin-block-start: var(--size-2-2);
+	padding: 0 var(--size-4-1);
+	border-radius: var(--radius-s);
+	font-size: var(--font-ui-smaller);
+	font-weight: var(--font-medium);
+	color: var(--text-on-accent);
+	background-color: var(--color-red);
+	z-index: 4;
+}
+
+/* Room above the first row for the today label. */
+.pbl-relmap-rows {
+	position: relative;
+	padding-block: var(--size-4-6) var(--size-4-3);
+}
+
+/* `.pbl-today` is the roadmap's own line (`timeline.css`); here it sits over buttons. */
+.pbl-relmap .pbl-today {
+	pointer-events: none;
+}
+
+/* A bare `button` in a vault arrives with a fill, a shadow, a radius and a fixed height —
+   `button.pbl-rel-band`'s reset, for the same reason (`release.css`). */
+button.pbl-relmap-row {
+	/* Line 1's height, and its centre in the row: the row's padding, the card's border and
+	   padding, then half the line. Every mark is centred on it. */
+	--pbl-relmap-line1: 24px;
+	--pbl-relmap-mid: calc(var(--size-4-2) + 1px + var(--size-4-2) + var(--pbl-relmap-line1) / 2);
+	position: relative;
+	display: block;
+	inline-size: 100%;
+	block-size: auto;
+	margin: 0;
+	padding: var(--size-4-2) 0;
+	background-color: transparent;
+	box-shadow: none;
+	border: 0;
+	border-radius: 0;
+	text-align: start;
+	font-family: inherit;
+	color: var(--text-normal);
+	cursor: pointer;
+}
+
+button.pbl-relmap-row:hover {
+	background-color: var(--background-modifier-hover);
+	box-shadow: none;
+}
+
+button.pbl-relmap-row:focus-visible {
+	outline: 2px solid var(--interactive-accent);
+	outline-offset: -2px;
+}
+
+/* The marks are centred on the card's first line (`--pbl-relmap-mid`). */
+.pbl-relmap-lead,
+.pbl-relmap-tick,
+.pbl-relmap-slip,
+.pbl-relmap-marker {
+	position: absolute;
+	inset-inline-start: var(--pbl-relmap-x);
+}
+
+/* The derived start: a band, faded and dashed, never a solid bar. */
+.pbl-relmap-lead {
+	inset-block-start: calc(var(--pbl-relmap-mid) - 8px);
+	inline-size: var(--pbl-relmap-w);
+	block-size: 16px;
+	box-sizing: border-box;
+	border: 1px dashed var(--text-faint);
+	border-radius: var(--radius-s);
+	background-color: var(--background-modifier-hover);
+	opacity: 0.7;
+}
+
+.pbl-relmap-marker {
+	inset-block-start: calc(var(--pbl-relmap-mid) - 7px);
+	inline-size: 14px;
+	block-size: 14px;
+	margin-inline-start: -7px;
+	box-sizing: border-box;
+	transform: rotate(45deg);
+	background-color: var(--interactive-accent);
+	border: 2px solid var(--background-primary);
+	z-index: 2;
+}
+
+.pbl-relmap-shipped .pbl-relmap-marker {
+	background-color: var(--text-faint);
+}
+
+.pbl-rel-overdue .pbl-relmap-marker {
+	background-color: var(--text-error);
+}
+
+/* Pinned to the window's edge: hollow, so it does not claim the date it is drawn at. */
+.pbl-relmap-clipped .pbl-relmap-marker {
+	background-color: var(--background-primary);
+	border-color: var(--text-muted);
+	border-style: dashed;
+}
+
+.pbl-relmap-tick {
+	inset-block-start: calc(var(--pbl-relmap-mid) - 10px);
+	block-size: 20px;
+	border-inline-start: 2px solid var(--text-muted);
+}
+
+.pbl-relmap-slip {
+	inset-block-start: calc(var(--pbl-relmap-mid) - 1.5px);
+	inline-size: var(--pbl-relmap-w);
+	block-size: 0;
+	border-block-start: 3px solid;
+}
+
+.pbl-relmap-late {
+	border-color: var(--text-error);
+}
+
+.pbl-relmap-early {
+	border-color: var(--text-success);
+}
+
+/* The card, to the right of the end marker. */
+.pbl-relmap-slot {
+	display: block;
+	margin-inline-start: calc(var(--pbl-relmap-x) + var(--pbl-relmap-gap));
+}
+
+.pbl-relmap-card {
+	position: relative;
+	z-index: 2;
+	display: flex;
+	flex-direction: column;
+	gap: var(--size-2-3);
+	box-sizing: border-box;
+	inline-size: var(--pbl-relmap-card);
+	padding: var(--size-4-2) var(--size-4-3);
+	border-radius: var(--radius-m);
+	background-color: var(--background-secondary);
+	border: 1px solid var(--background-modifier-border);
+}
+
+/* Muted CONTENT on an opaque card: an `opacity` on the card let the today line show
+   through it and took its muted text below AA contrast. */
+.pbl-relmap-shipped .pbl-relmap-card {
+	color: var(--text-muted);
+}
+
+.pbl-relmap-line {
+	display: flex;
+	align-items: center;
+	gap: var(--size-4-2);
+	min-inline-size: 0;
+}
+
+/* At least the height `--pbl-relmap-mid` counts, so the marks meet its centre. */
+.pbl-relmap-card > .pbl-relmap-line:first-child {
+	min-block-size: var(--pbl-relmap-line1);
+}
+
+.pbl-relmap-name {
+	flex: 0 1 auto;
+	min-inline-size: 0;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+	font-weight: var(--font-semibold);
+}
+
+.pbl-relmap-line .pbl-state-chip {
+	margin-inline-start: auto;
+}
+
+/* Date, note and progress on one line, wrapping only when the card cannot hold them. */
+.pbl-relmap-facts {
+	flex-wrap: wrap;
+	font-size: var(--font-ui-smaller);
+	color: var(--text-muted);
+}
+
+.pbl-relmap-facts .pbl-rel-bar {
+	inline-size: 64px;
+}
+
+/* The bar and its count, as one unit the facts line wraps around but never through. */
+.pbl-relmap-progress {
+	display: inline-flex;
+	align-items: center;
+	gap: var(--size-4-2);
+	white-space: nowrap;
+}
+
+.pbl-relmap-progress:empty {
+	display: none;
+}
+
+.pbl-relmap-scope {
+	display: flex;
+	flex-direction: column;
+	padding-block-start: var(--size-2-3);
+	border-block-start: 1px solid var(--background-modifier-border);
+	font-size: var(--font-ui-smaller);
+}
+
+.pbl-relmap-scope-item {
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.pbl-relmap-more {
+	color: var(--text-faint);
+	font-style: italic;
+}
+
+/* Sticky sideways: the shelf and the notes stay in view while the track scrolls. */
+.pbl-relmap-shelf {
+	position: sticky;
+	inset-inline-start: 0;
+	padding: var(--size-4-4) var(--size-4-2) 0;
+}
+
+.pbl-relmap-scroll > .pbl-rel-note {
+	position: sticky;
+	inset-inline-start: 0;
+}
+
+.pbl-relmap-shelf-cards {
+	display: flex;
+	flex-wrap: wrap;
+	gap: var(--size-4-3);
+}
+
+button.pbl-relmap-row.pbl-relmap-shelf-row {
+	inline-size: auto;
+	padding: 0;
+}
+
+/* The shelf button has no padding, so its opaque card covers all of it: the ring goes
+   OUTSIDE the button, and the hover fill goes on the card. */
+button.pbl-relmap-row.pbl-relmap-shelf-row:focus-visible {
+	outline-offset: 2px;
+}
+
+.pbl-relmap-shelf-row:hover .pbl-relmap-card {
+	background-color: var(--background-modifier-hover);
+}
+
+.pbl-relmap-shelf .pbl-relmap-card {
+	border-style: dashed;
+}

@@ -168,6 +168,14 @@
    `releaseScope.css` declares `.pbl-rel-crit*` or `.pbl-rel-ready`, so the position
    BESIDE its neighbour here is a reading convenience. */
 @import "./releaseReadiness.css";
+/* Position NOT load-bearing: every selector is `.pbl-relmap-*` or `.pbl-rel-tabs`, which no
+   other partial declares. The five that reach a foreign class win on SPECIFICITY, or reach
+   none at all — `.pbl-relmap .pbl-today` (0,2,0) over `timeline.css`'s `.pbl-today`,
+   `.pbl-relmap-facts .pbl-rel-bar` (0,2,0) over `release.css`'s `.pbl-rel-bar`,
+   `.pbl-relmap-line .pbl-state-chip` (0,2,0) over `columns.css`'s `.pbl-state-chip`,
+   `.pbl-relmap-scroll > .pbl-rel-note` (0,2,0) over `release.css`'s `.pbl-rel-note`, and
+   `.pbl-rel-overdue .pbl-relmap-marker`, which names no class `release.css` styles. */
+@import "./releaseMap.css";
 /* Position NOT load-bearing, and not because nothing here overlaps another partial: six
    sites re-target a foreign selector — `.pbl-mw-view .pbl-row` and `.pbl-mw-view
    .pbl-title` (`tree.css`'s bare `.pbl-row`/`.pbl-title`), `.pbl-mw-view .pbl-state-text`

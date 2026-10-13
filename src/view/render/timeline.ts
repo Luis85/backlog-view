@@ -559,7 +559,7 @@ function renderHeaderTier(
  * drawn before the milestone lines so a boundary never paints over a mark that
  * means something. No line at day 0: that boundary is the lead column's border.
  */
-function renderGridLines(content: HTMLElement, window: TimelineWindow, scale: TimelineScale, leadWidth: number): void {
+export function renderGridLines(content: HTMLElement, window: TimelineWindow, scale: TimelineScale, leadWidth: number): void {
 	let day = 0;
 	for (const cell of timelineCells(window, scale)) {
 		day += cell.days;

@@ -122,6 +122,8 @@ const ZOOM_VALUES = ['week', 'month', 'quarter'];
 const DENSITY_VALUES = ['compact'];
 /** The values the `shelfSort` field may hold. Mirrors `ShelfSort` in `domain/shelf.ts`. */
 const SHELF_SORT_VALUES = ['tree', 'title', 'modified'];
+/** The release view's Map tab — the one value {@link ViewPrefs.releaseTab} stores. */
+export const RELEASE_MAP_TAB = 'map';
 /**
  * The values the `estimationSort` field may hold: `${column}:${direction}` for the
  * prioritized list's clickable headers — column ∈
@@ -322,6 +324,13 @@ export interface ViewPrefs {
 	 */
 	releaseHideDone?: boolean;
 	/**
+	 * Which tab the release view's index draws. Only {@link RELEASE_MAP_TAB} is stored and
+	 * absence is the list — `bucketList`'s rule, so a default writes nothing. A WORD, never
+	 * a path: neither the prune nor the rename walk touches it. Not a member of
+	 * `PROJECTION_MODES`, which are the backlog view's.
+	 */
+	releaseTab?: string;
+	/**
 	 * Whether the assigned-work tree is hiding finished subtrees — {@link releaseHideDone}'s
 	 * own rule with the scope swapped: the ON state of a toggle that starts OFF, so a
 	 * default writes nothing. A second row rather than a shared one, because the two
@@ -484,6 +493,7 @@ export const PREF_READERS: { [K in keyof ViewPrefs]-?: Reader<NonNullable<ViewPr
 	// deleted returns the index, which the view decides on render — not a failure.
 	release: anyName,
 	releaseHideDone: onlyTrue,
+	releaseTab: oneOf([RELEASE_MAP_TAB]),
 	myWorkHideDone: onlyTrue,
 	// `anyName`, `release`'s own reason: a path is checked by RESOLVING it against the
 	// vault, which this layer cannot do. A remembered person who has moved or been deleted

@@ -2085,6 +2085,23 @@ export const en = {
 		other: '{count} items name a release that could not be resolved.',
 	},
 
+	/** The index's two tabs (`release/renderIndex.ts`'s `drawTabs`) — the backlog
+	 *  switcher's shape: each position's accessible name, and the shorter word it shows. */
+	'release.tab.group': 'Show releases as',
+	'release.tab.list': 'Show as list',
+	'release.tab.listWord': 'List',
+	'release.tab.map': 'Show as map',
+	'release.tab.mapWord': 'Map',
+
+	/** The release map's shelf (`release/renderMap.ts`), counted through
+	 *  `release.index.group.count` like the list's two group headings. */
+	'release.map.shelf': 'Not scheduled',
+	/** A map card's headline scope, after its first three items. */
+	'release.map.more': { one: '+{count} more', other: '+{count} more' },
+	/** The faded band before a release's end marker — its tooltip and its spoken half. The
+	 *  one date on the map no note holds, so it always says where it came from. */
+	'release.map.derivedStart': 'Start derived from the previous release',
+
 	/** The only way off one release's screen, so it is a real button and carries its own
 	 *  name — the icon alone says nothing to a reader who cannot see it. */
 	'release.scope.back': 'Back to all releases',

@@ -6,6 +6,7 @@ import {
 	MAX_TIMELINE_LEAD_PX,
 	MIN_TIMELINE_LEAD_PX,
 	PREF_READERS,
+	RELEASE_MAP_TAB,
 	rekeyBase,
 	renamePathPrefs,
 	saveViewState,
@@ -55,6 +56,8 @@ const FULL_PREFS: Required<ViewPrefs> = {
 	// The release scope's own hide-done toggle — the ON state, `bucketList`'s own rule for
 	// storing only the non-default.
 	releaseHideDone: true,
+	// The release view's tab — the one stored word, `'map'`; the list is absence.
+	releaseTab: RELEASE_MAP_TAB,
 	// The assigned-work tree's own hide-done toggle — a second key rather than a shared
 	// one, since the two screens' readers keep this choice independently.
 	myWorkHideDone: true,
@@ -586,5 +589,30 @@ describe('the release scope’s hide-done toggle', () => {
 		vault.addFile('Backlog.base');
 		saveViewState(vault.app, id, { ...none, prefs: { releaseHideDone: false } });
 		expect(Object.keys(stored(vault))).toHaveLength(0);
+	});
+});
+
+describe('the release view’s tab', () => {
+	const id = { base: 'Backlog.base', view: 'Backlog' };
+	const none = { folds: emptyFolds(), prefs: {} };
+
+	it('round-trips the Map tab, and stores nothing for the list', () => {
+		vault.addFile('Backlog.base');
+		saveViewState(vault.app, id, { ...none, prefs: { releaseTab: RELEASE_MAP_TAB } });
+		expect(loadViewState(vault.app, id).prefs.releaseTab).toBe('map');
+
+		// The list is the default, so it is ABSENCE: a word for it is refused on the way out.
+		saveViewState(vault.app, id, { ...none, prefs: { releaseTab: 'list' } });
+		expect(Object.keys(stored(vault))).toHaveLength(0);
+	});
+
+	// Planted RAW, past `saveViewState`'s own reader: the IN direction is what a value
+	// another version wrote reaches.
+	it.each(['Map', 'list', 'tree', 42, null])('reads a stored tab of %j as the list', (planted) => {
+		vault.addFile('Backlog.base');
+		saveViewState(vault.app, id, { ...none, prefs: { releaseTab: RELEASE_MAP_TAB } });
+		const [key, entry] = Object.entries(stored(vault))[0];
+		vault.localStorage.set(STORE_KEY, { [key]: { ...entry, prefs: { releaseTab: planted } } });
+		expect(loadViewState(vault.app, id).prefs.releaseTab).toBeUndefined();
 	});
 });

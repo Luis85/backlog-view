@@ -43,7 +43,7 @@ import { FileView } from '../helpers/obsidian-mock';
  * pages side by side are the whole of what [[Every release in one list]] 2e and 2f say.
  * Three rounds of this increment wanted this and reverted a temporary edit instead.
  */
-export type ReleaseConfigVariant = 'full' | 'empty' | 'notype' | 'nomembership' | 'noreleased';
+export type ReleaseConfigVariant = 'full' | 'empty' | 'notype' | 'nomembership' | 'noreleased' | 'plan';
 
 /**
  * Every key bound — `RELEASE_CONFIG` plus the notes FOLDER, which that constant omits on
@@ -107,6 +107,32 @@ function inDays(days: number): string {
 }
 
 /**
+ * `?config=plan` — eight releases shaped like a real plan, dated from TODAY so the map
+ * always looks current: two shipped (one late), one overdue, two ending the same day, one
+ * far out with five top-level items (three named, "+2 more"), and two with no target.
+ */
+function planVault(): FakeVault {
+	const vault = new FakeVault();
+	const release = (name: string, frontmatter: Record<string, unknown>): void => {
+		vault.addFile(`Plan/${name}.md`, { frontmatter: { type: 'Release', ...frontmatter } });
+	};
+	release('Discovery', { version: '0.0.1', 'target-date': inDays(-40), released: inDays(-35), status: 'Released', order: 1 });
+	release('Spike', { version: '0.0.2', 'target-date': inDays(-12), released: inDays(-12), status: 'Released', order: 2 });
+	release('Prototype', { version: '0.1.0', 'target-date': inDays(-3), status: 'In progress', order: 3 });
+	release('Alpha 1', { version: '0.2.0', 'target-date': inDays(25), status: 'Planned', order: 4 });
+	release('Alpha 2', { version: '0.3.0', 'target-date': inDays(25), status: 'Planned', order: 5 });
+	release('MVP', { version: '1.0.0', 'target-date': inDays(140), status: 'Scoped', order: 6 });
+	release('Stage 1', { version: '2.0.0', status: 'Draft', order: 7 });
+	release('Stage 2', { version: '3.0.0', status: 'Draft', order: 8 });
+	const epics = ['Onboarding', 'Case management', 'Field visits', 'Reporting', 'Integration'];
+	epics.forEach((title, i) => {
+		vault.addFile(`${title}.md`, { frontmatter: { type: 'Epic', order: 10 + i, release: '[[MVP]]', status: i === 0 ? 'Done' : 'Ready' } });
+	});
+	vault.addFile('Clickable prototype.md', { frontmatter: { type: 'Feature', order: 20, release: '[[Prototype]]', status: 'Doing' } });
+	return vault;
+}
+
+/**
  * A release programme rather than the suite's own three-note fixtures: nine releases —
  * seven in flight (one OVERDUE, one carrying a date nobody can read, one whose STATUS says
  * released while its date is empty) and two shipped, so the index has an order AND both
@@ -122,6 +148,7 @@ function inDays(days: number): string {
  * been able to show, because every release in it was named after its own version.
  */
 function releaseHarnessVault(variant: ReleaseConfigVariant): FakeVault {
+	if (variant === 'plan') return planVault();
 	const vault = new FakeVault();
 	if (variant !== 'empty') {
 		const release = (path: string, frontmatter: Record<string, unknown>): void => {

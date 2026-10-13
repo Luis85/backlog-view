@@ -29,6 +29,20 @@ describe('the release harness mounts', () => {
 		return Array.from(containerEl.querySelectorAll('.pbl-rel-band .pbl-rel-name')).map((el) => el.textContent);
 	}
 
+	it('draws the plan variant on the map: dated rows in date order, the undated on the shelf', () => {
+		const { view, containerEl } = mount('plan');
+		view.setTab('map');
+		const onMap = (scope: string) => Array.from(containerEl.querySelectorAll(`${scope} .pbl-relmap-name`), (el) => el.textContent);
+		expect(onMap('.pbl-relmap-rows')).toEqual(['Discovery', 'Spike', 'Prototype', 'Alpha 1', 'Alpha 2', 'MVP']);
+		expect(onMap('.pbl-relmap-shelf')).toEqual(['Stage 1', 'Stage 2']);
+		// The cases the fixture exists to show: a late ship, an overdue release, a same-day
+		// pair (the second draws no band) and a capped scope.
+		expect(containerEl.querySelector('.pbl-relmap-late')).not.toBeNull();
+		expect(containerEl.querySelector('.pbl-relmap-row.pbl-rel-overdue')).not.toBeNull();
+		expect(containerEl.querySelector('.pbl-relmap-row[data-path="Plan/Alpha 2.md"] .pbl-relmap-lead')).toBeNull();
+		expect(containerEl.querySelector('.pbl-relmap-more')?.textContent).toBe('+2 more');
+	});
+
 	it('draws every release in the index, in the order the index sorts them', () => {
 		const { containerEl } = mount();
 
