@@ -24,6 +24,8 @@ See [RELEASING.md](RELEASING.md) for how this file is kept in step with a releas
 
 ## [Unreleased]
 
+## [0.12.0] - 2026-10-13
+
 ### Added
 
 - The release view has a **Map** tab beside the list: every release on one timeline in
