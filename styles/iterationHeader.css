@@ -1,0 +1,174 @@
+/* The iteration board's header — `src/view/render/iterationHeader.ts`. Which sprint, what
+   it is for, where its timebox stands and how far the work has got: the questions a
+   stand-up opens with, so the name and the goal are the largest text on the board. */
+
+/* A band above the columns, like the shelf: unshrinkable, so the columns take what it
+   leaves rather than squeezing it (the board is a flex column — `board.css`). */
+.pbl-iteration-header {
+	flex: 0 0 auto;
+	display: flex;
+	flex-direction: column;
+	gap: var(--size-4-2);
+	margin-block-end: var(--size-4-3);
+	padding: var(--size-4-3) var(--size-4-4);
+	background-color: var(--background-secondary);
+	border: 1px solid var(--background-modifier-border);
+	border-radius: var(--radius-l);
+}
+
+.pbl-iteration-titlebar {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: flex-start;
+	justify-content: space-between;
+	gap: var(--size-4-2) var(--size-4-4);
+}
+
+/* The kicker and the goal's label are one style: small, uppercase, accent — a caption
+   that names what the large text under it is. */
+.pbl-iteration-kicker,
+.pbl-iteration-goal-label {
+	font-size: var(--font-ui-smaller);
+	font-weight: var(--font-semibold);
+	letter-spacing: 0.06em;
+	text-transform: uppercase;
+	color: var(--text-accent);
+}
+
+.pbl-iteration-name {
+	margin: 0;
+	font-size: 1.6em;
+	font-weight: var(--font-bold);
+	line-height: 1.2;
+	color: var(--text-normal);
+	overflow-wrap: anywhere;
+}
+
+/* The goal is text and nothing else — no box, no affordance: it is a FACT about the
+   sprint, and anything that looked pressable would be a second way to edit a note whose
+   own dialog owns it. Prominent by size and weight alone. A long goal wraps rather than
+   pushing the columns sideways: the board scrolls horizontally, and a one-line goal
+   would drag that scroll width with it. */
+.pbl-iteration-goal-label {
+	margin-block-end: calc(-1 * var(--size-4-1));
+}
+
+.pbl-iteration-goal {
+	max-width: 70ch;
+	font-size: 1.15em;
+	font-weight: var(--font-semibold);
+	line-height: 1.4;
+	color: var(--text-normal);
+	overflow-wrap: anywhere;
+}
+
+/* Daily / Planning: one segmented control, the pressed half in the accent. */
+.pbl-iteration-mode {
+	display: inline-flex;
+	flex: 0 0 auto;
+	border: 1px solid var(--background-modifier-border);
+	border-radius: var(--radius-m);
+	overflow: hidden;
+}
+
+.pbl-iteration-mode button {
+	margin: 0;
+	padding: var(--size-4-1) var(--size-4-3);
+	height: auto;
+	border-radius: 0;
+	box-shadow: none;
+	background-color: transparent;
+	color: var(--text-muted);
+	font-size: var(--font-ui-small);
+}
+
+.pbl-iteration-mode button + button {
+	border-inline-start: 1px solid var(--background-modifier-border);
+}
+
+.pbl-iteration-mode button[aria-pressed='true'] {
+	background-color: var(--interactive-accent);
+	color: var(--text-on-accent);
+}
+
+.pbl-iteration-meta {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: var(--size-4-2) var(--size-4-4);
+	font-size: var(--font-ui-small);
+	color: var(--text-muted);
+}
+
+.pbl-iteration-when,
+.pbl-iteration-progress,
+.pbl-iteration-buckets,
+.pbl-iteration-bucket {
+	display: inline-flex;
+	align-items: center;
+	gap: var(--size-4-1);
+}
+
+.pbl-iteration-buckets {
+	gap: var(--size-4-3);
+}
+
+.pbl-iteration-icon {
+	display: inline-flex;
+}
+
+.pbl-iteration-icon .svg-icon {
+	width: var(--icon-s);
+	height: var(--icon-s);
+}
+
+.pbl-iteration-sep {
+	color: var(--text-faint);
+}
+
+.pbl-iteration-day {
+	font-weight: var(--font-semibold);
+	color: var(--text-normal);
+}
+
+/* Resolved, then in progress, as two lengths along one track — `--pbl-w` is each
+   segment's share of the sprint, set from TS. */
+.pbl-iteration-bar {
+	display: flex;
+	width: 160px;
+	height: 6px;
+	border-radius: var(--radius-s);
+	background-color: var(--background-modifier-border);
+	overflow: hidden;
+}
+
+.pbl-iteration-bar-resolved,
+.pbl-iteration-bar-inprogress {
+	width: var(--pbl-w, 0);
+}
+
+.pbl-iteration-bar-resolved {
+	background-color: var(--color-green);
+}
+
+.pbl-iteration-bar-inprogress {
+	background-color: var(--color-blue);
+}
+
+.pbl-iteration-dot {
+	width: 8px;
+	height: 8px;
+	border-radius: var(--radius-l);
+}
+
+.pbl-iteration-dot-open {
+	background-color: var(--text-faint);
+}
+
+.pbl-iteration-dot-inProgress {
+	background-color: var(--color-blue);
+}
+
+.pbl-iteration-dot-resolved {
+	background-color: var(--color-green);
+}
