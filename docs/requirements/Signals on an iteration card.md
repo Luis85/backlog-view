@@ -40,7 +40,7 @@ the card's own menu stay the ways to change any of them.
 
 1. For each card the board draws, the view asks which signals apply, against today's date
    from the view.
-2. **Blocked** — the item has a prerequisite whose state does not read as Resolved. The
+2. **Blocked** — the item has a prerequisite that is not clear (2b). The
    label is `Blocked` with a lock icon; the tooltip names the first such prerequisite
    (`Waiting for Prereq`).
 3. **Overdue** — the item's own target is before today. The label is `Overdue 5 days`,
@@ -68,7 +68,12 @@ the card's own menu stay the ways to change any of them.
   resolves to nothing and blocks nothing ([[Dependencies as a property]]).
 - **2b — the prerequisite reads as Resolved.** Not blocked. Resolved is the iteration
   board's bucket reading, so a state in `iterationResolvedStates` counts as well as a done
-  value.
+  value. A prerequisite that is done in its OWN workflow is clear too — a finished
+  Deliverable or test carries no product state — which is the release view's readiness
+  reading (`ownWorkflowReading`), so the two views agree about one edge. Decided at the
+  final review.
+- **2c — no state property is configured.** Nothing is Blocked: no state can say a wait is
+  over, so the flag would sit on every dependent card. Decided at the final review.
 - **3a — today IS the target day.** Not overdue.
 - **3b — the sprint has ended.** Joining an iteration stamps its end onto the item, so
   Overdue mostly fires after the sprint ends. That is correct, not a bug: the work is late.
@@ -85,7 +90,9 @@ the card's own menu stay the ways to change any of them.
 
 ## Acceptance criteria
 
-- Blocked names the first prerequisite that is not Resolved, and goes away once it is.
+- Blocked names the first prerequisite that is not Resolved, and goes away once it is; a
+  prerequisite done in its own workflow does not block, and nothing blocks with no state
+  property.
 - A prerequisite that is a context row still blocks; an excluded prerequisite the model does
   not hold blocks nothing.
 - Overdue counts the days past the target against the view's clock, and is absent on the
@@ -98,6 +105,10 @@ the card's own menu stay the ways to change any of them.
   item.
 - Every signal label and tooltip comes from the catalog; only the risk and priority values
   are data.
+
+**Checked by** `test/domain/iterationDaily.test.ts` — "is not blocked by a Deliverable that is done in its own workflow"
+
+**Checked by** `test/domain/iterationDaily.test.ts` — "is never blocked when no state property is configured"
 
 **Checked by** `test/view/iterationSignals.test.ts` — "says Blocked when the prerequisite is a context row, since the blocker is real"
 

@@ -508,7 +508,7 @@ free of runtime code so imports stay cycle-free.
   return on any event whose target is not the pane itself
   (`evt.target !== evt.currentTarget`), so the grip's arrow keys stay the grip's. The per-row answer does not fit it either: a continuous "hold the
   arrow key" resize has no menu to be the keyboard path.
-  The **ARIA cost is real and unresolved, and it is now paid four times.** While cards
+  The **ARIA cost is real and unresolved, and it is now paid five times.** While cards
   render the pane is a `listbox` (`render/projections.ts`), so the lead grip is a focusable
   non-`option` inside it — as are the shelf's disclosure, which is not a grip at all and
   earns its stop the same way (see the roadmap section below), and the shelf's own foot
@@ -524,6 +524,10 @@ free of runtime code so imports stay cycle-free.
   focused grip moves no selection. What nothing here can say is how a screen
   reader reads a separator in either position. That one is a live-vault item in
   `docs/tests/suites/Smoke test the roadmap.md`.
+  **The iteration header pays it a fifth time** (2026-10-18): an `h2`, the mode `group`
+  with its two buttons and the person chips sit inside the board's `listbox`, as tab stops
+  fixed above the columns. The screen-reader check is owed in
+  [[The iteration board for the daily]].
 - **An SVG node's `cls` is an ARRAY, never a space-separated string**, and that is a lint
   rule (`no-restricted-syntax`) rather than a habit. `addClass` lives on `HTMLElement`, so
   Obsidian hands `createSvg`'s `cls` straight to `classList.add`, which rejects a token

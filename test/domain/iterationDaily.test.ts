@@ -60,7 +60,7 @@ const TODAY = day(2026, 10, 15);
 type Files = Record<string, Record<string, unknown>>;
 
 /** A model over `files` (all PBIs unless they say otherwise); `only` narrows the Base's results. */
-function build(files: Files, only?: string[], parents: Record<string, string> = {}): Map<string, BacklogItem> {
+function build(files: Files, only?: string[], parents: Record<string, string> = {}, using = settings): Map<string, BacklogItem> {
 	const vault = new FakeVault();
 	vault.addFile('People/Ada.md', { frontmatter: { type: 'Resource' } });
 	vault.addFile('People/Bo.md', { frontmatter: { type: 'Resource' } });
@@ -68,7 +68,7 @@ function build(files: Files, only?: string[], parents: Record<string, string> = 
 		vault.addFile(path, { frontmatter: { type: 'PBI', ...frontmatter }, parentLink: parents[path] });
 	}
 	const entries = vault.entries().filter((e) => only === undefined || only.includes(e.file.path));
-	return buildModel(vault.app, entries, settings).byPath;
+	return buildModel(vault.app, entries, using).byPath;
 }
 
 const all = (items: Map<string, BacklogItem>): BacklogItem[] => [...items.values()];
@@ -141,15 +141,13 @@ describe('personKey and boardPeople', () => {
 });
 
 describe('cardSignals', () => {
-	const NONE = { blockedBy: null, overdueDays: 0 };
-
 	it('names the first prerequisite that is not resolved', () => {
 		const items = build({
 			'A.md': { order: 10, status: 'Doing' },
 			'B.md': { order: 20, dependsOn: 'A' },
 		});
 		const signals = cardSignals(items.get('B.md')!, settings, TODAY);
-		expect(signals.blockedBy?.file?.path).toBe('A.md');
+		expect(signals?.blockedBy?.file?.path).toBe('A.md');
 	});
 
 	it('is not blocked once the prerequisite is resolved', () => {
@@ -157,18 +155,42 @@ describe('cardSignals', () => {
 			'A.md': { order: 10, status: 'Done' },
 			'B.md': { order: 20, dependsOn: 'A' },
 		});
-		expect(cardSignals(items.get('B.md')!, settings, TODAY)).toEqual(NONE);
+		expect(cardSignals(items.get('B.md')!, settings, TODAY)).toEqual({ blockedBy: null, overdueDays: 0 });
+	});
+
+	it('is never blocked when no state property is configured', () => {
+		const noState = settingsFrom({ dependsOnProperty: 'note.dependsOn' });
+		const items = build({ 'A.md': { order: 10 }, 'B.md': { order: 20, dependsOn: 'A' } }, undefined, {}, noState);
+		expect(cardSignals(items.get('B.md')!, noState, TODAY)?.blockedBy).toBeNull();
+	});
+
+	it('is not blocked by a Deliverable that is done in its own workflow', () => {
+		const own = settingsFrom({
+			stateProperty: 'note.status',
+			doneValues: 'Done',
+			deliverableStateProperty: 'note.deliverableStatus',
+			deliverableDoneValues: 'Shipped',
+			dependsOnProperty: 'note.dependsOn',
+		});
+		const items = build(
+			{ 'D.md': { type: 'Deliverable', order: 10, deliverableStatus: 'Shipped' }, 'B.md': { order: 20, dependsOn: 'D' } },
+			undefined,
+			{},
+			own,
+		);
+		expect(items.get('B.md')!.prerequisites.map((p) => p.file?.path)).toEqual(['D.md']);
+		expect(cardSignals(items.get('B.md')!, own, TODAY)?.blockedBy).toBeNull();
 	});
 
 	it('counts the days past the target', () => {
 		const items = build({ 'A.md': { order: 10, status: 'Doing', target: '2026-10-12' } });
-		expect(cardSignals(items.get('A.md')!, settings, TODAY).overdueDays).toBe(3);
+		expect(cardSignals(items.get('A.md')!, settings, TODAY)?.overdueDays).toBe(3);
 	});
 
 	it('is not overdue on or before the target day', () => {
 		const items = build({ 'A.md': { order: 10, target: '2026-10-15' }, 'B.md': { order: 20, target: '2026-10-20' } });
-		expect(cardSignals(items.get('A.md')!, settings, TODAY).overdueDays).toBe(0);
-		expect(cardSignals(items.get('B.md')!, settings, TODAY).overdueDays).toBe(0);
+		expect(cardSignals(items.get('A.md')!, settings, TODAY)?.overdueDays).toBe(0);
+		expect(cardSignals(items.get('B.md')!, settings, TODAY)?.overdueDays).toBe(0);
 	});
 
 	it('says nothing about a resolved item', () => {
@@ -176,10 +198,10 @@ describe('cardSignals', () => {
 			'A.md': { order: 10, status: 'Doing' },
 			'B.md': { order: 20, status: 'Done', dependsOn: 'A', target: '2026-10-01' },
 		});
-		expect(cardSignals(items.get('B.md')!, settings, TODAY)).toEqual(NONE);
+		expect(cardSignals(items.get('B.md')!, settings, TODAY)).toBeNull();
 	});
 
 	it('says nothing about a context row', () => {
-		expect(cardSignals(withContextRow().get('Ctx.md')!, settings, TODAY)).toEqual(NONE);
+		expect(cardSignals(withContextRow().get('Ctx.md')!, settings, TODAY)).toBeNull();
 	});
 });

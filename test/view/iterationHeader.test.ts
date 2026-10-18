@@ -2,6 +2,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import { FakeVault } from '../helpers/vault';
 import { shelfOf } from '../helpers/roadmap';
+import { cardTitles, columnByName } from '../helpers/board';
 import { makeView, useViewHarness } from '../helpers/view';
 
 useViewHarness();
@@ -98,6 +99,15 @@ describe('the iteration header', () => {
 		// `Feature` is Done and excluded: counted, it would read 2 of 4.
 		const progress = onSprint().containerEl.querySelector('.pbl-iteration-progress');
 		expect(progress?.textContent).toBe('1 of 3 resolved');
+	});
+
+	it('leaves progress unchanged by a folded column', () => {
+		const { view, containerEl } = onSprint();
+		expect(cardTitles(columnByName(containerEl, 'Resolved'))).not.toEqual([]);
+		view.setColumnCollapsed('iteration', 'resolved', true);
+		// The fold drew: Resolved shows no card, and the count still reads the population.
+		expect(cardTitles(columnByName(containerEl, 'Resolved'))).toEqual([]);
+		expect(containerEl.querySelector('.pbl-iteration-progress')?.textContent).toBe('1 of 3 resolved');
 	});
 
 	it('hides the shelf for the daily and shows it again for planning', () => {

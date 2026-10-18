@@ -2,7 +2,7 @@ import { setTooltip } from 'obsidian';
 import { t } from '../../i18n/t';
 import { drawIcon } from './icons';
 import { RowContext } from './columns';
-import { bucketFor, cardSignals } from '../../domain/iterationDaily';
+import { cardSignals } from '../../domain/iterationDaily';
 import { BacklogItem } from '../../domain/model';
 import { todayCivil } from '../../domain/noteFields';
 
@@ -21,9 +21,9 @@ import { todayCivil } from '../../domain/noteFields';
  * projection), so today's date and a prerequisite's state need no `rowSignature` term.
  */
 export function renderCardSignals(ctx: RowContext, card: HTMLElement, item: BacklogItem): void {
-	const settings = ctx.host.settings;
-	if (item.outsideFilter || bucketFor(item, settings) === 'resolved') return;
-	const { blockedBy, overdueDays } = cardSignals(item, settings, todayCivil());
+	const signals = cardSignals(item, ctx.host.settings, todayCivil());
+	if (!signals) return;
+	const { blockedBy, overdueDays } = signals;
 	// Null without a configured key or with a blank value — `readLabel` already asks both.
 	const risk = item.riskValue;
 	const priority = item.priorityValue;
@@ -33,7 +33,7 @@ export function renderCardSignals(ctx: RowContext, card: HTMLElement, item: Back
 	const add = (kind: string, icon: string, text: string, tooltip?: string) => {
 		const el = row.createSpan({ cls: `pbl-signal pbl-signal-${kind}` });
 		drawIcon(el.createSpan({ cls: 'pbl-signal-icon' }), icon);
-		el.createSpan({ text });
+		el.createSpan({ cls: 'pbl-signal-text', text });
 		if (tooltip) setTooltip(el, tooltip);
 	};
 	if (blockedBy) add('blocked', 'lock', t('signal.blocked'), t('signal.blockedBy', { title: blockedBy.title }));

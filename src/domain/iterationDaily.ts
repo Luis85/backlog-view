@@ -1,4 +1,4 @@
-import { bucketOf } from './board';
+import { bucketOf, ownWorkflowReading } from './board';
 import { BacklogItem } from './model';
 import { CivilDate } from './noteFields';
 import { assigneeName } from './readItems';
@@ -43,7 +43,7 @@ export function timebox(start: CivilDate | null, target: CivilDate | null, today
 }
 
 /** The bucket an item reads into — the reading `iterationBuckets` uses. */
-export function bucketFor(item: BacklogItem, settings: BacklogSettings) {
+function bucketFor(item: BacklogItem, settings: BacklogSettings) {
 	return bucketOf(settings.stateKey ? item.stateValue : null, settings);
 }
 
@@ -98,10 +98,16 @@ export interface CardSignals {
 	overdueDays: number;
 }
 
-/** A context row or a resolved item has nothing to flag. */
-export function cardSignals(item: BacklogItem, settings: BacklogSettings, today: CivilDate): CardSignals {
-	if (item.outsideFilter || bucketFor(item, settings) === 'resolved') return { blockedBy: null, overdueDays: 0 };
-	const blockedBy = item.prerequisites.find((p) => bucketFor(p, settings) !== 'resolved') ?? null;
+/**
+ * Null for a context row or a resolved item: neither is a stand-up topic, and the view
+ * asks no second time. With no state key nothing can say a wait is over, so nothing is
+ * Blocked. A prerequisite is clear when its bucket is resolved OR its own workflow says
+ * done — the release view's readiness reading, so a finished Deliverable or test clears.
+ */
+export function cardSignals(item: BacklogItem, settings: BacklogSettings, today: CivilDate): CardSignals | null {
+	if (item.outsideFilter || bucketFor(item, settings) === 'resolved') return null;
+	const clear = (p: BacklogItem) => bucketFor(p, settings) === 'resolved' || ownWorkflowReading(p).done;
+	const blockedBy = settings.stateKey === '' ? null : (item.prerequisites.find((p) => !clear(p)) ?? null);
 	const target = item.plannedTarget.value;
 	return { blockedBy, overdueDays: target === null ? 0 : Math.max(0, daysBetween(target, today)) };
 }

@@ -13,7 +13,7 @@
 	padding: var(--size-4-3) var(--size-4-4);
 	background-color: var(--background-secondary);
 	border: 1px solid var(--background-modifier-border);
-	border-radius: var(--radius-l);
+	border-radius: var(--radius-m);
 }
 
 .pbl-iteration-titlebar {
@@ -167,13 +167,13 @@
 }
 
 .pbl-iteration-bar-inprogress {
-	background-color: var(--color-blue);
+	background-color: var(--interactive-accent);
 }
 
 .pbl-iteration-dot {
 	width: 8px;
 	height: 8px;
-	border-radius: var(--radius-l);
+	border-radius: 50%;
 }
 
 .pbl-iteration-dot-open {
@@ -181,7 +181,7 @@
 }
 
 .pbl-iteration-dot-inProgress {
-	background-color: var(--color-blue);
+	background-color: var(--interactive-accent);
 }
 
 .pbl-iteration-dot-resolved {

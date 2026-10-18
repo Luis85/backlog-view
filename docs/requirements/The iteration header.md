@@ -78,8 +78,8 @@ of its cards are resolved.
   because the board's own empty state already explains the board.
 - **4b — a card is a context row** (an excluded ancestor drawn to place a carrier). It is
   not counted: the context-row rule says a context row is never a source of a count.
-- **4c — a column is folded, or the quick filter hides cards.** The counts do not change:
-  progress is about the sprint, not about the screen.
+- **4c — a column is folded.** The counts do not change: progress reads the sprint's
+  population, not the drawn cards — it is about the sprint, not about the screen.
 - **4d — progress is not a burndown.** It reads the current states and stores no history.
   The 2026-08-15 design's "no burndown, velocity or capacity" is narrowed by exactly this
   and no further ([[The iteration board for the daily]]).
@@ -95,13 +95,15 @@ of its cards are resolved.
   line is checked for a running sprint, an ended one and no dates; the other drawn strings
   rest on the same catalog keys and are not asserted one by one.
 - Progress counts this sprint's result cards by the columns' own bucket reading, never a
-  context row, and is unchanged by a fold or a filter.
+  context row, and is unchanged by a fold.
 - Every word in the header — kicker, goal label, timebox, progress, switch and chip
   tooltips — comes from the catalog; only titles, the goal, names and counts are data.
 
 **Checked by** `test/i18n/iterationDaily.test.ts` — "leaves nothing but titles, names, values and counts unmarked"
 
 **Checked by** `test/view/iterationHeader.test.ts` — "counts progress over the sprint, never over a context row"
+
+**Checked by** `test/view/iterationHeader.test.ts` — "leaves progress unchanged by a folded column"
 
 ## Where it lives
 

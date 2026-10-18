@@ -17,6 +17,14 @@
 	font-size: var(--font-ui-smaller);
 	line-height: 1.6;
 	white-space: nowrap;
+	/* A long risk or priority value stops at the card edge; its tooltip holds it whole. */
+	max-width: 100%;
+	min-width: 0;
+}
+
+.pbl-signal-text {
+	overflow: hidden;
+	text-overflow: ellipsis;
 }
 
 .pbl-signal-icon {
