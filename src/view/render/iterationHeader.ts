@@ -1,10 +1,10 @@
 import { setIcon, setTooltip } from 'obsidian';
 import { RowContext } from './columns';
-import { formatDate, t } from '../../i18n/t';
+import { formatDate, formatNumber, t } from '../../i18n/t';
 import { BacklogViewHost } from '../host';
 import { bucketLabel, IterationBucket } from '../../domain/board';
 import { statedEnds } from '../../domain/bars';
-import { iterationProgress, timebox, Timebox } from '../../domain/iterationDaily';
+import { boardPeople, iterationProgress, personKey, timebox, Timebox } from '../../domain/iterationDaily';
 import { BacklogItem } from '../../domain/model';
 import { CivilDate, todayCivil } from '../../domain/noteFields';
 
@@ -132,5 +132,67 @@ function renderProgress(meta: HTMLElement, population: BacklogItem[], host: Back
 		const item = buckets.createSpan({ cls: 'pbl-iteration-bucket' });
 		item.createSpan({ cls: `pbl-iteration-dot pbl-iteration-dot-${bucket}`, attr: { 'aria-hidden': 'true' } });
 		item.createSpan({ text: t('iteration.bucketCount', { bucket: bucketLabel(bucket), count: progress[bucket] }) });
+	}
+}
+
+/**
+ * Walk the board one person at a time: a chip per person, and pressing one dims every card
+ * that is not theirs. Chrome like the mode switch, so each chip is an ordinary tab stop —
+ * and a press updates the board IN PLACE rather than rendering, so focus stays on it.
+ */
+export function renderPeopleRow(ctx: RowContext, headerEl: HTMLElement, population: BacklogItem[]): void {
+	const host: BacklogViewHost = ctx.host;
+	const people = boardPeople(population);
+	if (people.length === 0) return;
+	const row = headerEl.createDiv({ cls: 'pbl-iteration-people' });
+	row.createSpan({ cls: 'pbl-iteration-people-label', text: t('iteration.walkLabel') });
+	const chips = people.map((person) => {
+		const name = person.name ?? t('iteration.unassigned');
+		const btn = row.createEl('button', { cls: 'pbl-iteration-person', attr: { type: 'button' } });
+		btn.createSpan({
+			cls: 'pbl-iteration-avatar',
+			text: person.name ? Array.from(person.name)[0].toUpperCase() : t('iteration.unassignedAvatar'),
+			attr: { 'aria-hidden': 'true' },
+		});
+		btn.createSpan({ cls: 'pbl-iteration-person-name', text: name });
+		btn.createSpan({ cls: 'pbl-iteration-count', text: formatNumber(person.count) });
+		return { btn, key: person.key, name };
+	});
+	const sync = (): void => {
+		for (const chip of chips) {
+			const pressed = host.spotlight === chip.key;
+			chip.btn.setAttribute('aria-pressed', String(pressed));
+			setTooltip(chip.btn, pressed ? t('iteration.spotlightClear') : t('iteration.spotlightTip', { name: chip.name }));
+		}
+	};
+	const spotlight = (key: string | null): void => {
+		host.setSpotlight(key);
+		applySpotlight(ctx, population);
+		sync();
+	};
+	for (const chip of chips) {
+		chip.btn.addEventListener('click', () => spotlight(host.spotlight === chip.key ? null : chip.key));
+		chip.btn.addEventListener('keydown', (evt) => {
+			if (evt.key !== 'Escape' || host.spotlight !== chip.key) return;
+			evt.preventDefault();
+			evt.stopPropagation();
+			spotlight(null);
+		});
+	}
+	sync();
+}
+
+/**
+ * Dim every result card that is not the spotlit person's — visual only, so no count, no
+ * column and no keyboard stop changes. A context card is never dimmed: it holds nobody's
+ * work on this board. A spotlight whose person has no card left here clears itself.
+ */
+export function applySpotlight(ctx: RowContext, population: BacklogItem[]): void {
+	const host: BacklogViewHost = ctx.host;
+	const results = population.filter((item) => !item.outsideFilter);
+	if (host.spotlight !== null && !results.some((item) => personKey(item) === host.spotlight)) host.setSpotlight(null);
+	const spot = host.spotlight;
+	for (const item of results) {
+		ctx.rows.get(item.file.path)?.toggleClass('pbl-spot-dim', spot !== null && personKey(item) !== spot);
 	}
 }

@@ -1,7 +1,7 @@
 import { RowContext } from './columns';
 import { renderBoard } from './board';
 import { renderEmptyIterationState } from './emptyStates';
-import { renderIterationHeader } from './iterationHeader';
+import { applySpotlight, renderIterationHeader, renderPeopleRow } from './iterationHeader';
 import { renderShelf, ShelfRemoval } from './shelf';
 import { syncShelfTabStops } from './shelfControls';
 import { t } from '../../i18n/t';
@@ -44,7 +44,7 @@ export function renderIterationBoard(
 	if (!model) return { board: { columns: [], cardCount: 0 }, colEls: [], scope: 'iteration' };
 	const iteration = model.byPath.get(scope);
 	const population = iterationResults(model, scope);
-	if (iteration) renderIterationHeader(ctx, boardEl, iteration, population);
+	if (iteration) renderPeopleRow(ctx, renderIterationHeader(ctx, boardEl, iteration, population), population);
 	// The daily hides the shelf: a stand-up talks about the work committed, not the work
 	// that could still be pulled in.
 	const shelf = host.iterationDaily ? null : renderIterationShelf(ctx, boardEl, dnd, model);
@@ -65,6 +65,7 @@ export function renderIterationBoard(
 		move: (item, col) => void (col.bucket && host.performIterationBoardMove(item, col.bucket)),
 		drawEmpty: (_h, aside) => renderEmptyIterationState(aside, iteration?.title ?? null),
 	});
+	applySpotlight(ctx, population);
 	// **The controls come back into the tab order when no COLUMN card can open a menu to
 	// reach them** — the question is reachability, not whether the pane drew a card
 	// anywhere. A shelf card is on no column, so it is out of this board's roving
