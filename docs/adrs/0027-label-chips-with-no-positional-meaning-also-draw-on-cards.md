@@ -91,6 +91,16 @@ editable chip through that filter — was not taken because the daily asks for a
 about, beside Blocked and Overdue, and not for a second place to edit the value. Both carry
 no hue: they are data, not a state.
 
+**Amended 2026-10-18 (second).** The HORIZON board's cards draw the same signals, minus
+Overdue, by user request: a stakeholder reading Now, Next and Later asks what is blocked,
+what is risky and what matters most. A horizon is a confidence bucket, not a date, so
+lateness stays the dated axis's question. `cardSignalSet` (`src/view/projection.ts`) says
+which projection draws which set — all four on the iteration board, three on the horizon
+axis, none elsewhere — and `renderCardBody` asks it rather than comparing the projection
+itself. The dated and resources axes draw none, because their items are timeline rows, and
+a context card draws none on any projection. They are still text and still not cells: the
+card column filter is unchanged, so the trigger under "Revisit when" is still not met.
+
 ## Consequences
 
 - **A card can now show four kinds of cell** — plain values, tags, and the assignee

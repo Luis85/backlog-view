@@ -1,7 +1,7 @@
 import { setTooltip } from 'obsidian';
 import { formatNumber, t } from '../../i18n/t';
 import { drawIcon } from './icons';
-import { createCard, renderCardBody, renderColumnFold, wireCardActivation } from './board';
+import { createCard, renderCardBody, renderColumnFold, renderPaneInstructions, wireCardActivation } from './board';
 import { RowContext } from './columns';
 import { guidanceShell, renderAllDoneState, renderEmptyState } from './emptyStates';
 import { renderContextStrip } from './contextStrip';
@@ -101,6 +101,9 @@ export function renderRoadmap(
 	const removal = shelfRemoval(host, axis);
 	let shelf: { cards: BacklogItem[]; el: HTMLElement };
 	if (axis === 'horizons') {
+		// The board's hidden shortcut help, with this axis's own keys. The grid axes carry
+		// none yet: their moves differ (Alt+Up/Down on resources, none on dates).
+		renderPaneInstructions(treeEl, t('roadmap.instructions'));
 		// The shelf LEADS this board — first in the frame and first in the keyboard walk
 		// (asked for directly, 2026-08-17): a drag from the untriaged rest into a bucket is
 		// the board's whole job, so its source sits above the columns rather than after the
@@ -407,10 +410,9 @@ function renderBucket(
 			// Folded is said in the NAME, `columnLabel`'s reason on the board: the count
 			// deliberately survives the fold, so a bucket that stayed silent about it would
 			// announce items it is not drawing.
-			'aria-label': t(folded ? 'roadmap.groupLabelCollapsed' : 'roadmap.groupLabel', {
-				name: bucket.value,
-				count: bucket.count,
-			}),
+			// An undeclared bucket says so here too: its tooltip sits on the stray mark, since
+			// `setTooltip` on this element would overwrite this label in Obsidian.
+			'aria-label': t(bucketLabelKey(bucket.declared, folded), { name: bucket.value, count: bucket.count }),
 		},
 	});
 	const header = colEl.createDiv({ cls: 'pbl-bucket-header' });
@@ -421,7 +423,7 @@ function renderBucket(
 		const mark = header.createSpan({ cls: 'pbl-bucket-stray' });
 		drawIcon(mark, 'circle-help');
 		setTooltip(
-			colEl,
+			mark,
 			t('roadmap.undeclaredBucket', { value: bucket.value, horizonsOption: t('option.horizonValues') }),
 		);
 	}
@@ -435,6 +437,13 @@ function renderBucket(
 	for (const item of drawn) {
 		const card = createCard(ctx, cardsEl, item);
 		renderCardBody(ctx, card, item);
+		// A description, not a label (the context card's reason): arrowing from Now into
+		// Next is announced without replacing the card's content-derived name.
+		// A context card's one sentence says both facts, so neither overwrites the other.
+		card.setAttribute(
+			'aria-description',
+			t(item.outsideFilter ? 'roadmap.contextCardInBucket' : 'roadmap.cardInBucket', { bucket: bucket.value }),
+		);
 		wireCardActivation(ctx, card, item);
 		ctx.placed.add(item.file.path);
 		dnd.wireCard(card, item);
@@ -446,6 +455,14 @@ function renderBucket(
 	dnd.wireDropTarget(colEl, (source) => void ctx.host.performHorizonMove(source.item, bucket.value));
 	dnd.wireScroller(cardsEl);
 	return drawn;
+}
+
+/** A bucket's group label: whole sentences per case, never pieces joined. */
+function bucketLabelKey(declared: boolean, folded: boolean) {
+	if (declared && folded) return 'roadmap.groupLabelCollapsed';
+	if (declared) return 'roadmap.groupLabel';
+	if (folded) return 'roadmap.groupLabelUndeclaredCollapsed';
+	return 'roadmap.groupLabelUndeclared';
 }
 
 /**

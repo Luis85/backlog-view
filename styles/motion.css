@@ -27,7 +27,10 @@
 	.pbl-risk-chip.pbl-risk-unset,
 	.pbl-priority-chip.pbl-priority-unset,
 	.pbl-assignee-chip.pbl-assignee-unset,
-	.pbl-date-chip.pbl-date-unset {
+	.pbl-date-chip.pbl-date-unset,
+	/* The bucket's New button fades in on hover. `roadmap.css` loads AFTER this file, so
+	   the bare class would lose the tie; the header ancestor is what makes it win. */
+	.pbl-bucket-header .pbl-bucket-add {
 		transition: none;
 	}
 

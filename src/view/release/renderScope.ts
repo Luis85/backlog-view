@@ -505,7 +505,7 @@ function drawDescription(view: ReleaseView, headerEl: HTMLElement, release: Rele
  * text it already draws, trading one gap for a worse one. What is added instead is a
  * `.pbl-sr-only` span carrying the IDENTICAL sentence, left as ordinary (unhidden) content
  * of the strip rather than associated to it through `aria-describedby` — `board.ts`'s
- * `renderBoardInstructions` is NOT the pattern to follow here, whatever an earlier version
+ * `renderPaneInstructions` is NOT the pattern to follow here, whatever an earlier version
  * of this comment claimed: that association lands on `boardEl`, a real tab stop the board
  * pane owns, and `aria-describedby` is reliably exposed on a focusable element with a role.
  * `sumEl` is a bare `<div>` with no role and no tabindex — the shape most screen readers do
@@ -560,7 +560,7 @@ function drawSummary(
 	setTooltip(sumEl, provenance);
 	// Plain visually-hidden content, not `aria-describedby` — `sumEl` is a role-less,
 	// unfocusable `<div>`, and a description only reliably reaches assistive tech on a
-	// focusable host with a role (which is what `board.ts`'s `renderBoardInstructions` has,
+	// focusable host with a role (which is what `board.ts`'s `renderPaneInstructions` has,
 	// putting its own association on the focusable `boardEl` rather than on a plain div).
 	// No `aria-hidden` either: with no description to double against, this text is meant to
 	// be read exactly once, as ordinary content of the strip.

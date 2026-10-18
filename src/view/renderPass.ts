@@ -84,7 +84,7 @@ export interface RenderPassResult {
 export function renderPass(host: BacklogViewHost, els: RenderPassEls, deps: RenderPassDeps): RenderPassResult {
 	const projection = host.projection;
 	syncProjectionClasses(els.viewEl, projection, projection === 'roadmap' ? activeAxis(host.settings, host.axisPick) : null);
-	// The keyboard instructions belong to the board and are rebuilt with it below;
+	// The keyboard instructions belong to the board (and the horizon board) and are rebuilt with it below;
 	// dropped here so the attribute never outlives the element it points at — a
 	// dangling `aria-describedby` is read as no description at all.
 	els.treeEl.removeAttribute('aria-describedby');

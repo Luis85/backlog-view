@@ -8,7 +8,8 @@ import { todayCivil } from '../../domain/noteFields';
 
 /**
  * What an ITERATION card says needs talking about at the stand-up: Blocked, Overdue, its
- * risk and its priority, in that order. Text, never controls — nothing here is focusable,
+ * risk and its priority, in that order — and a HORIZON card the same without Overdue
+ * (`cardSignalSet` in `view/projection.ts` says which). Text, never controls — nothing here is focusable,
  * and the card's own menu stays the way to change any of it.
  *
  * Risk and priority are the item's own values drawn as data (ADR 0027's 2026-10-18
@@ -20,10 +21,17 @@ import { todayCivil } from '../../domain/noteFields';
  * Cards are rebuilt on every pass (`renderPass` keeps elements only on a tree-shaped
  * projection), so today's date and a prerequisite's state need no `rowSignature` term.
  */
-export function renderCardSignals(ctx: RowContext, card: HTMLElement, item: BacklogItem): void {
+export function renderCardSignals(
+	ctx: RowContext,
+	card: HTMLElement,
+	item: BacklogItem,
+	{ overdue }: { overdue: boolean },
+): void {
 	const signals = cardSignals(item, ctx.host.settings, todayCivil());
 	if (!signals) return;
-	const { blockedBy, overdueDays } = signals;
+	const blockedBy = signals.blockedBy;
+	// The horizon board asks without overdue: a bucket is confidence, not a date.
+	const overdueDays = overdue ? signals.overdueDays : 0;
 	// Null without a configured key or with a blank value — `readLabel` already asks both.
 	const risk = item.riskValue;
 	const priority = item.priorityValue;

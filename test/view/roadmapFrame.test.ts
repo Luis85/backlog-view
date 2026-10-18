@@ -344,6 +344,7 @@ describe('context rows on the roadmap', () => {
 		const card = bucketByName(containerEl, 'Now').querySelector('.pbl-card');
 		expect(card?.hasClass('pbl-card-context')).toBe(true);
 		expect(card?.getAttribute('aria-description')).toContain('shown for context');
+		expect(card?.getAttribute('aria-description')).toContain('In Now');
 		expect(bucketCountOf(bucketByName(containerEl, 'Now'))).toBe('0');
 		// Never shelved: the shelf is a statement about the results.
 		expect(shelfTitles(containerEl)).toEqual([]);

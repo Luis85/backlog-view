@@ -92,6 +92,20 @@ export function menusListChildren(projection: Projection, axis: RoadmapAxis | nu
 }
 
 /**
+ * Which card signals this projection draws (`render/cardSignals.ts`), or null for none.
+ * The iteration board draws all four, the stand-up's agenda. The HORIZON board draws
+ * blocked, risk and priority but not overdue (ADR 0027, second 2026-10-18 amendment): a
+ * horizon is a confidence bucket, not a date. The grid axes draw none — their items are
+ * timeline rows, not cards. `axis` is `activeAxis` for the pass being drawn, never the
+ * last snapshot's.
+ */
+export function cardSignalSet(projection: Projection, axis: RoadmapAxis | null): { overdue: boolean } | null {
+	if (projection === 'iteration') return { overdue: true };
+	if (projection === 'roadmap' && axis === 'horizons') return { overdue: false };
+	return null;
+}
+
+/**
  * Whether this projection draws the rollup column. The catalog does not, and the reason is
  * the same one that withholds its completed toggle: it has nothing to put in it. `assignAll`
  * counts a child only where the child and the parent are both plan rows, so a suite's
