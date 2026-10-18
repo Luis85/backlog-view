@@ -443,6 +443,14 @@ export interface BacklogViewHost {
 	readonly clickFolds: boolean;
 	/** Flip what a click does and re-render; the view-state store persists the pick. */
 	setClickFolds(value: boolean): void;
+	/** Whether the iteration board draws its Daily projection; stored per saved view and device. */
+	readonly iterationDaily: boolean;
+	/** Switch the iteration board to or from Daily and re-render; the view-state store persists it. */
+	setIterationDaily(value: boolean): void;
+	/** The spotlighted card's key on the iteration board, or null; session only, never stored. */
+	readonly spotlight: string | null;
+	/** Spotlight a card (null clears) without rendering: the caller updates the DOM in place. */
+	setSpotlight(key: string | null): void;
 	/**
 	 * Whether items whose whole subtree is done are drawn — true, drawing them, is the
 	 * default. UI state like the click action above: the view-state store persists it per

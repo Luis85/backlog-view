@@ -240,6 +240,8 @@ export interface ViewPrefs {
 	leadWidth?: number;
 	focus?: string;
 	clickFolds?: boolean;
+	/** The iteration board's Daily projection, stored as `true` only: off is the default. */
+	iterationDaily?: boolean;
 	/**
 	 * Whether fully-done subtrees are hidden. Stored as the OFF state for the toggle,
 	 * because showing them is the default and a default stores nothing — `bucketList`'s
@@ -476,6 +478,7 @@ export const PREF_READERS: { [K in keyof ViewPrefs]-?: Reader<NonNullable<ViewPr
 	leadWidth: inRange(MIN_TIMELINE_LEAD_PX, MAX_TIMELINE_LEAD_PX),
 	focus: anyName,
 	clickFolds: onlyTrue,
+	iterationDaily: onlyTrue,
 	hideCompleted: onlyTrue,
 	bucketList: onlyTrue,
 	shelfExpanded: onlyTrue,
