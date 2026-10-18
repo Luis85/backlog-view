@@ -45,3 +45,10 @@
 .pbl-roadmap-present .pbl-card .pbl-date-unset {
 	display: none;
 }
+
+/* The frame is `max-content` wide, so in a narrow pane its far edge is off screen: the
+   switch sits beside the title rather than at that edge, where it would scroll away. */
+.pbl-horizon-header .pbl-iteration-titlebar {
+	justify-content: flex-start;
+	align-items: center;
+}

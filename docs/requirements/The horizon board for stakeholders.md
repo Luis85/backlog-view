@@ -27,7 +27,7 @@ moves and its keyboard walk, and gains four things: a **header** that says where
 sits ([[The horizons header]]), **progress per bucket** ([[Progress per bucket]]), a
 **Present / Plan** switch that takes the editing chrome away for a meeting
 ([[Present or plan]]), and **signals** on the cards a stakeholder asks about
-(*Signals on a horizon card*, the fourth PBI, built in a parallel pass). The pattern is [[The iteration board for the daily]], built
+([[Signals on a horizon card]], the fourth PBI). The pattern is [[The iteration board for the daily]], built
 the same day; the design is `docs/superpowers/specs/2026-10-18-horizons-stakeholder-design.md`.
 
 **Kept on purpose.** Buckets are placements, never computations: no date is read as a

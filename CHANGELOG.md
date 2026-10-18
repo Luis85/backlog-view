@@ -27,6 +27,11 @@ See [RELEASING.md](RELEASING.md) for how this file is kept in step with a releas
 ### Added
 
 - The horizon board opens with a header that counts each horizon and what is not yet placed, each bucket says how much of it is done, and a Present / Plan switch hides the shelf, the New buttons and the invitation chips for a stakeholder meeting.
+- Horizon board cards show Blocked, risk and priority signals, like iteration cards but without Overdue.
+
+### Fixed
+
+- The horizon board tells a screen reader more: an undeclared bucket keeps its name and says it is undeclared, cards name their bucket, the pane describes its keyboard shortcuts, and the bucket New button respects reduced motion.
 
 ## [0.13.0] - 2026-10-18
 
