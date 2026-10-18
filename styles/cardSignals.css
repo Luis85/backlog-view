@@ -1,0 +1,45 @@
+/* What an iteration card says needs talking about — `src/view/render/cardSignals.ts`.
+   Text, never controls: small tinted labels that wrap under the parent line. */
+.pbl-card-signals {
+	display: flex;
+	flex-wrap: wrap;
+	gap: var(--size-4-1);
+}
+
+.pbl-signal {
+	display: inline-flex;
+	align-items: center;
+	gap: var(--size-2-2);
+	padding: 0 var(--size-4-1);
+	border-radius: var(--radius-s);
+	font-size: var(--font-ui-smaller);
+	line-height: 1.6;
+	white-space: nowrap;
+}
+
+.pbl-signal-icon {
+	display: inline-flex;
+}
+
+.pbl-signal-icon .svg-icon {
+	width: var(--icon-xs);
+	height: var(--icon-xs);
+}
+
+.pbl-signal-blocked {
+	color: var(--text-error);
+	background-color: rgba(var(--color-red-rgb), 0.12);
+}
+
+.pbl-signal-overdue {
+	color: var(--color-orange);
+}
+
+.pbl-signal-risk {
+	color: var(--color-yellow);
+}
+
+.pbl-signal-priority {
+	color: var(--text-muted);
+	background-color: var(--background-modifier-hover);
+}

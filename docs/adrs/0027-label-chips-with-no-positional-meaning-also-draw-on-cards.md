@@ -79,6 +79,15 @@ drops the cell for it loses nothing a reader could reach anyway: **Edit tags** i
 card's own context menu is gated on the tags property being a visible COLUMN
 (`tagsColumnVisible`), never on one item's own cell, so it stays offered.
 
+**Amended 2026-10-18.** Risk and priority now draw on the ITERATION board's cards, as
+read-only signals rather than as property cells, by user request: the daily is where a risk
+is talked about. They sit beside Blocked and Overdue in `renderCardSignals`
+(`src/view/render/cardSignals.ts`), called from `renderCardBody` only on that projection, as
+the item's own values — text, not chips, with no menu and no tab stop, so the card's
+context menu stays the way to change either. Every other projection is unchanged: the
+product board, the Deliverables board and the roadmap still draw neither, and the card
+column filter above still keeps risk out of a card's cells.
+
 ## Consequences
 
 - **A card can now show four kinds of cell** — plain values, tags, and the assignee

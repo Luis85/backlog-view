@@ -43,7 +43,7 @@ export function timebox(start: CivilDate | null, target: CivilDate | null, today
 }
 
 /** The bucket an item reads into — the reading `iterationBuckets` uses. */
-function bucketFor(item: BacklogItem, settings: BacklogSettings) {
+export function bucketFor(item: BacklogItem, settings: BacklogSettings) {
 	return bucketOf(settings.stateKey ? item.stateValue : null, settings);
 }
 
