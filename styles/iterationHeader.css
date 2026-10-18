@@ -91,6 +91,21 @@
 	color: var(--text-on-accent);
 }
 
+/* The `box-shadow: none` above beats Obsidian's `button:focus-visible` ring (the trap
+   `columns.css` states for the chips), and the group's `overflow: hidden` would clip an
+   outer one — so the focus indicator is an INSET outline. On the pressed segment the
+   accent ring would vanish into the accent fill, so it turns `--text-on-accent` and sits
+   further in. */
+.pbl-iteration-mode button:focus-visible {
+	outline: 2px solid var(--interactive-accent);
+	outline-offset: -2px;
+}
+
+.pbl-iteration-mode button[aria-pressed='true']:focus-visible {
+	outline-color: var(--text-on-accent);
+	outline-offset: -4px;
+}
+
 .pbl-iteration-meta {
 	display: flex;
 	flex-wrap: wrap;
