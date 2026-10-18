@@ -24,6 +24,10 @@ See [RELEASING.md](RELEASING.md) for how this file is kept in step with a releas
 
 ## [Unreleased]
 
+### Added
+
+- The horizon board opens with a header that counts each horizon and what is not yet placed, each bucket says how much of it is done, and a Present / Plan switch hides the shelf, the New buttons and the invitation chips for a stakeholder meeting.
+
 ## [0.13.0] - 2026-10-18
 
 ### Added

@@ -154,6 +154,16 @@ export class ViewStateController {
 		this.hooks.render();
 	}
 
+	get horizonPresent(): boolean {
+		return this.state.horizonPresent();
+	}
+
+	setHorizonPresent(value: boolean): void {
+		if (value === this.horizonPresent) return;
+		this.state.setHorizonPresent(value);
+		this.hooks.render();
+	}
+
 	get clickFolds(): boolean {
 		return this.state.clickFolds();
 	}

@@ -69,6 +69,14 @@ export abstract class ViewStateSurface extends BasesView {
 		this.ui.setIterationDaily(value);
 	}
 
+	get horizonPresent(): boolean {
+		return this.ui.horizonPresent;
+	}
+
+	setHorizonPresent(value: boolean): void {
+		this.ui.setHorizonPresent(value);
+	}
+
 	get spotlight(): string | null {
 		return this.ui.spotlight;
 	}

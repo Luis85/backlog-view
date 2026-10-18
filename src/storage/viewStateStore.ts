@@ -242,6 +242,8 @@ export interface ViewPrefs {
 	clickFolds?: boolean;
 	/** The iteration board's Daily projection, stored as `true` only: off is the default. */
 	iterationDaily?: boolean;
+	/** The horizon board's Present projection, stored as `true` only: Plan is the default. */
+	horizonPresent?: boolean;
 	/**
 	 * Whether fully-done subtrees are hidden. Stored as the OFF state for the toggle,
 	 * because showing them is the default and a default stores nothing — `bucketList`'s
@@ -479,6 +481,7 @@ export const PREF_READERS: { [K in keyof ViewPrefs]-?: Reader<NonNullable<ViewPr
 	focus: anyName,
 	clickFolds: onlyTrue,
 	iterationDaily: onlyTrue,
+	horizonPresent: onlyTrue,
 	hideCompleted: onlyTrue,
 	bucketList: onlyTrue,
 	shelfExpanded: onlyTrue,

@@ -166,7 +166,7 @@ describe('a context row says why it is there, from the catalog', () => {
 		view.setShelfCollapsed(false);
 
 		expect(containerEl.querySelector('.pbl-roadmap-context')).not.toBeNull();
-		expect(remainder(containerEl)).toEqual(['Epic', 'Later', 'Next', 'Now']);
+		expect(remainder(containerEl)).toEqual(['Epic', 'Later', 'Next', 'Now', '·']);
 	});
 });
 
@@ -196,7 +196,8 @@ describe('the roadmap reads every word it draws from the catalog', () => {
 	it('leaves nothing but titles, types and horizon values unmarked on the bucket axis', () => {
 		const { containerEl } = makeRoadmap(horizonVault(), {});
 
-		expect(remainder(containerEl)).toEqual(['Epic', 'Later', 'Later item', 'Next', 'Now', 'Now item', 'Untriaged']);
+		// `·` is the horizons header's aria-hidden separator between its sentences, not a word.
+		expect(remainder(containerEl)).toEqual(['Epic', 'Later', 'Later item', 'Next', 'Now', 'Now item', 'Untriaged', '·']);
 	});
 
 	it('leaves nothing but titles, types and dates unmarked on the dated axis', () => {
@@ -372,7 +373,7 @@ describe('what only domain/ can say, said from the catalog', () => {
 		const { containerEl } = makeRoadmap(vault, {});
 
 		expect(markedAt(containerEl, '.pbl-shelf-reason')).toHaveLength(1);
-		expect(remainder(containerEl)).toEqual(['Epic', 'Later', 'Later item', 'Next', 'Now', 'Now item', 'Unreadable', 'Untriaged']);
+		expect(remainder(containerEl)).toEqual(['Epic', 'Later', 'Later item', 'Next', 'Now', 'Now item', 'Unreadable', 'Untriaged', '·']);
 	});
 
 	it('names a shelved bar its three reasons, from domain/bars.ts', () => {

@@ -410,6 +410,14 @@ export class ViewState {
 		this.setPref('iterationDaily', value);
 	}
 
+	horizonPresent(): boolean {
+		return this.prefs.horizonPresent ?? false;
+	}
+
+	setHorizonPresent(value: boolean): void {
+		this.setPref('horizonPresent', value);
+	}
+
 	/**
 	 * Whether fully-done subtrees are drawn — the default, so the stored pick is its
 	 * absence. The inversion lives here and nowhere else, `bucketGrid`'s own rule below:

@@ -17,21 +17,22 @@ beforeEach(() => {
 	vault.addFile('Backlog.base');
 });
 
-describe('the daily iteration pick', () => {
+/** The iteration board's Daily pick and the horizon board's Present pick: one shape, two keys. */
+describe.each(['iterationDaily', 'horizonPresent'] as const)('the %s pick', (pref) => {
 	it('stores only true, and false needs no entry at all', () => {
-		saveViewState(vault.app, id, { folds, prefs: { iterationDaily: false } });
+		saveViewState(vault.app, id, { folds, prefs: { [pref]: false } });
 		expect(vault.localStorage.get(STORE_KEY) ?? {}).not.toHaveProperty('Backlog.base#Backlog');
-		saveViewState(vault.app, id, { folds, prefs: { iterationDaily: true } });
-		expect(loadViewState(vault.app, id).prefs.iterationDaily).toBe(true);
+		saveViewState(vault.app, id, { folds, prefs: { [pref]: true } });
+		expect(loadViewState(vault.app, id).prefs[pref]).toBe(true);
 	});
 
 	/** User-writable data: only the value this module writes is the value it reads back. */
 	it('reads anything but a stored true as the default', () => {
 		for (const junk of ['daily', 1, {}, [], null, false]) {
 			vault.localStorage.set(STORE_KEY, {
-				'Backlog.base#Backlog': { base: 'Backlog.base', folds: {}, prefs: { iterationDaily: junk } },
+				'Backlog.base#Backlog': { base: 'Backlog.base', folds: {}, prefs: { [pref]: junk } },
 			});
-			expect(loadViewState(vault.app, id).prefs.iterationDaily).toBeUndefined();
+			expect(loadViewState(vault.app, id).prefs[pref]).toBeUndefined();
 		}
 	});
 });

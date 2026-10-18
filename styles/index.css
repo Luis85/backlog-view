@@ -71,6 +71,7 @@
 @import "./cardSignals.css";
 @import "./cardChildren.css";
 @import "./roadmap.css";
+@import "./horizonHeader.css";
 @import "./timeline.css";
 /* Position NOT load-bearing — see the partial's own header. It came out of `timeline.css`
    at the 400-line cap and sits here because that is where its rules were. */

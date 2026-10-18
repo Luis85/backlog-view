@@ -38,6 +38,7 @@ const FULL_PREFS: Required<ViewPrefs> = {
 	focus: 'Feature',
 	clickFolds: true,
 	iterationDaily: true,
+	horizonPresent: true,
 	hideCompleted: true,
 	bucketList: true,
 	shelfExpanded: true,

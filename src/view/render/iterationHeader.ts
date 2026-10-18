@@ -4,7 +4,14 @@ import { formatDate, formatNumber, t } from '../../i18n/t';
 import { BacklogViewHost } from '../host';
 import { bucketLabel, IterationBucket } from '../../domain/board';
 import { statedEnds } from '../../domain/bars';
-import { boardPeople, iterationProgress, personKey, timebox, Timebox } from '../../domain/iterationDaily';
+import {
+	boardPeople,
+	iterationProgress,
+	IterationProgress,
+	personKey,
+	timebox,
+	Timebox,
+} from '../../domain/iterationDaily';
 import { BacklogItem } from '../../domain/model';
 import { CivilDate, todayCivil } from '../../domain/noteFields';
 
@@ -28,7 +35,20 @@ export function renderIterationHeader(
 	const titles = titlebar.createDiv();
 	titles.createDiv({ cls: 'pbl-iteration-kicker', text: t('iteration.kicker') });
 	titles.createEl('h2', { cls: 'pbl-iteration-name', text: iteration.title });
-	renderModeSwitch(host, titlebar, boardEl);
+	renderModeSwitch(titlebar, boardEl, t('iteration.modeLabel'), [
+		{
+			text: t('iteration.modeDaily'),
+			tip: t('iteration.modeDailyTip'),
+			pressed: host.iterationDaily,
+			choose: () => host.setIterationDaily(true),
+		},
+		{
+			text: t('iteration.modePlanning'),
+			tip: t('iteration.modePlanningTip'),
+			pressed: !host.iterationDaily,
+			choose: () => host.setIterationDaily(false),
+		},
+	]);
 	renderGoal(host, headerEl, iteration);
 	const meta = headerEl.createDiv({ cls: 'pbl-iteration-meta' });
 	const stated = statedEnds(iteration);
@@ -49,30 +69,32 @@ function renderGoal(host: BacklogViewHost, headerEl: HTMLElement, iteration: Bac
 	headerEl.createDiv({ cls: 'pbl-iteration-goal', text: goal });
 }
 
+/** One half of a two-mode switch: its label, its tooltip, and whether it is the mode shown. */
+export interface ModeChoice {
+	text: string;
+	tip: string;
+	pressed: boolean;
+	choose: () => void;
+}
+
 /**
- * Pressing a mode re-renders the board, which replaces the button that was pressed — so
- * focus moves to its replacement rather than falling to the document.
+ * A two-mode switch in a header — the iteration board's Daily/Planning and the horizon
+ * board's Present/Plan. Pressing a mode re-renders the pane, which replaces the button that
+ * was pressed — so focus moves to its replacement rather than falling to the document.
+ * `paneEl` is the pane, not the document: another leaf may hold the same board. The header
+ * is the pane's first content, so the walk stops before any card.
  */
-function renderModeSwitch(host: BacklogViewHost, titlebar: HTMLElement, boardEl: HTMLElement): void {
-	const group = titlebar.createDiv({
-		cls: 'pbl-iteration-mode',
-		attr: { role: 'group', 'aria-label': t('iteration.modeLabel') },
-	});
-	const modes = [
-		{ daily: true, text: t('iteration.modeDaily'), tip: t('iteration.modeDailyTip') },
-		{ daily: false, text: t('iteration.modePlanning'), tip: t('iteration.modePlanningTip') },
-	];
+export function renderModeSwitch(parent: HTMLElement, paneEl: HTMLElement, label: string, modes: ModeChoice[]): void {
+	const group = parent.createDiv({ cls: 'pbl-iteration-mode', attr: { role: 'group', 'aria-label': label } });
 	for (const mode of modes) {
 		const btn = group.createEl('button', {
 			text: mode.text,
-			attr: { type: 'button', 'aria-pressed': String(host.iterationDaily === mode.daily) },
+			attr: { type: 'button', 'aria-pressed': String(mode.pressed) },
 		});
 		setTooltip(btn, mode.tip);
 		btn.addEventListener('click', () => {
-			host.setIterationDaily(mode.daily);
-			// The pane, not the document: another leaf may hold an iteration board too. The
-			// header is the pane's first child, so the walk stops before any card.
-			boardEl.querySelector<HTMLElement>('.pbl-iteration-mode button[aria-pressed="true"]')?.focus();
+			mode.choose();
+			paneEl.querySelector<HTMLElement>('.pbl-iteration-mode button[aria-pressed="true"]')?.focus();
 		});
 	}
 }
@@ -116,16 +138,24 @@ function day(date: CivilDate): string {
 	return formatDate('dayMonth', date.year, date.month, date.day);
 }
 
+/**
+ * Resolved and in progress as two lengths of one track — decoration, `aria-hidden`: the
+ * text beside it carries the number. Shared by the iteration header and the horizon buckets.
+ */
+export function renderProgressBar(parent: HTMLElement, progress: IterationProgress): void {
+	const share = (n: number): string => `${progress.total === 0 ? 0 : (n / progress.total) * 100}%`;
+	const bar = parent.createSpan({ cls: 'pbl-iteration-bar', attr: { 'aria-hidden': 'true' } });
+	bar.createSpan({ cls: 'pbl-iteration-bar-resolved' }).setCssProps({ '--pbl-w': share(progress.resolved) });
+	bar.createSpan({ cls: 'pbl-iteration-bar-inprogress' }).setCssProps({ '--pbl-w': share(progress.inProgress) });
+}
+
 const BUCKETS: IterationBucket[] = ['open', 'inProgress', 'resolved'];
 
 /** Resolved and in-progress as two lengths of one bar, then the count in each bucket. */
 function renderProgress(meta: HTMLElement, population: BacklogItem[], host: BacklogViewHost): void {
 	const progress = iterationProgress(population, host.settings);
-	const share = (n: number): string => `${progress.total === 0 ? 0 : (n / progress.total) * 100}%`;
 	const el = meta.createSpan({ cls: 'pbl-iteration-progress' });
-	const bar = el.createSpan({ cls: 'pbl-iteration-bar', attr: { 'aria-hidden': 'true' } });
-	bar.createSpan({ cls: 'pbl-iteration-bar-resolved' }).setCssProps({ '--pbl-w': share(progress.resolved) });
-	bar.createSpan({ cls: 'pbl-iteration-bar-inprogress' }).setCssProps({ '--pbl-w': share(progress.inProgress) });
+	renderProgressBar(el, progress);
 	el.createSpan({ text: t('iteration.resolvedOf', { resolved: progress.resolved, total: progress.total }) });
 	const buckets = meta.createSpan({ cls: 'pbl-iteration-buckets' });
 	for (const bucket of BUCKETS) {

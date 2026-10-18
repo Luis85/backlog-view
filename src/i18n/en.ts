@@ -435,6 +435,21 @@ export const en = {
 	'roadmap.newInBucketTooltip': 'New {type} in "{bucket}"',
 
 	/**
+	 * The horizon board's header, its bucket progress and the Present/Plan switch. The
+	 * bucket name in `horizons.bucketCount` is the user's own placement value — data.
+	 */
+	'horizons.kicker': 'Roadmap',
+	'horizons.title': 'Horizons',
+	'horizons.bucketCount': '{bucket} {count}',
+	'horizons.unplaced': { one: '{count} not yet placed', other: '{count} not yet placed' },
+	'horizons.bucketProgress': '{resolved} of {total} done',
+	'horizons.modeLabel': 'Roadmap mode',
+	'horizons.modePresent': 'Present',
+	'horizons.modePlan': 'Plan',
+	'horizons.modePresentTip': 'For a meeting: hide the shelf and the editing controls',
+	'horizons.modePlanTip': 'For planning: show the shelf to place work',
+
+	/**
 	 * The timeline's key. Four of the five name FURNITURE this view draws; `legend.done`
 	 * is the fallback caption for the green swatch where no workflow declares a done
 	 * value of its own to name it with.

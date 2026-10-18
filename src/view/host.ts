@@ -447,6 +447,14 @@ export interface BacklogViewHost {
 	readonly iterationDaily: boolean;
 	/** Switch the iteration board to or from Daily and re-render; the view-state store persists it. */
 	setIterationDaily(value: boolean): void;
+	/**
+	 * Whether the horizon board draws its Present projection — no shelf, no New buttons, no
+	 * invitation chips; stored per saved view and device. It hides; it never makes the view
+	 * read-only.
+	 */
+	readonly horizonPresent: boolean;
+	/** Switch the horizon board to or from Present and re-render; the view-state store persists it. */
+	setHorizonPresent(value: boolean): void;
 	/** The spotlighted PERSON's key on the iteration board (`personKey`), or null; session only, never stored. */
 	readonly spotlight: string | null;
 	/** Spotlight a person (null clears) without rendering: the caller updates the DOM in place. */
