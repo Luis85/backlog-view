@@ -16,7 +16,7 @@ import { newItemType, promptCreateItem } from '../interactions/create';
 import { gestureAt, previewer, submitGesture, TimelineParts, wireTimelineDrag } from '../interactions/timelineDrag';
 import { StatePalette, statePalettes } from '../../domain/board';
 import { isMarkerType } from '../../domain/itemTypes';
-import { BacklogItem } from '../../domain/model';
+import { BacklogItem, BacklogModel } from '../../domain/model';
 import {
 	AssignableLane,
 	axisPopulation,
@@ -103,37 +103,7 @@ export function renderRoadmap(
 	const removal = shelfRemoval(host, axis);
 	let shelf: { cards: BacklogItem[]; el: HTMLElement } | null;
 	if (axis === 'horizons') {
-		// The board's hidden shortcut help, with this axis's own keys. The grid axes carry
-		// none yet: their moves differ (Alt+Up/Down on resources, none on dates).
-		renderPaneInstructions(treeEl, t('roadmap.instructions'));
-		// The shelf LEADS this board — first in the frame and first in the keyboard walk
-		// (asked for directly, 2026-08-17): a drag from the untriaged rest into a bucket is
-		// the board's whole job, so its source sits above the columns rather than after the
-		// tallest of them. The board's own no-state strip leads its columns for the same
-		// reason, and the Alt+arrow ladder has led with the shelf all along — the frame now
-		// says what the ladder already did. `dependencyConflicts` is still its initial
-		// empty map here, which is this axis's value of it.
-		renderHorizonHeader(host, frameEl, treeEl, roadmap);
-		// Present hides the shelf, the New buttons and — by the frame's class, in
-		// `styles/roadmap.css` — the invitation chips. It hides; every move still writes.
-		frameEl.toggleClass('pbl-roadmap-present', host.horizonPresent);
-		shelf = host.horizonPresent
-			? null
-			: renderShelf(ctx, frameEl, shelfInput(host, roadmap, dependencyConflicts, axis), dnd, removal);
-		cards.push(...(shelf?.cards ?? []));
-		const progressOf = bucketProgress(host, model);
-		// The layout pick rides the ROW rather than each bucket: one class where the buckets
-		// are created, read by `.pbl-bucket-cards` in `styles/roadmap.css`, so a bucket that
-		// renders knows nothing about it.
-		const bucketsEl = frameEl.createDiv({
-			cls: 'pbl-roadmap-buckets' + (host.bucketGrid ? '' : ' pbl-buckets-list'),
-		});
-		for (const bucket of roadmap.buckets) {
-			cards.push(...renderBucket(ctx, bucketsEl, bucket, dnd, progressOf(bucket.value)));
-		}
-		// The pane is the scroller, not the frame: the frame is `max-content` wide and
-		// scrolls nothing, so auto-scroll toward an edge has to watch the box that does.
-		dnd.wireScroller(treeEl);
+		shelf = renderHorizonAxis(ctx, frameEl, treeEl, roadmap, { dnd, removal, cards, model });
 	} else {
 		// Both grid axes through ONE call: what differs between them is the entry list and
 		// whether a bar may be taken hold of — never a second grid.
@@ -202,6 +172,57 @@ export function renderRoadmap(
 	};
 }
 
+
+/** What the horizon axis draws beside `renderRoadmap`'s shared tail — grouped so the frame stays one read. */
+interface HorizonDrawing {
+	dnd: CardDragController;
+	removal: ReturnType<typeof shelfRemoval>;
+	cards: BacklogItem[];
+	model: BacklogModel;
+}
+
+/** The horizon axis: header, shelf (absent in Present), then the buckets. Returns the shelf drawn, if any. */
+function renderHorizonAxis(
+	ctx: RowContext,
+	frameEl: HTMLElement,
+	treeEl: HTMLElement,
+	roadmap: RoadmapModel,
+	{ dnd, removal, cards, model }: HorizonDrawing,
+): { cards: BacklogItem[]; el: HTMLElement } | null {
+	const host = ctx.host;
+	// The board's hidden shortcut help, with this axis's own keys. The grid axes carry
+	// none yet: their moves differ (Alt+Up/Down on resources, none on dates).
+	renderPaneInstructions(treeEl, t('roadmap.instructions'));
+	// The shelf LEADS this board — first in the frame and first in the keyboard walk
+	// (asked for directly, 2026-08-17): a drag from the untriaged rest into a bucket is
+	// the board's whole job, so its source sits above the columns rather than after the
+	// tallest of them. The board's own no-state strip leads its columns for the same
+	// reason, and the Alt+arrow ladder has led with the shelf all along — the frame now
+	// says what the ladder already did. The empty conflicts map is this axis's value of
+	// them: a shelved dependent's stated start means nothing here.
+	renderHorizonHeader(host, frameEl, treeEl, roadmap);
+	// Present hides the shelf, the New buttons and — by the frame's class, in
+	// `styles/roadmap.css` — the invitation chips. It hides; every move still writes.
+	frameEl.toggleClass('pbl-roadmap-present', host.horizonPresent);
+	const shelf = host.horizonPresent
+		? null
+		: renderShelf(ctx, frameEl, shelfInput(host, roadmap, new Map(), 'horizons'), dnd, removal);
+	cards.push(...(shelf?.cards ?? []));
+	const progressOf = bucketProgress(host, model);
+	// The layout pick rides the ROW rather than each bucket: one class where the buckets
+	// are created, read by `.pbl-bucket-cards` in `styles/roadmap.css`, so a bucket that
+	// renders knows nothing about it.
+	const bucketsEl = frameEl.createDiv({
+		cls: 'pbl-roadmap-buckets' + (host.bucketGrid ? '' : ' pbl-buckets-list'),
+	});
+	for (const bucket of roadmap.buckets) {
+		cards.push(...renderBucket(ctx, bucketsEl, bucket, dnd, progressOf(bucket.value)));
+	}
+	// The pane is the scroller, not the frame: the frame is `max-content` wide and
+	// scrolls nothing, so auto-scroll toward an edge has to watch the box that does.
+	dnd.wireScroller(treeEl);
+	return shelf;
+}
 
 /** What a grid axis needs to draw — grouped so `renderGridAxis` stays inside max-params. */
 interface GridDrawing {
