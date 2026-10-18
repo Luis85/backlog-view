@@ -1,5 +1,6 @@
 import { setIcon, setTooltip } from 'obsidian';
 import { RowContext } from './columns';
+import { renderIterationClose } from './iterationClose';
 import { formatDate, formatNumber, t } from '../../i18n/t';
 import { BacklogViewHost } from '../host';
 import { bucketLabel, IterationBucket } from '../../domain/board';
@@ -28,7 +29,10 @@ export function renderIterationHeader(
 	const titles = titlebar.createDiv();
 	titles.createDiv({ cls: 'pbl-iteration-kicker', text: t('iteration.kicker') });
 	titles.createEl('h2', { cls: 'pbl-iteration-name', text: iteration.title });
-	renderModeSwitch(host, titlebar, boardEl);
+	// The switch and the close control sit together at the titlebar's end.
+	const actions = titlebar.createDiv({ cls: 'pbl-iteration-actions' });
+	renderModeSwitch(host, actions, boardEl);
+	renderIterationClose(host, actions, boardEl, iteration);
 	renderGoal(host, headerEl, iteration);
 	const meta = headerEl.createDiv({ cls: 'pbl-iteration-meta' });
 	const stated = statedEnds(iteration);

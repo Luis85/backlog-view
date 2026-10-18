@@ -4,6 +4,9 @@ import { ITERATION_TYPE } from './typeVocabulary';
 import { BacklogItem } from './model';
 import { CivilDate } from './noteFields';
 import { addDays, daysBetween, formatCivil } from './timeline';
+import { bucketOf } from './board';
+import { BacklogSettings, isDoneValue } from './settings';
+import { computeIterationWrites, computeStateWrites, ItemWrite } from './writePlan';
 
 /**
  * Where the NEXT iteration falls — the two questions the create dialog prefills from,
@@ -159,4 +162,74 @@ export function nextIterationDates(
 	const after = previous === null ? null : statedEnds(previous).target.value;
 	const start = after === null ? today : addDays(after, 1);
 	return { start: formatCivil(start), target: formatCivil(addDays(start, lengthDays - 1)) };
+}
+
+/**
+ * Whether an iteration is CLOSED: its own state is one of the product's done values. The
+ * iteration's state is read through `settings.stateKey`, the same key the board's buckets
+ * read — an iteration is a marker, and a marker's workflow is the requirements one.
+ */
+export function isIterationClosed(iteration: BacklogItem, settings: BacklogSettings): boolean {
+	return settings.stateKey !== '' && isDoneValue(settings, iteration.stateValue);
+}
+
+/**
+ * The iteration that runs AFTER `current`: the earliest open, dated iteration that sorts
+ * later than it — `previousIteration`'s own order, so the two answers cannot disagree about
+ * which sprint follows which. Null for an undated `current`: with no end, nothing says what
+ * comes after it.
+ *
+ * A context row is never offered, for `selectableIteration`'s reason, and neither is a
+ * closed one: moving unfinished work into a sprint that is already over hides it again.
+ */
+export function followingIteration(
+	items: Iterable<BacklogItem>,
+	current: BacklogItem,
+	settings: BacklogSettings,
+): BacklogItem | null {
+	const key = (item: BacklogItem) => {
+		const ends = statedEnds(item);
+		const target = ends.target.value;
+		return target === null ? null : { target, start: ends.start.value, path: item.file.path };
+	};
+	const from = key(current);
+	if (from === null) return null;
+	let best: { item: BacklogItem; key: NonNullable<ReturnType<typeof key>> } | null = null;
+	for (const item of items) {
+		if (item === current || !isIterationType(item.typeName) || item.outsideFilter) continue;
+		if (isIterationClosed(item, settings)) continue;
+		const own = key(item);
+		if (own === null || !later(own, from)) continue;
+		if (best === null || later(best.key, own)) best = { item, key: own };
+	}
+	return best?.item ?? null;
+}
+
+/** The members a close leaves unfinished: the RESULTS the board does not draw as Resolved. */
+export function unfinishedMembers(population: BacklogItem[], settings: BacklogSettings): BacklogItem[] {
+	return population.filter(
+		(item) => !item.outsideFilter && bucketOf(settings.stateKey ? item.stateValue : null, settings) !== 'resolved',
+	);
+}
+
+/**
+ * Everything closing an iteration writes, as ONE batch: the iteration's own state set to
+ * the first done value (with the finished stamp that state change carries), and — when
+ * `next` is given — every unfinished member moved to it, link and timeframe together, the
+ * same plan `Set iteration` makes. One batch, so one undo takes the whole close back.
+ *
+ * Nothing at all with no state property or no done value: there is no state to close with,
+ * and moving the work alone would be a different action than the one the reader picked.
+ */
+export function iterationCloseWrites(
+	iteration: BacklogItem,
+	unfinished: BacklogItem[],
+	next: BacklogItem | null,
+	settings: BacklogSettings,
+	today: string,
+): ItemWrite[] {
+	const done = settings.doneValues[0];
+	if (!settings.stateKey || done === undefined) return [];
+	const moves = next === null ? [] : unfinished.flatMap((item) => computeIterationWrites(item, next, settings));
+	return [...computeStateWrites(iteration, done, settings, today), ...moves];
 }

@@ -51,6 +51,20 @@ describe('the confirm dialog', () => {
 		expect(decided).toBe('confirm');
 	});
 
+	it('takes the alternative as a second yes, and draws none without one', () => {
+		let decided: string | null = null;
+		const modal = open({
+			onConfirm: () => (decided = 'confirm'),
+			alternative: { cta: 'Close only', onConfirm: () => (decided = 'alternative') },
+			onCancel: () => (decided = 'cancel'),
+		});
+		expect(btn(modal, '.pbl-confirm-alternative').textContent).toBe('Close only');
+		btn(modal, '.pbl-confirm-alternative').click();
+		expect(decided).toBe('alternative');
+		const plain = open({ onConfirm: () => undefined });
+		expect(plain.contentEl.querySelector('.pbl-confirm-alternative')).toBeNull();
+	});
+
 	it('cancels on the cancel button', () => {
 		let decided: string | null = null;
 		const modal = open({ onConfirm: () => (decided = 'confirm'), onCancel: () => (decided = 'cancel') });
