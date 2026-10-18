@@ -394,13 +394,19 @@ export const en = {
 	'iteration.close': 'Close iteration',
 	'iteration.closed': 'Closed',
 	'iteration.closeTitle': 'Close {name}?',
+	'iteration.closeEmpty': 'Nothing is committed to this iteration.',
 	'iteration.closeAllDone': 'Every item in this iteration is resolved.',
 	'iteration.closeUnfinished': {
-		one: '{count} item is not resolved yet.',
-		other: '{count} items are not resolved yet.',
+		one: '{count} of {total} items is not resolved yet.',
+		other: '{count} of {total} items are not resolved yet.',
 	},
 	'iteration.closeNoNext': 'There is no later iteration to move them to, so they stay in this one.',
-	'iteration.closeAndMove': 'Close and move to {next}',
+	'iteration.closeNoEnd': 'This iteration has no end date, so no next one is known and they stay in this one.',
+	'iteration.closeAndMove': {
+		one: 'Close and move {count} item to {next}',
+		other: 'Close and move {count} items to {next}',
+	},
+	'iteration.closeChanged': 'The iteration changed while the dialog was open. Nothing was written; try again.',
 	'iteration.closeOnly': 'Close only',
 	'iteration.closedNotice': 'Closed {name}',
 	'iteration.closedMovedNotice': {

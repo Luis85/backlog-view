@@ -57,11 +57,12 @@ carry ride **one batch**, so the one undo slot takes the whole close back.
 
 **Extensions**
 
-- **2a — every member is Resolved.** The confirmation says so and offers `Close iteration`
-  alone: there is nothing to carry.
+- **2a — every member is Resolved, or nothing is committed.** The confirmation says which
+  and offers `Close iteration` alone: there is nothing to carry.
 - **3a — there is no later iteration.** The confirmation says the work stays in this one
   and offers `Close iteration` alone. Creating the next sprint first is
-  [[Creating an iteration from the board]].
+  [[Creating an iteration from the board]]. An iteration with no end date says that
+  instead, because later sprints may exist and none of them is "after" it.
 - **3b — which iteration is "next".** The earliest dated, open iteration that sorts after
   this one — by target, then start, then path, the order `previousIteration` already
   keeps — so the create dialog and the close never disagree about which sprint follows
@@ -71,13 +72,27 @@ carry ride **one batch**, so the one undo slot takes the whole close back.
 - **4a — "unfinished".** A RESULT the board does not draw in its Resolved column — the
   board's own bucket reading, so what moves is exactly what the reader sees as open or in
   progress. A context row is never written, whatever it holds.
-- **4b — Cancel, Escape or the close box.** Nothing is written.
+- **4b — Cancel, Escape or the close box.** Nothing is written, and focus goes back to
+  the close button.
+- **4c — the unfinished work changed while the dialog was open** (a sync finished a member,
+  or added one). The confirm re-reads the members and refuses with a notice rather than
+  writing a carry the reader did not see.
+- **4d — a Deliverable whose own workflow uses another state key.** It is judged by the
+  product state, as the board draws it, so one finished only in its own workflow is
+  carried. The board and the close agree, which is the point.
+- **5a — the base filters out done items.** The write takes the iteration out of the
+  results, the board falls back to another scope, and the Closed mark is not seen. That is
+  the general "a write can take its own note out of the base" case, not a rule of this one.
+- **5b — focus after a close** lands on the Closed mark, so the change is announced where
+  the reader is.
 
 ## Acceptance criteria
 
 - The header draws `Close iteration` on an open iteration, a static `Closed` mark on a
   closed one, and nothing with no state property or no done value.
-- The confirmation lists the unfinished members and only those.
+- The confirmation lists the unfinished members and only those, and says "N of M".
+- A context row naming the iteration is neither listed nor written.
+- A change to the unfinished members while the dialog is open refuses the close.
 - `Close and move to <next>` writes the iteration's done state and moves each unfinished
   member to the next iteration with its dates, in one batch that one undo takes back.
 - `Close only` writes the iteration's state and nothing else.

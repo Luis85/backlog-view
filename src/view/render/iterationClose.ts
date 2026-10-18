@@ -1,8 +1,8 @@
 import { Notice } from 'obsidian';
 import { t } from '../../i18n/t';
 import { BacklogViewHost } from '../host';
-import { BacklogItem } from '../../domain/model';
-import { BacklogSettings } from '../../domain/settings';
+import { BacklogItem, iterationResults } from '../../domain/model';
+import { statedEnds } from '../../domain/bars';
 import { followingIteration, isIterationClosed, iterationCloseWrites, unfinishedMembers } from '../../domain/iterations';
 import { todayStamp } from '../../domain/noteFields';
 import { openConfirm } from '../../ui/confirmDialog';
@@ -19,12 +19,13 @@ export function renderIterationClose(
 	titlebar: HTMLElement,
 	boardEl: HTMLElement,
 	iteration: BacklogItem,
-	population: BacklogItem[],
 ): void {
 	const settings = host.settings;
 	if (!settings.stateKey || settings.doneValues.length === 0) return;
 	if (isIterationClosed(iteration, settings)) {
-		titlebar.createSpan({ cls: 'pbl-iteration-closed', text: t('iteration.closed') });
+		// Focusable by script alone, so the close can land focus on the mark that says what
+		// happened rather than on a mode button that says nothing about it.
+		titlebar.createSpan({ cls: 'pbl-iteration-closed', text: t('iteration.closed'), attr: { tabindex: '-1' } });
 		return;
 	}
 	const btn = titlebar.createEl('button', {
@@ -32,49 +33,70 @@ export function renderIterationClose(
 		text: t('iteration.close'),
 		attr: { type: 'button' },
 	});
-	btn.addEventListener('click', () => askThenClose(host, boardEl, { iteration, population, settings }));
+	btn.addEventListener('click', () => askThenClose(host, boardEl, iteration.file.path));
 }
 
-/** What the reader saw at the press. The batch is planned from it, never from the live view. */
-interface Pressed {
-	iteration: BacklogItem;
-	population: BacklogItem[];
-	settings: BacklogSettings;
+/** The members still unfinished, read off the model as it is NOW. */
+function unfinishedNow(host: BacklogViewHost, path: string): BacklogItem[] {
+	return host.model ? unfinishedMembers(iterationResults(host.model, path), host.settings) : [];
+}
+
+/** Why the carry has no target: no later sprint, or no end date to be later than. */
+function noNextNote(iteration: BacklogItem): string {
+	return statedEnds(iteration).target.value === null ? t('iteration.closeNoEnd') : t('iteration.closeNoNext');
 }
 
 /**
- * Everything the dialog shows is captured at the PRESS: the refresh a write ends with
- * rebuilds the model, and what the reader confirms is what the screen showed them.
+ * Everything the dialog shows is read at the PRESS, and the confirm re-reads it: what the
+ * reader agreed to is what the screen showed them, so a change underneath — a member
+ * finished or added by a sync while the dialog is up — refuses rather than writing a
+ * carry nobody saw.
  */
-function askThenClose(host: BacklogViewHost, boardEl: HTMLElement, pressed: Pressed): void {
-	const { iteration, settings } = pressed;
-	const unfinished = unfinishedMembers(pressed.population, settings);
+function askThenClose(host: BacklogViewHost, boardEl: HTMLElement, path: string): void {
+	const iteration = host.model?.byPath.get(path);
+	if (!iteration) return;
+	const settings = host.settings;
+	const population = host.model ? iterationResults(host.model, path).filter((item) => !item.outsideFilter) : [];
+	const unfinished = unfinishedMembers(population, settings);
 	const next = host.model ? followingIteration(host.model.byPath.values(), iteration, settings) : null;
 	const carry = next !== null && unfinished.length > 0 ? next : null;
-	const close = (moveTo: BacklogItem | null) => () =>
-		void submit(host, boardEl, { ...pressed, population: unfinished }, moveTo);
+	const seen = unfinished.map((item) => item.file.path).join('\n');
+	const close = (moveTo: BacklogItem | null) => () => {
+		if (unfinishedNow(host, path).map((item) => item.file.path).join('\n') !== seen) {
+			new Notice(t('iteration.closeChanged'));
+			return;
+		}
+		void submit(host, boardEl, { iteration, unfinished, next: moveTo });
+	};
 	openConfirm(host.app, {
 		title: t('iteration.closeTitle', { name: iteration.title }),
-		message:
-			unfinished.length === 0
-				? t('iteration.closeAllDone')
-				: t('iteration.closeUnfinished', { count: unfinished.length }),
-		note: unfinished.length > 0 && next === null ? t('iteration.closeNoNext') : undefined,
+		message: closeMessage(population.length, unfinished.length),
+		note: unfinished.length > 0 && next === null ? noNextNote(iteration) : undefined,
 		links: unfinished.map((item) => ({ label: item.title, open: () => host.openItemIn(item, 'tab') })),
-		cta: carry ? t('iteration.closeAndMove', { next: carry.title }) : t('iteration.close'),
+		cta: carry ? t('iteration.closeAndMove', { count: unfinished.length, next: carry.title }) : t('iteration.close'),
 		onConfirm: close(carry),
 		alternative: carry ? { cta: t('iteration.closeOnly'), onConfirm: close(null) } : undefined,
 		onClosed: () => focusAfterDialog(boardEl),
 	});
 }
 
+/** Three answers: nothing committed, everything resolved, or how much is left of how much. */
+function closeMessage(total: number, unfinished: number): string {
+	if (total === 0) return t('iteration.closeEmpty');
+	if (unfinished === 0) return t('iteration.closeAllDone');
+	return t('iteration.closeUnfinished', { count: unfinished, total });
+}
+
 /**
  * Back on a control on every way out — before the write, so its redraw finds focus in the
- * header, and again after it, because a close replaces its own button with the Closed
+ * header, and again after it, when a close has replaced its own button with the Closed
  * mark. QUERIED rather than captured: a redraw while the dialog is up detaches the button.
+ * The mode button is the last resort, for a close whose base filter took the iteration
+ * out of its results and so drew no mark.
  */
 function focusAfterDialog(boardEl: HTMLElement): void {
-	for (const selector of ['.pbl-iteration-close', '.pbl-iteration-mode button[aria-pressed="true"]']) {
+	const selectors = ['.pbl-iteration-close', '.pbl-iteration-closed', '.pbl-iteration-mode button[aria-pressed="true"]'];
+	for (const selector of selectors) {
 		const el = boardEl.querySelector<HTMLElement>(selector);
 		if (el !== null) {
 			el.focus();
@@ -83,17 +105,15 @@ function focusAfterDialog(boardEl: HTMLElement): void {
 	}
 }
 
-/** `pressed.population` is the UNFINISHED members here — the ones a carry would move. */
 async function submit(
 	host: BacklogViewHost,
 	boardEl: HTMLElement,
-	pressed: Pressed,
-	next: BacklogItem | null,
+	plan: { iteration: BacklogItem; unfinished: BacklogItem[]; next: BacklogItem | null },
 ): Promise<void> {
-	const { iteration, population: unfinished, settings } = pressed;
-	const outcome = await host.applySafely(iterationCloseWrites(iteration, unfinished, next, settings, todayStamp()));
+	const { iteration, unfinished, next } = plan;
+	const outcome = await host.applySafely(iterationCloseWrites(iteration, unfinished, next, host.settings, todayStamp()));
 	focusAfterDialog(boardEl);
-	if (outcome === null) return;
+	if (outcome === null || !outcome.changed) return;
 	const name = iteration.title;
 	new Notice(
 		next === null

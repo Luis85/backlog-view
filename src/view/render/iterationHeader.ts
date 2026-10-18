@@ -32,7 +32,7 @@ export function renderIterationHeader(
 	// The switch and the close control sit together at the titlebar's end.
 	const actions = titlebar.createDiv({ cls: 'pbl-iteration-actions' });
 	renderModeSwitch(host, actions, boardEl);
-	renderIterationClose(host, actions, boardEl, iteration, population);
+	renderIterationClose(host, actions, boardEl, iteration);
 	renderGoal(host, headerEl, iteration);
 	const meta = headerEl.createDiv({ cls: 'pbl-iteration-meta' });
 	const stated = statedEnds(iteration);
