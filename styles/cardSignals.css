@@ -1,5 +1,7 @@
 /* What an iteration card says needs talking about — `src/view/render/cardSignals.ts`.
-   Text, never controls: small tinted labels that wrap under the parent line. */
+   Text, never controls: small labels that wrap under the parent line. Labels stay in a
+   readable text colour. Blocked and Overdue are Attention Orange on the ICON and a faint
+   tint; risk and priority are data, so they carry no hue (DESIGN.md, The Spent Colour Rule). */
 .pbl-card-signals {
 	display: flex;
 	flex-wrap: wrap;
@@ -26,19 +28,18 @@
 	height: var(--icon-xs);
 }
 
-.pbl-signal-blocked {
-	color: var(--text-error);
-	background-color: rgba(var(--color-red-rgb), 0.12);
-}
-
+.pbl-signal-blocked,
 .pbl-signal-overdue {
-	color: var(--color-orange);
+	color: var(--text-normal);
+	background-color: rgba(var(--color-orange-rgb), 0.12);
 }
 
-.pbl-signal-risk {
-	color: var(--color-yellow);
+.pbl-signal-blocked .pbl-signal-icon,
+.pbl-signal-overdue .pbl-signal-icon {
+	color: rgb(var(--color-orange-rgb));
 }
 
+.pbl-signal-risk,
 .pbl-signal-priority {
 	color: var(--text-muted);
 	background-color: var(--background-modifier-hover);
