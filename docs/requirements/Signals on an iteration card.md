@@ -34,7 +34,7 @@ the card's own menu stay the ways to change any of them.
 | **Actor** | The team at a stand-up, or the backlog owner planning |
 | **Trigger** | The iteration board draws a card |
 | **Preconditions** | The board is scoped to one iteration ([[A board scoped to one iteration]]) |
-| **Guarantee** | A signal is text: it adds no control, no tab stop and no write. Only the iteration board draws them — one gate in `renderCardBody` asks the projection — and the product board is checked to draw none for the same item. |
+| **Guarantee** | A signal is text: it adds no control, no tab stop and no write. Only the iteration board draws all four — one gate in `renderCardBody` asks `cardSignalSet` — and the product board is checked to draw none for the same item. The horizon board draws three since [[Signals on a horizon card]]. |
 
 **Main flow**
 
@@ -126,8 +126,8 @@ the card's own menu stay the ways to change any of them.
 `item.prerequisites` (resolved by `src/domain/dependencies.ts`, which reads no excluded
 note's own list) and the item's planned target, with `today` passed in.
 `src/view/render/cardSignals.ts` draws the row, and `renderCardBody` in
-`src/view/render/board.ts` calls it only when the projection is the iteration board — for
-the column cards and the shelf cards alike. Risk and priority are read off the item as the
+`src/view/render/board.ts` calls it when `cardSignalSet` (`src/view/projection.ts`) names a set — on
+this board, for the column cards and the shelf cards alike. Risk and priority are read off the item as the
 tree reads them. ADR 0027 carries the dated amendment that lets these two kinds onto this
 board's cards as text rather than as cells. The look is `styles/cardSignals.css`. Rules in
 `test/domain/iterationDaily.test.ts`; the drawn signals in

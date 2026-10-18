@@ -307,7 +307,8 @@
 .pbl-bucket-stray {
 	display: flex;
 	align-items: center;
-	color: var(--text-faint);
+	/* Muted, not faint: the mark is the only visible sign the bucket is undeclared. */
+	color: var(--text-muted);
 }
 
 .pbl-bucket-stray .svg-icon {

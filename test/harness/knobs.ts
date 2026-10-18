@@ -48,7 +48,8 @@ export function openWantedDialog(view: ProductBacklogView, containerEl: HTMLElem
 
 /**
  * `?shelf` opens the roadmap's shelf, `?focus=PBI` sets the focus level, and on an iteration
- * board (`?scope=`) `?daily` switches to Daily and `?spot=Dana` spotlights that person.
+ * board (`?scope=`) `?daily` switches to Daily and `?spot=Dana` spotlights that person;
+ * `?present` switches the horizon board to Present.
  *
  * Both are UI state the view already stores, and both hide a whole surface behind a
  * control: the shelf draws its groups, their counts, each card's shelving REASON, the sort
@@ -64,6 +65,7 @@ export function applyWantedState(view: ProductBacklogView, search: string): void
 	// The iteration board's two header controls — the Daily switch, and a person chip by its
 	// name — each the call or the press the control itself makes. Only on an iteration board.
 	if (params.has('daily')) view.setIterationDaily(true);
+	if (params.has('present')) view.setHorizonPresent(true);
 	const spot = params.get('spot');
 	const chip = Array.from(view.viewEl.querySelectorAll<HTMLElement>('.pbl-iteration-person')).find(
 		(el) => el.querySelector('.pbl-iteration-person-name')?.textContent === spot,

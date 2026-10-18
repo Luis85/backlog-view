@@ -47,6 +47,7 @@ describe('a UI-state value set to what it already is', () => {
 		view.setFocusLevel('');
 		view.setClickFolds(view.clickFolds);
 		view.setIterationDaily(view.iterationDaily);
+		view.setHorizonPresent(view.horizonPresent);
 		view.setShowCompleted(view.showCompleted);
 		view.setBucketGrid(view.bucketGrid);
 		view.setShelfCollapsed(view.shelfCollapsed);

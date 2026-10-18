@@ -30,6 +30,8 @@ import {
 } from '../../domain/board';
 import { childTypeChoices, focusTarget, isDeliverableType } from '../../domain/itemTypes';
 import { BacklogItem, inPlan } from '../../domain/model';
+import { activeAxis } from '../../domain/roadmap';
+import { cardSignalSet } from '../projection';
 
 /** What differs between the two board-shaped projections' render passes. */
 export interface BoardRenderOptions {
@@ -117,7 +119,7 @@ export function renderBoard(
 	board: BoardModel,
 	opts: BoardRenderOptions,
 ): BoardSnapshot {
-	renderBoardInstructions(boardEl);
+	renderPaneInstructions(boardEl, t('board.instructions'));
 	const colsEl = boardEl.createDiv({ cls: 'pbl-board-cols' });
 	// A done column holding finished work and nothing else folds itself the first time that
 	// is true of it — the tree's own once-only default, asked of the column rather than of
@@ -269,7 +271,8 @@ export function renderDeliverablesBoard(ctx: RowContext, boardEl: HTMLElement, d
 }
 
 /**
- * What the board can do without a pointer, told rather than left to be discovered.
+ * What the board — or the horizon board, which passes its own text — can do without a
+ * pointer, told rather than left to be discovered.
  * Visually hidden and attached with `aria-describedby`, so it is read once when
  * focus arrives on the board and never again — the shortcuts are exactly the part
  * a screen-reader user cannot see a hint for, and a drag they cannot make is not
@@ -283,14 +286,14 @@ export function renderDeliverablesBoard(ctx: RowContext, boardEl: HTMLElement, d
  * clean — and a referenced description is still read from a hidden element, which
  * is the whole reason the visually-hidden-description pattern works at all.
  */
-function renderBoardInstructions(boardEl: HTMLElement): void {
-	const help = boardEl.createDiv({
+export function renderPaneInstructions(paneEl: HTMLElement, text: string): void {
+	const help = paneEl.createDiv({
 		cls: 'pbl-sr-only',
 		attr: { 'aria-hidden': 'true' },
-		text: t('board.instructions'),
+		text,
 	});
 	help.id = uniqueElementId('pbl-board-help');
-	boardEl.setAttribute('aria-describedby', help.id);
+	paneEl.setAttribute('aria-describedby', help.id);
 }
 
 /**
@@ -633,8 +636,13 @@ export function renderCardBody(
 		parent.createSpan({ text: item.parent.title });
 		setTooltip(parent, t('board.cardParent', { title: item.parent.title }));
 	}
-	// What the stand-up needs to talk about — the iteration board's alone.
-	if (host.projection === 'iteration') renderCardSignals(ctx, card, item);
+	// What the stand-up needs to talk about on the iteration board, and what a stakeholder
+	// needs to hear on the horizon board — `cardSignalSet` says which signals, per projection.
+	const signalSet = cardSignalSet(
+		host.projection,
+		host.projection === 'roadmap' ? activeAxis(host.settings, host.axisPick) : null,
+	);
+	if (signalSet) renderCardSignals(ctx, card, item, signalSet);
 
 	// A card draws the plain columns, the tag pills, and the assignee chip. State and
 	// horizon stay chips of the TREE only: a board card's column already IS its state
@@ -644,8 +652,8 @@ export function renderCardBody(
 	// its row's chip shape rather than becoming a value with no edit affordance. Risk is
 	// in the identical position and stays excluded regardless, not by the same argument:
 	// nobody has asked for it as a card CELL (ADR 0027 records the amendments and their
-	// scope — the iteration board draws risk and priority as read-only signals above, not
-	// as cells). Filtered from the ONE resolved list rather than resolved a second time —
+	// scope — the iteration board and the horizon board draw risk and priority as
+	// read-only signals above, not as cells). Filtered from the ONE resolved list rather than resolved a second time —
 	// two derivations of "what is on screen" is how the tag menu once came to offer
 	// editing for a column the renderer had skipped.
 	//

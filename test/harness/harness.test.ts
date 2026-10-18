@@ -175,6 +175,22 @@ describe('the browser harness mounts', () => {
 		expect(view.spotlight).toBe('Dana.md');
 		expect(containerEl.querySelector('.pbl-spot-dim')).not.toBeNull();
 	});
+
+	it('draws the horizon board for stakeholders: header, bucket progress, and Present by URL', () => {
+		const { view, containerEl } = mount();
+
+		view.setProjection('roadmap');
+		view.setAxisPick('horizons');
+
+		expect(containerEl.querySelector('.pbl-horizon-header')).not.toBeNull();
+		expect(containerEl.querySelector('.pbl-bucket-progress')).not.toBeNull();
+		expect(containerEl.querySelector('.pbl-shelf')).not.toBeNull();
+
+		// `?present`, the header switch a screenshot cannot press.
+		applyWantedState(view, '?present');
+		expect(view.horizonPresent).toBe(true);
+		expect(containerEl.querySelector('.pbl-shelf')).toBeNull();
+	});
 });
 
 /**

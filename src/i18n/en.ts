@@ -145,6 +145,18 @@ export const en = {
 		one: '{name}, collapsed, {count} item',
 		other: '{name}, collapsed, {count} items',
 	},
+	/** An undeclared horizon bucket's group label — the stray mark's fact, said in the name. */
+	'roadmap.groupLabelUndeclared': {
+		one: '{name}, not a declared horizon, {count} item',
+		other: '{name}, not a declared horizon, {count} items',
+	},
+	'roadmap.groupLabelUndeclaredCollapsed': {
+		one: '{name}, not a declared horizon, collapsed, {count} item',
+		other: '{name}, not a declared horizon, collapsed, {count} items',
+	},
+	/** A horizon card's `aria-description`; `{bucket}` is the bucket's own value. */
+	'roadmap.cardInBucket': 'In {bucket}',
+	'roadmap.contextCardInBucket': "In {bucket}, outside this base's filter — shown for context",
 	'lane.absenceClash': {
 		one: 'Crosses an absence, {cost}: {spans}',
 		other: 'Crosses {count} absences, {cost}: {spans}',
@@ -424,6 +436,9 @@ export const en = {
 	/** The board's hidden shortcut instructions, read by `aria-describedby`. */
 	'board.instructions':
 		'Arrow keys move between cards and columns. Alt with left or right arrow moves the selected card one column, writing the same change a drop writes. The menu key opens the card menu, where set state offers every column — the path that works without a drag on every device. Enter opens the note.',
+	/** The horizon board's own, read the same way — `handleRoadmapKeydown`'s keys. */
+	'roadmap.instructions':
+		'Arrow keys move between cards, the shelf first, then each horizon. Home and End reach the first and last card. Alt with left or right arrow moves the selected card one horizon, writing the same change a drop writes. The menu key opens the card menu, where set horizon offers every horizon — the path that works without a drag on every device. Enter opens the note.',
 
 	/**
 	 * The shelf and the context strip beside it. `{span}` is a rendered date range and
@@ -456,6 +471,21 @@ export const en = {
 		'"{value}" is not one of the declared horizons. Add it to "{horizonsOption}" in the view options, or re-place its items.',
 	'roadmap.newInBucket': 'New {type} in {bucket}',
 	'roadmap.newInBucketTooltip': 'New {type} in "{bucket}"',
+
+	/**
+	 * The horizon board's header, its bucket progress and the Present/Plan switch. The
+	 * bucket name in `horizons.bucketCount` is the user's own placement value — data.
+	 */
+	'horizons.kicker': 'Roadmap',
+	'horizons.title': 'Horizons',
+	'horizons.bucketCount': '{bucket} {count}',
+	'horizons.unplaced': { one: '{count} not yet placed', other: '{count} not yet placed' },
+	'horizons.bucketProgress': '{resolved} of {total} done',
+	'horizons.modeLabel': 'Roadmap mode',
+	'horizons.modePresent': 'Present',
+	'horizons.modePlan': 'Plan',
+	'horizons.modePresentTip': 'For a meeting: hide the shelf and the editing controls',
+	'horizons.modePlanTip': 'For planning: show the shelf to place work',
 
 	/**
 	 * The timeline's key. Four of the five name FURNITURE this view draws; `legend.done`

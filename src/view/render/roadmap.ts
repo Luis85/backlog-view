@@ -1,11 +1,12 @@
 import { setTooltip } from 'obsidian';
 import { formatNumber, t } from '../../i18n/t';
 import { drawIcon } from './icons';
-import { createCard, renderCardBody, renderColumnFold, wireCardActivation } from './board';
+import { createCard, renderCardBody, renderColumnFold, renderPaneInstructions, wireCardActivation } from './board';
 import { RowContext } from './columns';
 import { guidanceShell, renderAllDoneState, renderEmptyState } from './emptyStates';
 import { renderContextStrip } from './contextStrip';
 import { renderShelf, ShelfInput, shelfRemoval } from './shelf';
+import { bucketProgress, renderBucketProgress, renderHorizonHeader } from './horizonHeader';
 import { syncShelfTabStops } from './shelfControls';
 import { datedEntries, laneEntries } from './lanes';
 import { renderTimeline, TimelineRender } from './timeline';
@@ -15,7 +16,7 @@ import { newItemType, promptCreateItem } from '../interactions/create';
 import { gestureAt, previewer, submitGesture, TimelineParts, wireTimelineDrag } from '../interactions/timelineDrag';
 import { StatePalette, statePalettes } from '../../domain/board';
 import { isMarkerType } from '../../domain/itemTypes';
-import { BacklogItem } from '../../domain/model';
+import { BacklogItem, BacklogModel } from '../../domain/model';
 import {
 	AssignableLane,
 	axisPopulation,
@@ -28,6 +29,7 @@ import {
 } from '../../domain/roadmap';
 import { scaleFor, TimelineScale, TimelineWindow } from '../../domain/timeline';
 import { CivilDate } from '../../domain/noteFields';
+import { IterationProgress } from '../../domain/iterationDaily';
 
 /**
  * The roadmap projection: the same model the tree and the board render,
@@ -99,27 +101,9 @@ export function renderRoadmap(
 	// legend — see `RoadmapSnapshot.palettes`. Empty on the horizon axis, which draws no bar.
 	let palettes: StatePalette[] = [];
 	const removal = shelfRemoval(host, axis);
-	let shelf: { cards: BacklogItem[]; el: HTMLElement };
+	let shelf: { cards: BacklogItem[]; el: HTMLElement } | null;
 	if (axis === 'horizons') {
-		// The shelf LEADS this board — first in the frame and first in the keyboard walk
-		// (asked for directly, 2026-08-17): a drag from the untriaged rest into a bucket is
-		// the board's whole job, so its source sits above the columns rather than after the
-		// tallest of them. The board's own no-state strip leads its columns for the same
-		// reason, and the Alt+arrow ladder has led with the shelf all along — the frame now
-		// says what the ladder already did. `dependencyConflicts` is still its initial
-		// empty map here, which is this axis's value of it.
-		shelf = renderShelf(ctx, frameEl, shelfInput(host, roadmap, dependencyConflicts, axis), dnd, removal);
-		cards.push(...shelf.cards);
-		// The layout pick rides the ROW rather than each bucket: one class where the buckets
-		// are created, read by `.pbl-bucket-cards` in `styles/roadmap.css`, so a bucket that
-		// renders knows nothing about it.
-		const bucketsEl = frameEl.createDiv({
-			cls: 'pbl-roadmap-buckets' + (host.bucketGrid ? '' : ' pbl-buckets-list'),
-		});
-		for (const bucket of roadmap.buckets) cards.push(...renderBucket(ctx, bucketsEl, bucket, dnd));
-		// The pane is the scroller, not the frame: the frame is `max-content` wide and
-		// scrolls nothing, so auto-scroll toward an edge has to watch the box that does.
-		dnd.wireScroller(treeEl);
+		shelf = renderHorizonAxis(ctx, frameEl, treeEl, roadmap, { dnd, removal, cards, model });
 	} else {
 		// Both grid axes through ONE call: what differs between them is the entry list and
 		// whether a bar may be taken hold of — never a second grid.
@@ -154,7 +138,7 @@ export function renderRoadmap(
 	// `cards` is final here, and it is what the pane's `listbox`/`region` role is decided
 	// from downstream — so it is also what decides whether the shelf's own controls may
 	// leave the tab order. See `syncShelfTabStops`.
-	syncShelfTabStops(shelf.el, cards.length > 0);
+	if (shelf) syncShelfTabStops(shelf.el, cards.length > 0);
 	const advisoryEl = renderRoadmapAdvisory(
 		ctx,
 		frameEl,
@@ -168,7 +152,7 @@ export function renderRoadmap(
 	// simply absent, so `captureScroll`/`restoreScroll` neither read nor write it.
 	const boxes: ScrollBox[] = [];
 	if (scroller) boxes.push({ key: 'timeline', el: scroller });
-	boxes.push({ key: 'shelf', el: shelf.el });
+	if (shelf) boxes.push({ key: 'shelf', el: shelf.el });
 	if (context.el) boxes.push({ key: 'context', el: context.el });
 	if (advisoryEl) boxes.push({ key: 'advisory', el: advisoryEl });
 
@@ -176,7 +160,7 @@ export function renderRoadmap(
 		roadmap,
 		cards,
 		placed: ctx.placed,
-		shelfEl: shelf.el,
+		shelfEl: shelf?.el ?? null,
 		todayLeft,
 		scroller,
 		boxes,
@@ -188,6 +172,57 @@ export function renderRoadmap(
 	};
 }
 
+
+/** What the horizon axis draws beside `renderRoadmap`'s shared tail — grouped so the frame stays one read. */
+interface HorizonDrawing {
+	dnd: CardDragController;
+	removal: ReturnType<typeof shelfRemoval>;
+	cards: BacklogItem[];
+	model: BacklogModel;
+}
+
+/** The horizon axis: header, shelf (absent in Present), then the buckets. Returns the shelf drawn, if any. */
+function renderHorizonAxis(
+	ctx: RowContext,
+	frameEl: HTMLElement,
+	treeEl: HTMLElement,
+	roadmap: RoadmapModel,
+	{ dnd, removal, cards, model }: HorizonDrawing,
+): { cards: BacklogItem[]; el: HTMLElement } | null {
+	const host = ctx.host;
+	// The board's hidden shortcut help, with this axis's own keys. The grid axes carry
+	// none yet: their moves differ (Alt+Up/Down on resources, none on dates).
+	renderPaneInstructions(treeEl, t('roadmap.instructions'));
+	// The shelf LEADS this board — first in the frame and first in the keyboard walk
+	// (asked for directly, 2026-08-17): a drag from the untriaged rest into a bucket is
+	// the board's whole job, so its source sits above the columns rather than after the
+	// tallest of them. The board's own no-state strip leads its columns for the same
+	// reason, and the Alt+arrow ladder has led with the shelf all along — the frame now
+	// says what the ladder already did. The empty conflicts map is this axis's value of
+	// them: a shelved dependent's stated start means nothing here.
+	renderHorizonHeader(host, frameEl, treeEl, roadmap);
+	// Present hides the shelf, the New buttons and — by the frame's class, in
+	// `styles/roadmap.css` — the invitation chips. It hides; every move still writes.
+	frameEl.toggleClass('pbl-roadmap-present', host.horizonPresent);
+	const shelf = host.horizonPresent
+		? null
+		: renderShelf(ctx, frameEl, shelfInput(host, roadmap, new Map(), 'horizons'), dnd, removal);
+	cards.push(...(shelf?.cards ?? []));
+	const progressOf = bucketProgress(host, model);
+	// The layout pick rides the ROW rather than each bucket: one class where the buckets
+	// are created, read by `.pbl-bucket-cards` in `styles/roadmap.css`, so a bucket that
+	// renders knows nothing about it.
+	const bucketsEl = frameEl.createDiv({
+		cls: 'pbl-roadmap-buckets' + (host.bucketGrid ? '' : ' pbl-buckets-list'),
+	});
+	for (const bucket of roadmap.buckets) {
+		cards.push(...renderBucket(ctx, bucketsEl, bucket, dnd, progressOf(bucket.value)));
+	}
+	// The pane is the scroller, not the frame: the frame is `max-content` wide and
+	// scrolls nothing, so auto-scroll toward an edge has to watch the box that does.
+	dnd.wireScroller(treeEl);
+	return shelf;
+}
 
 /** What a grid axis needs to draw — grouped so `renderGridAxis` stays inside max-params. */
 interface GridDrawing {
@@ -393,6 +428,7 @@ function renderBucket(
 	bucketsEl: HTMLElement,
 	bucket: HorizonBucket,
 	dnd: CardDragController,
+	progress: IterationProgress,
 ): BacklogItem[] {
 	// No auto-fold on this axis, so the answer is always `false`: an axis has no notion of
 	// finished, which is the one thing a board column's own default is about.
@@ -407,10 +443,9 @@ function renderBucket(
 			// Folded is said in the NAME, `columnLabel`'s reason on the board: the count
 			// deliberately survives the fold, so a bucket that stayed silent about it would
 			// announce items it is not drawing.
-			'aria-label': t(folded ? 'roadmap.groupLabelCollapsed' : 'roadmap.groupLabel', {
-				name: bucket.value,
-				count: bucket.count,
-			}),
+			// An undeclared bucket says so here too: its tooltip sits on the stray mark, since
+			// `setTooltip` on this element would overwrite this label in Obsidian.
+			'aria-label': t(bucketLabelKey(bucket.declared, folded), { name: bucket.value, count: bucket.count }),
 		},
 	});
 	const header = colEl.createDiv({ cls: 'pbl-bucket-header' });
@@ -421,11 +456,12 @@ function renderBucket(
 		const mark = header.createSpan({ cls: 'pbl-bucket-stray' });
 		drawIcon(mark, 'circle-help');
 		setTooltip(
-			colEl,
+			mark,
 			t('roadmap.undeclaredBucket', { value: bucket.value, horizonsOption: t('option.horizonValues') }),
 		);
 	}
-	renderBucketNew(ctx, header, bucket);
+	if (!ctx.host.horizonPresent) renderBucketNew(ctx, header, bucket);
+	if (!folded && progress.total > 0) renderBucketProgress(colEl, progress);
 	const cardsEl = colEl.createDiv({ cls: 'pbl-bucket-cards' });
 	// Folded, this bucket draws no card and RETURNS none, which is the whole of what the
 	// fold costs the rest of the pane: `cards` is the keyboard's walk and what the pane's
@@ -435,6 +471,13 @@ function renderBucket(
 	for (const item of drawn) {
 		const card = createCard(ctx, cardsEl, item);
 		renderCardBody(ctx, card, item);
+		// A description, not a label (the context card's reason): arrowing from Now into
+		// Next is announced without replacing the card's content-derived name.
+		// A context card's one sentence says both facts, so neither overwrites the other.
+		card.setAttribute(
+			'aria-description',
+			t(item.outsideFilter ? 'roadmap.contextCardInBucket' : 'roadmap.cardInBucket', { bucket: bucket.value }),
+		);
 		wireCardActivation(ctx, card, item);
 		ctx.placed.add(item.file.path);
 		dnd.wireCard(card, item);
@@ -446,6 +489,14 @@ function renderBucket(
 	dnd.wireDropTarget(colEl, (source) => void ctx.host.performHorizonMove(source.item, bucket.value));
 	dnd.wireScroller(cardsEl);
 	return drawn;
+}
+
+/** A bucket's group label: whole sentences per case, never pieces joined. */
+function bucketLabelKey(declared: boolean, folded: boolean) {
+	if (declared && folded) return 'roadmap.groupLabelCollapsed';
+	if (declared) return 'roadmap.groupLabel';
+	if (folded) return 'roadmap.groupLabelUndeclaredCollapsed';
+	return 'roadmap.groupLabelUndeclared';
 }
 
 /**
