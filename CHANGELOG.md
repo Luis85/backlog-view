@@ -26,6 +26,7 @@ See [RELEASING.md](RELEASING.md) for how this file is kept in step with a releas
 
 ### Added
 
+- The iteration board can close its iteration, and move the unfinished items into the next iteration in the same step, which one undo takes back.
 - The horizon board opens with a header that counts each horizon and what is not yet placed, each bucket says how much of it is done, and a Present / Plan switch hides the shelf, the New buttons and the invitation chips for a stakeholder meeting.
 - Horizon board cards show Blocked, risk and priority signals, like iteration cards but without Overdue.
 

@@ -22,6 +22,11 @@ export interface ConfirmOptions {
 	note?: string;
 	cta: string;
 	onConfirm: () => void;
+	/**
+	 * A second way to say yes, drawn after the CTA as a plain button — for a decision with
+	 * two affirmative answers ("close and move", "close only"). Cancel stays the only no.
+	 */
+	alternative?: { cta: string; onConfirm: () => void };
 	onCancel?: () => void;
 	/**
 	 * Say when the dialog went away, BEFORE the decision runs — `ui/prompts.ts`'s own
@@ -58,16 +63,24 @@ export function openConfirm(app: App, options: ConfirmOptions): void {
 		});
 		row.addEventListener('click', () => link.open());
 	}
-	let confirmed = false;
+	let decided: (() => void) | null = null;
 	// `modal-button-container` with plain buttons, the shape `newReleaseDialog` already
 	// uses — `mod-cta` is Obsidian's own primary styling, so the affirmative button needs
 	// no rule of this plugin's to look like one.
 	const actions = modal.contentEl.createDiv({ cls: 'modal-button-container' });
 	const confirm = actions.createEl('button', { cls: 'mod-cta', text: options.cta });
 	confirm.addEventListener('click', () => {
-		confirmed = true;
+		decided = options.onConfirm;
 		modal.close();
 	});
+	const alternative = options.alternative;
+	if (alternative) {
+		const alt = actions.createEl('button', { cls: 'pbl-confirm-alternative', text: alternative.cta });
+		alt.addEventListener('click', () => {
+			decided = alternative.onConfirm;
+			modal.close();
+		});
+	}
 	const cancel = actions.createEl('button', { cls: 'pbl-confirm-cancel', text: t('confirm.cancel') });
 	cancel.addEventListener('click', () => modal.close());
 	// `onClose` rather than a handler beside each button, so the escape key and the close
@@ -76,7 +89,7 @@ export function openConfirm(app: App, options: ConfirmOptions): void {
 		// BEFORE the decision, which is the whole of the ordering: the confirm path writes
 		// and redraws, and focus has to be back on the opener before that redraw reads it.
 		options.onClosed?.();
-		if (confirmed) options.onConfirm();
+		if (decided) decided();
 		else options.onCancel?.();
 	};
 	modal.open();

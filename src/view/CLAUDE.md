@@ -525,11 +525,11 @@ free of runtime code so imports stay cycle-free.
   reader reads a separator in either position. That one is a live-vault item in
   `docs/tests/suites/Smoke test the roadmap.md`.
   **The iteration header pays it a fifth time** (2026-10-18): an `h2`, the mode `group`
-  with its two buttons and the person chips sit inside the board's `listbox`, as tab stops
-  fixed above the columns. The screen-reader check is owed in
-  [[The iteration board for the daily]]. **The horizons header pays it a sixth time** (same
-  day): its `h2` and its Present/Plan `group` sit inside the roadmap's `listbox`, owed in
-  [[The horizon board for stakeholders]].
+  with its two buttons, the close control (and the `Closed` mark that replaces it) and the
+  person chips sit inside the board's `listbox`, as tab stops fixed above the columns. The
+  screen-reader check is owed in [[The iteration board for the daily]]. **The horizons
+  header pays it a sixth time** (same day): its `h2` and its Present/Plan `group` sit inside
+  the roadmap's `listbox`, owed in [[The horizon board for stakeholders]].
 - **An SVG node's `cls` is an ARRAY, never a space-separated string**, and that is a lint
   rule (`no-restricted-syntax`) rather than a habit. `addClass` lives on `HTMLElement`, so
   Obsidian hands `createSvg`'s `cls` straight to `classList.add`, which rejects a token
