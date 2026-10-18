@@ -390,6 +390,23 @@ export const en = {
 	'iteration.unassignedAvatar': '?',
 	'iteration.spotlightTip': "Show {name}'s cards; dim the rest",
 	'iteration.spotlightClear': 'Showing {name}; press to show everyone',
+	/** Closing an iteration from its own board: the button, its dialog and the notice after. */
+	'iteration.close': 'Close iteration',
+	'iteration.closed': 'Closed',
+	'iteration.closeTitle': 'Close {name}?',
+	'iteration.closeAllDone': 'Every item in this iteration is resolved.',
+	'iteration.closeUnfinished': {
+		one: '{count} item is not resolved yet.',
+		other: '{count} items are not resolved yet.',
+	},
+	'iteration.closeNoNext': 'There is no later iteration to move them to, so they stay in this one.',
+	'iteration.closeAndMove': 'Close and move to {next}',
+	'iteration.closeOnly': 'Close only',
+	'iteration.closedNotice': 'Closed {name}',
+	'iteration.closedMovedNotice': {
+		one: 'Closed {name} and moved {count} item to {next}',
+		other: 'Closed {name} and moved {count} items to {next}',
+	},
 	'signal.blocked': 'Blocked',
 	'signal.blockedBy': 'Waiting for {title}',
 	'signal.overdue': { one: 'Overdue {count} day', other: 'Overdue {count} days' },

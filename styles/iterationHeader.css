@@ -63,6 +63,31 @@
 }
 
 /* Daily / Planning: one segmented control, the pressed half in the accent. */
+.pbl-iteration-actions {
+	display: flex;
+	flex: 0 0 auto;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: var(--size-4-2);
+}
+
+/* Closing is a once-per-sprint action, so it reads quieter than the mode switch beside it. */
+.pbl-iteration-close {
+	margin: 0;
+	padding: var(--size-4-1) var(--size-4-3);
+	height: auto;
+	font-size: var(--font-ui-small);
+}
+
+/* A closed sprint says so in the place its close button stood — text, not a control. */
+.pbl-iteration-closed {
+	padding: var(--size-4-1) var(--size-4-3);
+	border: 1px solid var(--background-modifier-border);
+	border-radius: var(--radius-m);
+	color: var(--text-muted);
+	font-size: var(--font-ui-small);
+}
+
 .pbl-iteration-mode {
 	display: inline-flex;
 	flex: 0 0 auto;
