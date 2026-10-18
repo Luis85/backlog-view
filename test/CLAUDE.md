@@ -130,7 +130,9 @@ a watched-failing test" — stay in [`../CLAUDE.md`](../CLAUDE.md).
 browser-automation dependency — and prints a `file://` URL. `?view=board`,
 `?view=roadmap` and `?view=deliverables` open straight into a projection, `?theme=light` into the light scheme,
 and `?phone` puts Obsidian's own `is-phone`/`is-mobile` body classes on the page,
-so a headless screenshot of a URL needs nothing to click; a corner toggle switches the
+so a headless screenshot of a URL needs nothing to click; `?scope=<path>` scopes the board
+to one iteration (`?scope=12%20-%20Iteration.md` is the demo's), which IS the iteration
+projection, so `?view=iteration` needs nothing of its own; a corner toggle switches the
 scheme by hand, and it is the harness's furniture rather than the view's. The toolbar switches projections, and the drags, menu entries and
 keyboard moves are the view's own — but the menu WIDGET is drawn by
 `test/harness/chrome.ts`, because the module mock records a `Menu` and renders
@@ -223,6 +225,8 @@ harness's — see the `chrome.ts` bullet below for the four rules that leaves ab
   door its control uses, `?shelf` opens the roadmap's shelf — its groups, counts,
   shelving reasons, sort and type filter draw only while it is open — and `?focus=PBI` sets
   the focus level, which re-roots the model and is the one way a context CARD is drawn.
+  On an iteration board, `?daily` switches to Daily and `?spot=Dana` presses that person's
+  chip.
   `?view=` and `?axis=` in `page.ts` are the same idea and stay there; these are here
   because each is a real call worth a test, since a knob that silently stopped making its
   state is a page that looks fine and answers nothing.
