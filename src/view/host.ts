@@ -447,9 +447,9 @@ export interface BacklogViewHost {
 	readonly iterationDaily: boolean;
 	/** Switch the iteration board to or from Daily and re-render; the view-state store persists it. */
 	setIterationDaily(value: boolean): void;
-	/** The spotlighted card's key on the iteration board, or null; session only, never stored. */
+	/** The spotlighted PERSON's key on the iteration board (`personKey`), or null; session only, never stored. */
 	readonly spotlight: string | null;
-	/** Spotlight a card (null clears) without rendering: the caller updates the DOM in place. */
+	/** Spotlight a person (null clears) without rendering: the caller updates the DOM in place. */
 	setSpotlight(key: string | null): void;
 	/**
 	 * Whether items whose whole subtree is done are drawn — true, drawing them, is the

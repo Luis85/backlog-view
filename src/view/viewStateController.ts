@@ -269,7 +269,7 @@ export class ViewStateController {
 	}
 
 	/**
-	 * The card the iteration board is spotlighting — session state like the shelf search
+	 * The person the iteration board is spotlighting — session state like the shelf search
 	 * above, so it lives here as a plain field and is never persisted. Setting it does NOT
 	 * render: the caller updates the DOM in place.
 	 */

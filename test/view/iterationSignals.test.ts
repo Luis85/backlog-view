@@ -139,6 +139,21 @@ describe('iteration card signals', () => {
 		expect(signalsOf(card)).toBeNull();
 	});
 
+	it('says Blocked when the prerequisite is a context row, since the blocker is real', () => {
+		// The context-row rule bars an excluded note as a declarer or a counted result, not
+		// as a NAMED blocker: the work still waits for it. Only a note the model holds can be
+		// named — here `Feature`, kept as `Finished`'s context parent.
+		const card = cardByTitle(onSprint(sprintVault({ dependsOn: 'Feature' })).containerEl, 'Waiting');
+		expect(signal(card, 'blocked')?.dataset.tooltip).toBe('Waiting for Feature');
+	});
+
+	it('draws on a backlog-shelf card too, while planning', () => {
+		const vault = sprintVault();
+		vault.addFile('Pullable.md', { frontmatter: { type: 'PBI', order: 40, status: 'New', risk: 'High' } });
+		const shelf = onSprint(vault).containerEl.querySelector<HTMLElement>('.pbl-shelf');
+		expect(signal(cardByTitle(shelf as HTMLElement, 'Pullable'), 'risk')?.textContent).toBe('High');
+	});
+
 	it('is the iteration board’s alone: the product board draws none for the same item', () => {
 		const { view, containerEl } = onSprint(sprintVault({ risk: 'High', priority: 'Must' }));
 		expect(signalsOf(cardByTitle(containerEl, 'Waiting'))).not.toBeNull();
