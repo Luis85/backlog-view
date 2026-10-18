@@ -24,6 +24,8 @@ See [RELEASING.md](RELEASING.md) for how this file is kept in step with a releas
 
 ## [Unreleased]
 
+## [0.13.0] - 2026-10-18
+
 ### Added
 
 - The iteration board opens with a header: the sprint's name and goal in large text, which
