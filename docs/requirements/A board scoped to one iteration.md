@@ -520,6 +520,9 @@ the moment the populations diverged, which is exactly what happened.
   in [[Creating an iteration from the board]] and by editing the note, so nothing about
   this board's write surface changes to carry it.
 
+  Since 2026-10-18 the goal draws inside the board's header, larger and under a `Goal`
+  label, with the same three refusals ([[The iteration header]] 2a).
+
 ## Acceptance criteria
 
 - In board mode the toolbar offers a scope picker naming `Product`, `Deliverables`

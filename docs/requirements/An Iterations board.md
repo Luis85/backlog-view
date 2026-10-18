@@ -126,6 +126,8 @@ away the answer the board is opened to read.
 **Still owed, and not answerable here**: the scope picker's fit in a one-line toolbar
 once a vault holds many iterations, the goal line and the dialog against a real theme,
 and whether three columns read as a board rather than as a product board missing some.
+Since 2026-10-18 the goal line is part of a header, and its theme check is owed by
+[[The iteration board for the daily]] instead.
 
 ## Use cases
 
