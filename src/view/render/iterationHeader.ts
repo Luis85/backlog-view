@@ -142,7 +142,8 @@ function renderProgress(meta: HTMLElement, population: BacklogItem[], host: Back
  */
 export function renderPeopleRow(ctx: RowContext, headerEl: HTMLElement, population: BacklogItem[]): void {
 	const host: BacklogViewHost = ctx.host;
-	const people = boardPeople(population);
+	// No assignee property: everyone would be Unassigned, one chip that dims nothing.
+	const people = host.settings.assigneeKey ? boardPeople(population) : [];
 	if (people.length === 0) return;
 	const row = headerEl.createDiv({ cls: 'pbl-iteration-people' });
 	row.createSpan({ cls: 'pbl-iteration-people-label', text: t('iteration.walkLabel') });
@@ -185,12 +186,14 @@ export function renderPeopleRow(ctx: RowContext, headerEl: HTMLElement, populati
 /**
  * Dim every result card that is not the spotlit person's — visual only, so no count, no
  * column and no keyboard stop changes. A context card is never dimmed: it holds nobody's
- * work on this board. A spotlight whose person has no card left here clears itself.
+ * work on this board. A spotlight whose person has no card left here — or with no assignee
+ * property at all — clears itself.
  */
 export function applySpotlight(ctx: RowContext, population: BacklogItem[]): void {
 	const host: BacklogViewHost = ctx.host;
 	const results = population.filter((item) => !item.outsideFilter);
-	if (host.spotlight !== null && !results.some((item) => personKey(item) === host.spotlight)) host.setSpotlight(null);
+	const held = host.settings.assigneeKey && results.some((item) => personKey(item) === host.spotlight);
+	if (host.spotlight !== null && !held) host.setSpotlight(null);
 	const spot = host.spotlight;
 	for (const item of results) {
 		ctx.rows.get(item.file.path)?.toggleClass('pbl-spot-dim', spot !== null && personKey(item) !== spot);

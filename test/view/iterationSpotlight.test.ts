@@ -91,6 +91,19 @@ describe('the person spotlight', () => {
 		expect(onSprint(vault).containerEl.querySelector('.pbl-iteration-people')).toBeNull();
 	});
 
+	it('draws no people row, and dims nothing, with no assignee property', () => {
+		const { assigneeProperty: _unused, ...unassigned } = OPTIONS;
+		const harness = makeView(sprintVault(), unassigned, { base: 'Plan.base' });
+		harness.view.setProjection('iteration');
+		// A spotlight left over from before the property was unset is cleared, not applied —
+		// even the Unassigned key, which every card would otherwise match.
+		harness.view.setSpotlight('');
+		harness.view.setBoardScope(SPRINT);
+		expect(harness.containerEl.querySelector('.pbl-iteration-people')).toBeNull();
+		expect(harness.view.spotlight).toBeNull();
+		expect(harness.containerEl.querySelectorAll('.pbl-spot-dim')).toHaveLength(0);
+	});
+
 	it("dims every card but the person's, and a second press clears it", () => {
 		const { view, containerEl } = onSprint();
 		const before = counts(containerEl);
