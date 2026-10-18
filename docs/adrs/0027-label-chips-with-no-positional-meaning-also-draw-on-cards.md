@@ -79,12 +79,26 @@ drops the cell for it loses nothing a reader could reach anyway: **Edit tags** i
 card's own context menu is gated on the tags property being a visible COLUMN
 (`tagsColumnVisible`), never on one item's own cell, so it stays offered.
 
+**Amended 2026-10-18.** Risk and priority now draw on the ITERATION board's cards, as
+read-only signals rather than as property cells, by user request: the daily is where a risk
+is talked about. They sit beside Blocked and Overdue in `renderCardSignals`
+(`src/view/render/cardSignals.ts`), called from `renderCardBody` only on that projection, as
+the item's own values — text, not chips, with no menu and no tab stop, so the card's
+context menu stays the way to change either. Every other projection is unchanged: the
+product board, the Deliverables board and the roadmap still draw neither, and the card
+column filter above still keeps risk out of a card's cells. The Decision's own route — the
+editable chip through that filter — was not taken because the daily asks for a cue to talk
+about, beside Blocked and Overdue, and not for a second place to edit the value. Both carry
+no hue: they are data, not a state.
+
 ## Consequences
 
 - **A card can now show four kinds of cell** — plain values, tags, and the assignee
   chip — up from two, and an item nobody is assigned draws the same dashed invitation
   chip the row does rather than nothing. Risk stays a fifth kind that never reaches a
-  card, an asymmetry this record states rather than resolves.
+  card as a CELL, an asymmetry this record states rather than resolves; since the
+  2026-10-18 amendment the iteration board draws it, and the priority, as read-only
+  signal text instead.
 - **Every property cell's renderer states whether it drew anything**, not only the
   assignee's: `renderValue`, `renderTagCell`, `renderStateChip`, `renderHorizonChip` and
   `renderLabelChip` all return `boolean` now, and `renderCell` passes the answer through
@@ -130,6 +144,8 @@ card's own context menu is gated on the tags property being a visible COLUMN
 
 ## Revisit when
 
-A second label-chip kind (risk, or a future one) is asked for on a card. The Decision's
-rule already covers it — nothing changes but the one filter in `renderCardBody` — so
-this section names the trigger rather than a design question still open.
+A second label-chip kind (risk, or a future one) is asked for as an editable card CELL.
+The Decision's rule already covers it — nothing changes but the one filter in
+`renderCardBody` — so this section names the trigger rather than a design question still
+open. The iteration board's read-only risk and priority signals (amended 2026-10-18) are
+not that trigger: they are not cells and do not pass through the filter.

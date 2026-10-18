@@ -1,13 +1,14 @@
 import { RowContext } from './columns';
 import { renderBoard } from './board';
 import { renderEmptyIterationState } from './emptyStates';
+import { applySpotlight, renderIterationHeader, renderPeopleRow } from './iterationHeader';
 import { renderShelf, ShelfRemoval } from './shelf';
 import { syncShelfTabStops } from './shelfControls';
 import { t } from '../../i18n/t';
 import { BacklogViewHost, BoardSnapshot } from '../host';
 import { CardDragController } from '../interactions/cardDrag';
 import { iterationBuckets, iterationCandidates } from '../../domain/board';
-import { BacklogItem, BacklogModel, iterationResults } from '../../domain/model';
+import { BacklogModel, iterationResults } from '../../domain/model';
 import { ShelfCard } from '../../domain/bars';
 
 /**
@@ -21,7 +22,7 @@ import { ShelfCard } from '../../domain/bars';
  */
 
 /**
- * The board for ONE iteration: its goal above three columns over the PRODUCT workflow.
+ * The board for ONE iteration: its header above three columns over the PRODUCT workflow.
  *
  * Its population is `iterationResults` — the carriers plus the excluded ancestors that
  * place them — and its columns are `iterationBuckets`, which reads `settings.stateKey`
@@ -43,8 +44,10 @@ export function renderIterationBoard(
 	if (!model) return { board: { columns: [], cardCount: 0 }, colEls: [], scope: 'iteration' };
 	const iteration = model.byPath.get(scope);
 	const population = iterationResults(model, scope);
-	renderIterationGoal(host, boardEl, iteration);
-	const shelf = renderIterationShelf(ctx, boardEl, dnd, model);
+	if (iteration) renderPeopleRow(ctx, renderIterationHeader(ctx, boardEl, iteration, population), population);
+	// The daily hides the shelf: a stand-up talks about the work committed, not the work
+	// that could still be pulled in.
+	const shelf = host.iterationDaily ? null : renderIterationShelf(ctx, boardEl, dnd, model);
 	const board = iterationBuckets(
 		population,
 		host.settings,
@@ -62,6 +65,7 @@ export function renderIterationBoard(
 		move: (item, col) => void (col.bucket && host.performIterationBoardMove(item, col.bucket)),
 		drawEmpty: (_h, aside) => renderEmptyIterationState(aside, iteration?.title ?? null),
 	});
+	applySpotlight(ctx, population);
 	// **The controls come back into the tab order when no COLUMN card can open a menu to
 	// reach them** — the question is reachability, not whether the pane drew a card
 	// anywhere. A shelf card is on no column, so it is out of this board's roving
@@ -83,6 +87,7 @@ export function renderIterationBoard(
 	// by a FOLD as well as by nothing committed — rather than `board.cardCount`, which
 	// `domain/board.ts` sums from the population before anything folds and which that
 	// function's own comment calls "results-only by design".
+	if (!shelf) return content;
 	syncShelfTabStops(shelf.el, content.board.columns.some((col) => col.cards.length > 0));
 	return { ...content, shelfEl: shelf.el, shelf: shelf.cards };
 }
@@ -166,17 +171,4 @@ function iterationRemoval(host: BacklogViewHost): ShelfRemoval {
 		outcome: null,
 		canDrag: () => true,
 	};
-}
-
-/**
- * What this iteration is FOR, above its columns — and three refusals rather than a
- * conditional: no goal draws no line at all (never an empty one, and never a placeholder
- * inviting a value), an unconfigured goal property is the same absence, and the line is
- * TEXT. Nothing in it is focusable or clickable: a goal is a fact about the sprint, and a
- * control here would be a second way to edit a note whose own dialog owns that.
- */
-function renderIterationGoal(host: BacklogViewHost, boardEl: HTMLElement, iteration: BacklogItem | undefined): void {
-	const goal = host.settings.iterationGoalKey ? (iteration?.iterationGoalValue ?? '') : '';
-	if (goal.trim() === '') return;
-	boardEl.createDiv({ cls: 'pbl-iteration-goal', text: goal.trim() });
 }

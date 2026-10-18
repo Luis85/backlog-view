@@ -21,7 +21,7 @@
    never shrink past their floor — a workflow stage exists whether or not the pane is
    narrow, so a pane too narrow for all of them scrolls rather than compressing them.
 
-   A COLUMN, because the iteration board draws bands above its columns — the goal line and
+   A COLUMN, because the iteration board draws bands above its columns — the header and
    the shelf — and the columns have to take the room those leave rather than a full pane's
    height on top of them. The roadmap's own frame is the same shape for the same reason.
    The two boards that draw no band are unaffected: a flex column with one item stretches
@@ -267,18 +267,4 @@
 .pbl-board-col.pbl-col-selected {
 	border-color: var(--interactive-accent);
 	box-shadow: 0 0 0 1px var(--interactive-accent) inset;
-}
-
-/* What the chosen iteration is FOR, above its columns. Text and nothing else — no box,
-   no border, no affordance — because the line is a FACT about the sprint and anything
-   that looked pressable would be a second way to edit a note whose own dialog owns it.
-   The gap is `--size-4-3`, the same rhythm `.pbl-board-cols` uses, so the line sits in
-   the board rather than on top of it. */
-.pbl-iteration-goal {
-	margin-block-end: var(--size-4-3);
-	color: var(--text-muted);
-	font-size: var(--font-ui-small);
-	/* A long goal wraps rather than pushing the columns sideways: the board scrolls
-	   horizontally, and a one-line goal would drag that scroll width with it. */
-	overflow-wrap: anywhere;
 }

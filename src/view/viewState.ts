@@ -402,6 +402,14 @@ export class ViewState {
 		this.setPref('clickFolds', value);
 	}
 
+	iterationDaily(): boolean {
+		return this.prefs.iterationDaily ?? false;
+	}
+
+	setIterationDaily(value: boolean): void {
+		this.setPref('iterationDaily', value);
+	}
+
 	/**
 	 * Whether fully-done subtrees are drawn — the default, so the stored pick is its
 	 * absence. The inversion lives here and nowhere else, `bucketGrid`'s own rule below:

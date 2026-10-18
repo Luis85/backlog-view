@@ -1,0 +1,54 @@
+/* What an iteration card says needs talking about — `src/view/render/cardSignals.ts`.
+   Text, never controls: small labels that wrap under the parent line. Labels stay in a
+   readable text colour. Blocked and Overdue are Attention Orange on the ICON and a faint
+   tint; risk and priority are data, so they carry no hue (DESIGN.md, The Spent Colour Rule). */
+.pbl-card-signals {
+	display: flex;
+	flex-wrap: wrap;
+	gap: var(--size-4-1);
+}
+
+.pbl-signal {
+	display: inline-flex;
+	align-items: center;
+	gap: var(--size-2-2);
+	padding: 0 var(--size-4-1);
+	border-radius: var(--radius-s);
+	font-size: var(--font-ui-smaller);
+	line-height: 1.6;
+	white-space: nowrap;
+	/* A long risk or priority value stops at the card edge; its tooltip holds it whole. */
+	max-width: 100%;
+	min-width: 0;
+}
+
+.pbl-signal-text {
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+
+.pbl-signal-icon {
+	display: inline-flex;
+}
+
+.pbl-signal-icon .svg-icon {
+	width: var(--icon-xs);
+	height: var(--icon-xs);
+}
+
+.pbl-signal-blocked,
+.pbl-signal-overdue {
+	color: var(--text-normal);
+	background-color: rgba(var(--color-orange-rgb), 0.12);
+}
+
+.pbl-signal-blocked .pbl-signal-icon,
+.pbl-signal-overdue .pbl-signal-icon {
+	color: rgb(var(--color-orange-rgb));
+}
+
+.pbl-signal-risk,
+.pbl-signal-priority {
+	color: var(--text-muted);
+	background-color: var(--background-modifier-hover);
+}

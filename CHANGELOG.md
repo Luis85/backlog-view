@@ -24,6 +24,21 @@ See [RELEASING.md](RELEASING.md) for how this file is kept in step with a releas
 
 ## [Unreleased]
 
+### Added
+
+- The iteration board opens with a header: the sprint's name and goal in large text, which
+  day of the sprint it is, and how many of its cards are resolved.
+- **Walk the board** on the iteration board: press a person's chip to dim every card that
+  is not theirs, and press it again to show everyone.
+- Iteration cards say when they are blocked or overdue, and show their risk and priority.
+- A **Daily / Planning** switch on the iteration board hides the backlog shelf for the
+  stand-up, and the pick is remembered per device.
+
+### Changed
+
+- The release bundle's size budget rises from 512 kB to 544 kB to make room for the
+  iteration board's daily view, which measures 517.5 kB and adds no dependency.
+
 ## [0.12.0] - 2026-10-13
 
 ### Added

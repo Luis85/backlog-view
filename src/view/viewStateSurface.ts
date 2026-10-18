@@ -61,6 +61,22 @@ export abstract class ViewStateSurface extends BasesView {
 		this.ui.setFocusLevel(level);
 	}
 
+	get iterationDaily(): boolean {
+		return this.ui.iterationDaily;
+	}
+
+	setIterationDaily(value: boolean): void {
+		this.ui.setIterationDaily(value);
+	}
+
+	get spotlight(): string | null {
+		return this.ui.spotlight;
+	}
+
+	setSpotlight(key: string | null): void {
+		this.ui.setSpotlight(key);
+	}
+
 	get clickFolds(): boolean {
 		return this.ui.clickFolds;
 	}

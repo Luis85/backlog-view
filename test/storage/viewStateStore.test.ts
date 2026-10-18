@@ -37,6 +37,7 @@ const FULL_PREFS: Required<ViewPrefs> = {
 	leadWidth: 240,
 	focus: 'Feature',
 	clickFolds: true,
+	iterationDaily: true,
 	hideCompleted: true,
 	bucketList: true,
 	shelfExpanded: true,

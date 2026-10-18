@@ -2,6 +2,7 @@ import { setTooltip } from 'obsidian';
 import { formatNumber, t } from '../../i18n/t';
 import { drawIcon } from './icons';
 import { renderCardChildren } from './cardChildren';
+import { renderCardSignals } from './cardSignals';
 import { renderPropCells, renderRollup, RowContext } from './columns';
 import {
 	renderAllDoneState,
@@ -632,6 +633,8 @@ export function renderCardBody(
 		parent.createSpan({ text: item.parent.title });
 		setTooltip(parent, t('board.cardParent', { title: item.parent.title }));
 	}
+	// What the stand-up needs to talk about — the iteration board's alone.
+	if (host.projection === 'iteration') renderCardSignals(ctx, card, item);
 
 	// A card draws the plain columns, the tag pills, and the assignee chip. State and
 	// horizon stay chips of the TREE only: a board card's column already IS its state
@@ -640,8 +643,9 @@ export function renderCardBody(
 	// projection — nothing about a card's position ever says who is on it — so it keeps
 	// its row's chip shape rather than becoming a value with no edit affordance. Risk is
 	// in the identical position and stays excluded regardless, not by the same argument:
-	// nobody has asked for it on a card yet (ADR 0027 records the amendment and its
-	// scope). Filtered from the ONE resolved list rather than resolved a second time —
+	// nobody has asked for it as a card CELL (ADR 0027 records the amendments and their
+	// scope — the iteration board draws risk and priority as read-only signals above, not
+	// as cells). Filtered from the ONE resolved list rather than resolved a second time —
 	// two derivations of "what is on screen" is how the tag menu once came to offer
 	// editing for a column the renderer had skipped.
 	//

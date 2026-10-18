@@ -19,13 +19,17 @@
  *
  * No existing suite is rewritten onto it. It is a fourth fixture, not a replacement.
  */
-import { clampingSpan } from './window';
+import { clampingSpan, fromToday } from './window';
 import { FakeVault, FakeViewConfig } from './vault';
 import { resolveEstimationSettings } from '../../src/domain/estimationSettings';
 import { computeTotal, stampValue } from '../../src/domain/weightedScore';
 
 /** The one note the Base does not return — the parent that renders as a context row. */
 const OUTSIDE = 'Retired platform';
+
+/** The one iteration, and the link the items in it carry. */
+const SPRINT = '12 - Iteration';
+const IN_SPRINT = { iteration: `[[${SPRINT}]]` };
 
 /**
  * How a fixture FILES its notes, which is a different question from what the backlog is.
@@ -133,6 +137,12 @@ export function demoOptions(): Record<string, unknown> {
 		deliverableStateProperty: 'note.docStatus',
 		deliverableStateValues: 'Concept, Draft, In review, Published',
 		deliverableDoneValues: 'Published',
+		// The iteration board, drawn over `12 - Iteration` below: two open states, one
+		// resolved, so `Active` and `Review` are the In progress bucket between them.
+		iterationProperty: 'note.iteration',
+		iterationGoalProperty: 'note.goal',
+		iterationOpenStates: 'New, Ready',
+		iterationResolvedStates: 'Done',
 	};
 }
 
@@ -203,7 +213,7 @@ export function demoVault(layout: Layout = 'flat', extra = 0): FakeVault {
 	// inference must walk straight THROUGH — `Folder note hierarchy` extension 2a. Their
 	// sibling `Cut the release branch` below stays outside it, so the container holds some
 	// of a sibling group rather than all of it.
-	add('Email and password', { type: 'PBI', order: 10, status: 'Done', started: '2026-07-02', finished: '2026-07-18', horizon: 'Now' }, 'Sign-up flow', 'Use cases');
+	add('Email and password', { type: 'PBI', order: 10, status: 'Done', started: '2026-07-02', finished: '2026-07-18', horizon: 'Now', ...IN_SPRINT }, 'Sign-up flow', 'Use cases');
 	add('Validate the address', { type: 'Task', order: 10, status: 'Done' }, 'Email and password');
 	add('Rate-limit the endpoint', { type: 'Task', order: 20, status: 'Done' }, 'Email and password');
 	// The three risk cases the chip has to draw, on rows that sit near each other: a level
@@ -219,21 +229,21 @@ export function demoVault(layout: Layout = 'flat', extra = 0): FakeVault {
 	// they wrap and where the row's own width is spent), exactly one, and — everywhere
 	// else — none, since an empty tags cell is the commonest face of that column and the
 	// one a row full of pills has to be read against.
-	add('Single sign-on', { type: 'PBI', order: 20, status: 'Review', started: '2026-07-20', horizon: 'Now', start: '2026-07-20', due: '2026-08-15', risk: '1 - High', priority: '2 - Should', assignee: 'Dana', tags: ['auth', 'security', 'needs-design'] }, 'Sign-up flow', 'Use cases');
-	add('Provider handshake', { type: 'Task', order: 10, status: 'Active' }, 'Single sign-on');
+	add('Single sign-on', { type: 'PBI', order: 20, status: 'Review', started: '2026-07-20', horizon: 'Now', start: '2026-07-20', due: '2026-08-15', risk: '1 - High', priority: '2 - Should', assignee: 'Dana', tags: ['auth', 'security', 'needs-design'], ...IN_SPRINT }, 'Sign-up flow', 'Use cases');
+	add('Provider handshake', { type: 'Task', order: 10, status: 'Active', ...IN_SPRINT }, 'Single sign-on');
 	add('Token refresh', { type: 'Task', order: 20 }, 'Single sign-on');
-	add('Welcome tour', { type: 'Feature', order: 20, status: 'Ready', horizon: 'Next', assignee: 'Kim', tags: ['onboarding'] }, 'Onboarding');
+	add('Welcome tour', { type: 'Feature', order: 20, status: 'Ready', horizon: 'Next', assignee: 'Kim', tags: ['onboarding'], ...IN_SPRINT }, 'Onboarding');
 	// Dated while its parent is not, so `Welcome tour` draws an INFERRED bar: outlined,
 	// no grips at all, and still a connector — a link claims no date, so it needs no
 	// baseline the way a grip does.
-	add('Highlight the sidebar', { type: 'PBI', order: 10, status: 'New', horizon: 'Next', start: '2026-08-24', due: '2026-09-05' }, 'Welcome tour');
+	add('Highlight the sidebar', { type: 'PBI', order: 10, status: 'New', horizon: 'Next', start: '2026-08-24', due: '2026-09-05', ...IN_SPRINT }, 'Welcome tour');
 	add('Skip and resume', { type: 'PBI', order: 20 }, 'Welcome tour');
 	// An extra type at the SHALLOWEST legal parent, and the one place the pinned rank is
 	// visible rather than merely true: it sits among Features and its child is a Task, the
 	// rung two below the Epic holding it. Dated, so an extra type draws a bar as well.
 	// Waits for `Single sign-on`, which ends 08-15 — after this one starts. A CONFLICT
 	// arrow, and the marker on this row.
-	add('Offline-first sync', { type: 'Idea', order: 30, status: 'Active', horizon: 'Next', start: '2026-08-10', due: '2026-10-15', dependsOn: '[[Single sign-on]]', risk: 'Existential', priority: 'P0' }, 'Onboarding');
+	add('Offline-first sync', { type: 'Idea', order: 30, status: 'Active', horizon: 'Next', start: '2026-08-10', due: '2026-10-15', dependsOn: '[[Single sign-on]]', risk: 'Existential', priority: 'P0', ...IN_SPRINT }, 'Onboarding');
 	add('Survey the storage APIs', { type: 'Task', order: 10, status: 'Active' }, 'Offline-first sync');
 	// A bar exactly one day wide — start and target on the same date, an ordinary PBI
 	// rather than a Milestone, so it draws the diamond from its GEOMETRY. The case where
@@ -244,7 +254,7 @@ export function demoVault(layout: Layout = 'flat', extra = 0): FakeVault {
 	// `Single sign-on`. Dragging from here, `Single sign-on` must be refused THROUGH the
 	// chain and not merely as a direct neighbour — the transitive half of the rule, in
 	// the picture rather than only in a unit test.
-	add('Sync conflict UX', { type: 'PBI', order: 50, status: 'New', start: '2026-10-20', due: '2026-11-30', dependsOn: '[[Offline-first sync]]' }, 'Onboarding');
+	add('Sync conflict UX', { type: 'PBI', order: 50, status: 'New', start: '2026-10-20', due: '2026-11-30', dependsOn: '[[Offline-first sync]]', ...IN_SPRINT }, 'Onboarding');
 
 	// Waits for `Sign-up flow`, which ends 08-20 — well before this starts. The ORDINARY
 	// arrow, so the picture has one of each rather than only the loud one.
@@ -300,6 +310,13 @@ export function demoVault(layout: Layout = 'flat', extra = 0): FakeVault {
 	// release's line stepped aside by the scale's line width, and neither half of that is
 	// visible where every mark stands alone. Dated by `target-date` like its sibling above.
 	add('1.1.0', { type: 'Release', version: '1.1.0', order: 80, 'target-date': '2026-09-30', status: 'Planned' });
+
+	// The ITERATION the daily board is drawn over. Its timebox is today-relative, because
+	// "day 6 of 14" is a position against today and a literal would drift out of it. The
+	// items carrying it span the three buckets and two assignees, `Offline-first sync` is
+	// blocked by an unresolved `Single sign-on`, and `Single sign-on`'s own target is
+	// already past, so Blocked and Overdue both draw. Ranked last, for the releases' reason.
+	add(SPRINT, { type: 'Iteration', order: 90, goal: 'New teams sign up and finish onboarding without talking to us.', start: fromToday(-5), due: fromToday(8) });
 
 	// Four unavailable stretches, which are the resources axis's second SOURCE and are not
 	// work items at all — no parent, no rank, no state. One in a row that already has bars,

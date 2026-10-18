@@ -143,6 +143,17 @@ export class ViewStateController {
 		this.hooks.refreshFromData();
 	}
 
+	get iterationDaily(): boolean {
+		return this.state.iterationDaily();
+	}
+
+	setIterationDaily(value: boolean): void {
+		if (value === this.iterationDaily) return;
+		this.state.setIterationDaily(value);
+		// A full render, like the click action: the board draws a different projection.
+		this.hooks.render();
+	}
+
 	get clickFolds(): boolean {
 		return this.state.clickFolds();
 	}
@@ -255,6 +266,21 @@ export class ViewStateController {
 		if (text === this.shelfSearchText) return;
 		this.shelfSearchText = text;
 		this.hooks.renderTreeContent();
+	}
+
+	/**
+	 * The person the iteration board is spotlighting — session state like the shelf search
+	 * above, so it lives here as a plain field and is never persisted. Setting it does NOT
+	 * render: the caller updates the DOM in place.
+	 */
+	private spotlightKey: string | null = null;
+
+	get spotlight(): string | null {
+		return this.spotlightKey;
+	}
+
+	setSpotlight(key: string | null): void {
+		this.spotlightKey = key;
 	}
 
 	isLaneCollapsed(identity: string): boolean {

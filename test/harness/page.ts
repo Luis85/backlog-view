@@ -55,6 +55,15 @@ if (AXES.includes(axis as RoadmapAxis)) {
 	view.setAxisPick(axis as RoadmapAxis);
 }
 
+/**
+ * `?scope=<path>` scopes the board to one iteration — `?scope=12%20-%20Iteration.md` for the
+ * demo's — through the picker's own door. The scope IS the iteration projection
+ * (`setBoardScope` sets both), so `?view=iteration` needs nothing of its own and this runs
+ * after `?view=` so a pick there cannot take the board back off it.
+ */
+const scope = new URLSearchParams(window.location.search).get('scope');
+if (scope) view.setBoardScope(scope);
+
 // After the projection and the axis, because both re-render: a dialog opened first would
 // be sitting over a projection the page was about to leave.
 applyWantedState(view, window.location.search);

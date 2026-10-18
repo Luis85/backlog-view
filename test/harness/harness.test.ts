@@ -2,7 +2,7 @@
 import { describe, expect, it } from 'vitest';
 import { mountHarness } from './mount';
 import { applyPlatform } from './theme';
-import { openWantedDialog } from './knobs';
+import { applyWantedState, openWantedDialog } from './knobs';
 import { Modal } from '../helpers/obsidian-mock';
 import { installObsidianDom } from '../helpers/dom';
 import { ExtraButtonComponent } from '../helpers/obsidian-mock';
@@ -157,6 +157,23 @@ describe('the browser harness mounts', () => {
 		projectionButton(containerEl, 'Show as kanban boards').dispatchEvent(new MouseEvent('click', { bubbles: true }));
 
 		expect(containerEl.querySelector('.pbl-board-cols')).not.toBeNull();
+	});
+
+	it('draws the iteration board for the daily: header, people and a blocked card', () => {
+		const { view, containerEl } = mount();
+
+		view.setBoardScope('12 - Iteration.md');
+
+		expect(view.projection).toBe('iteration');
+		expect(containerEl.querySelector('.pbl-iteration-header')).not.toBeNull();
+		expect(containerEl.querySelector('.pbl-iteration-person')).not.toBeNull();
+		expect(containerEl.querySelector('.pbl-signal-blocked')).not.toBeNull();
+
+		// `?daily` and `?spot=`, the two header controls a screenshot cannot press.
+		applyWantedState(view, '?daily&spot=Dana');
+		expect(view.iterationDaily).toBe(true);
+		expect(view.spotlight).toBe('Dana.md');
+		expect(containerEl.querySelector('.pbl-spot-dim')).not.toBeNull();
 	});
 });
 
@@ -324,7 +341,8 @@ describe('the harness draws the cases the dependency connector has to survive', 
 		// is ONE label naming both. Clipped at 140px in a browser, which is recorded in
 		// `docs/issues/Nearby milestone labels cover each other.md` and is not this test's to
 		// see: jsdom lays nothing out, so what is asserted is the TEXT the merge produces.
-		expect(labels).toEqual(['Ship 1.0 · Release: 1.1.0', 'Release: 1.2.0']);
+		// `12 - Iteration` is the demo sprint, a marker at its own target on a day of its own.
+		expect(labels).toEqual(['Ship 1.0 · Release: 1.1.0', '12 - Iteration', 'Release: 1.2.0']);
 	});
 
 	it('draws a clipped bar in the edge-case fixture, where it distorts nothing', () => {
