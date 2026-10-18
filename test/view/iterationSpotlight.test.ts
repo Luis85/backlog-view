@@ -179,6 +179,25 @@ describe('the person spotlight', () => {
 		expect(chips(containerEl).some((b) => b.getAttribute('aria-pressed') === 'true')).toBe(false);
 	});
 
+	it('carries across a switch of sprint, and clears where its person holds nothing', () => {
+		const vault = sprintVault();
+		vault.addFile('Sprint 13.md', { frontmatter: { type: 'Iteration', order: 20 } });
+		vault.addFile('C1.md', { frontmatter: { type: 'PBI', order: 50, status: 'New', iteration: '[[Sprint 13]]', assignee: 'Bo' } });
+		vault.addFile('C2.md', { frontmatter: { type: 'PBI', order: 60, status: 'New', iteration: '[[Sprint 13]]', assignee: 'Cy' } });
+		const { view, containerEl } = onSprint(vault);
+		chip(containerEl, 'Bo').click();
+		view.setBoardScope('Sprint 13.md');
+		expect(view.spotlight).toBe('Bo');
+		expect(chip(containerEl, 'Bo').getAttribute('aria-pressed')).toBe('true');
+		expect(dimmed(containerEl)).toEqual(['C2.md']);
+
+		view.setBoardScope(SPRINT);
+		chip(containerEl, 'Ada').click();
+		view.setBoardScope('Sprint 13.md');
+		expect(view.spotlight).toBeNull();
+		expect(dimmed(containerEl)).toEqual([]);
+	});
+
 	it('is not restored by a new view', () => {
 		const vault = sprintVault();
 		chip(onSprint(vault).containerEl, 'Bo').click();

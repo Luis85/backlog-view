@@ -90,12 +90,16 @@ of its cards are resolved.
   board draws no header.
 - A goal draws under a `Goal` label; no goal, a blank goal or an unconfigured goal property
   draws neither.
-- Every timebox branch reads as stated: before, running, last day, after, one end, no ends,
-  and a target before its start.
+- Every timebox branch is DECIDED as stated — before, running, last day, after, one end, no
+  ends, and a target before its start — in `test/domain/iterationDaily.test.ts`. The drawn
+  line is checked for a running sprint, an ended one and no dates; the other drawn strings
+  rest on the same catalog keys and are not asserted one by one.
 - Progress counts this sprint's result cards by the columns' own bucket reading, never a
   context row, and is unchanged by a fold or a filter.
-- Every word goes through the catalog; dates go through `formatDate` and counts through
-  plural keys.
+- Every word in the header — kicker, goal label, timebox, progress, switch and chip
+  tooltips — comes from the catalog; only titles, the goal, names and counts are data.
+
+**Checked by** `test/i18n/iterationDaily.test.ts` — "leaves nothing but titles, names, values and counts unmarked"
 
 **Checked by** `test/view/iterationHeader.test.ts` — "counts progress over the sprint, never over a context row"
 

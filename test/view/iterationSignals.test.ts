@@ -147,6 +147,14 @@ describe('iteration card signals', () => {
 		expect(signal(card, 'blocked')?.dataset.tooltip).toBe('Waiting for Feature');
 	});
 
+	it('is not blocked by an excluded prerequisite the model does not hold', () => {
+		// `Prereq` is outside the Base and places nothing, so the model never loads it and
+		// the entry resolves to no item: nothing is there to wait for.
+		const harness = makeView(sprintVault(), OPTIONS, { base: 'Plan.base', except: ['Feature.md', 'Prereq.md'] });
+		harness.view.setBoardScope(SPRINT);
+		expect(signal(cardByTitle(harness.containerEl, 'Waiting'), 'blocked')).toBeNull();
+	});
+
 	it('draws on a backlog-shelf card too, while planning', () => {
 		const vault = sprintVault();
 		vault.addFile('Pullable.md', { frontmatter: { type: 'PBI', order: 40, status: 'New', risk: 'High' } });

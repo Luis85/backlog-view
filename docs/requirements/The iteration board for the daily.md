@@ -28,7 +28,8 @@ gains four things: a **header** that says which sprint this is and how it is goi
 need a word, and a **Daily / Planning** switch that takes the backlog shelf away during the
 daily.
 
-**Two decisions of the 2026-08-15 iterations design are kept on purpose.** No swimlanes:
+**Two decisions of the 2026-08-15 iterations design
+(`docs/superpowers/specs/2026-08-15-iterations-design.md`) are kept on purpose.** No swimlanes:
 the spotlight walks the people and the columns do not change. And the goal is text, not a
 control: it becomes larger, never editable in place — the dialog in
 [[Creating an iteration from the board]] and the note itself stay the ways to change it.
@@ -69,6 +70,8 @@ saved view and device.
   ([[Walking the board one person at a time]]).
 - The spotlight is session-only, carries across a switch of sprint, and clears itself when
   its person has no card on the board.
+- The release bundle's budget rose from 512 kB to 544 kB: the build measured 517.5 kB with
+  this feature in it, and no dependency was added — the growth is this feature's own code.
 
 **Still owed, and not answerable here** — the jsdom suite and the browser harness cannot
 see a user's theme or a screen reader:

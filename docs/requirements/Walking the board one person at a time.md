@@ -83,13 +83,15 @@ count, column or keyboard stop changes.
 - No people row with no assignee property, and none for an empty sprint.
 - A press dims every other result card and sets `aria-pressed`; a second press or `Escape`
   on the pressed chip clears it. A context card is never dimmed.
-- The spotlight survives a data update, clears when its person has no card left, and is not
-  restored by a new view.
+- The spotlight survives a data update and a switch of sprint, clears when its person has
+  no card left, and is not restored by a new view.
 - The selected card stays at full opacity while it is dimmed.
 
 **Checked by** `test/view/iterationSpotlight.test.ts` — "draws no people row, and dims nothing, with no assignee property"
 
 **Checked by** `test/view/iterationSpotlight.test.ts` — "is not restored by a new view"
+
+**Checked by** `test/view/iterationSpotlight.test.ts` — "carries across a switch of sprint, and clears where its person holds nothing"
 
 ## Where it lives
 

@@ -34,7 +34,7 @@ the card's own menu stay the ways to change any of them.
 | **Actor** | The team at a stand-up, or the backlog owner planning |
 | **Trigger** | The iteration board draws a card |
 | **Preconditions** | The board is scoped to one iteration ([[A board scoped to one iteration]]) |
-| **Guarantee** | A signal is text: it adds no control, no tab stop and no write. The product board, the Deliverables board and the roadmap draw none. |
+| **Guarantee** | A signal is text: it adds no control, no tab stop and no write. Only the iteration board draws them — one gate in `renderCardBody` asks the projection — and the product board is checked to draw none for the same item. |
 
 **Main flow**
 
@@ -86,7 +86,8 @@ the card's own menu stay the ways to change any of them.
 ## Acceptance criteria
 
 - Blocked names the first prerequisite that is not Resolved, and goes away once it is.
-- A prerequisite that is a context row still blocks.
+- A prerequisite that is a context row still blocks; an excluded prerequisite the model does
+  not hold blocks nothing.
 - Overdue counts the days past the target against the view's clock, and is absent on the
   target day.
 - Risk and priority draw as the item's own values after the two flags, and not without a
@@ -95,12 +96,18 @@ the card's own menu stay the ways to change any of them.
   its signals.
 - The signals are text, never a control, and the product board draws none for the same
   item.
+- Every signal label and tooltip comes from the catalog; only the risk and priority values
+  are data.
 
 **Checked by** `test/view/iterationSignals.test.ts` — "says Blocked when the prerequisite is a context row, since the blocker is real"
+
+**Checked by** `test/view/iterationSignals.test.ts` — "is not blocked by an excluded prerequisite the model does not hold"
 
 **Checked by** `test/view/iterationSignals.test.ts` — "draws on a backlog-shelf card too, while planning"
 
 **Checked by** `test/view/iterationSignals.test.ts` — "says nothing on a resolved card, whatever it carries"
+
+**Checked by** `test/i18n/iterationDaily.test.ts` — "leaves nothing but titles, names, values and counts unmarked"
 
 ## Where it lives
 
