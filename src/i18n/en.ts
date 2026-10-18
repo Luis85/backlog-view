@@ -389,7 +389,7 @@ export const en = {
 	'iteration.unassigned': 'Unassigned',
 	'iteration.unassignedAvatar': '?',
 	'iteration.spotlightTip': "Show {name}'s cards; dim the rest",
-	'iteration.spotlightClear': 'Show everyone',
+	'iteration.spotlightClear': 'Showing {name}; press to show everyone',
 	'board.contextMarker': "Not in this base's filter — shown to place its items",
 	'board.contextCard': "Outside this base's filter — shown for context",
 	'board.cardParent': 'Under "{title}"',

@@ -163,7 +163,10 @@ export function renderPeopleRow(ctx: RowContext, headerEl: HTMLElement, populati
 		for (const chip of chips) {
 			const pressed = host.spotlight === chip.key;
 			chip.btn.setAttribute('aria-pressed', String(pressed));
-			setTooltip(chip.btn, pressed ? t('iteration.spotlightClear') : t('iteration.spotlightTip', { name: chip.name }));
+			// Obsidian's tooltip is also the chip's `aria-label`, which REPLACES its content as
+			// the accessible name — so both states name the person.
+			const params = { name: chip.name };
+			setTooltip(chip.btn, pressed ? t('iteration.spotlightClear', params) : t('iteration.spotlightTip', params));
 		}
 	};
 	const spotlight = (key: string | null): void => {

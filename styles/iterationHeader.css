@@ -255,6 +255,13 @@
 	opacity: 0.3;
 }
 
+/* Except the card the keyboard is on: opacity fades the selection ring with the card, so a
+   reader walking dimmed cards would lose where they are. A drag source keeps its own fade. */
+.pbl-card.pbl-spot-dim.pbl-selected:not(.pbl-drag-source),
+.pbl-card.pbl-spot-dim:focus-within:not(.pbl-drag-source) {
+	opacity: 1;
+}
+
 /* Scoped to the board under this header, so no other projection's cards start fading. */
 @media (prefers-reduced-motion: no-preference) {
 	.pbl-iteration-header ~ * .pbl-card {

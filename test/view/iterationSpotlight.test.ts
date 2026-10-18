@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 import { describe, expect, it } from 'vitest';
+import { assembleStyles } from '../../scripts/styles-assemble.mjs';
 import { FakeVault } from '../helpers/vault';
 import { makeView, refresh, useViewHarness } from '../helpers/view';
 
@@ -114,6 +115,10 @@ describe('the person spotlight', () => {
 		expect(dimmed(containerEl).sort()).toEqual(['B1.md', 'N1.md']);
 		expect(bo.getAttribute('aria-pressed')).toBe('true');
 		expect(chip(containerEl, 'Ada').getAttribute('aria-pressed')).toBe('false');
+		// Obsidian's tooltip is the chip's accessible name, so it names the person when
+		// pressed as well — never "Show everyone" alone.
+		expect(bo.dataset.tooltip).toBe('Showing Bo; press to show everyone');
+		expect(chip(containerEl, 'Ada').dataset.tooltip).toBe("Show Ada's cards; dim the rest");
 		// Updated in place: the chip pressed is still the one in the document, holding focus.
 		expect(bo.isConnected).toBe(true);
 		expect(containerEl.ownerDocument.activeElement).toBe(bo);
@@ -129,6 +134,7 @@ describe('the person spotlight', () => {
 	it('spotlights the Unassigned group', () => {
 		const { containerEl } = onSprint();
 		chip(containerEl, 'Unassigned').click();
+		expect(chip(containerEl, 'Unassigned').dataset.tooltip).toBe('Showing Unassigned; press to show everyone');
 		expect(dimmed(containerEl).sort()).toEqual(['A1.md', 'A2.md', 'B1.md']);
 	});
 
@@ -179,5 +185,19 @@ describe('the person spotlight', () => {
 		const second = onSprint(vault);
 		expect(second.view.spotlight).toBeNull();
 		expect(dimmed(second.containerEl)).toEqual([]);
+	});
+
+	it('keeps the selected card at full opacity while it is dimmed', () => {
+		const sheet = document.head.createEl('style', { text: assembleStyles() });
+		const opacityOf = (cls: string): string => {
+			const el = document.body.createDiv({ cls });
+			const value = getComputedStyle(el).opacity;
+			el.remove();
+			return value;
+		};
+		// The selection ring is drawn on the card itself, so a faded card fades its ring.
+		expect(opacityOf('pbl-card pbl-spot-dim')).toBe('0.3');
+		expect(opacityOf('pbl-card pbl-spot-dim pbl-selected')).toBe('1');
+		sheet.remove();
 	});
 });
