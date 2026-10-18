@@ -24,6 +24,8 @@ See [RELEASING.md](RELEASING.md) for how this file is kept in step with a releas
 
 ## [Unreleased]
 
+## [0.14.0] - 2026-10-18
+
 ### Added
 
 - The iteration board can close its iteration, and move the unfinished items into the next iteration in the same step, which one undo takes back.
